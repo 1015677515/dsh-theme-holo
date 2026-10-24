@@ -659,6 +659,9 @@ DSH 的插件加载是全有或全无的，为一条装饰性路由把整个客�
 
 ## 许可证与版权
 
+**作者**：[1015677515](https://github.com/1015677515)
+**联合创始人**：[holoiallo](https://github.com/holoiallo)
+
 **代码**以 [MIT](LICENSE) 许可发布。`LICENSE` 开头写明了适用范围：**MIT 只覆盖源代码**，
 不覆盖 `assets/` 与 `素材/` 里的图像、动画与音频。
 
