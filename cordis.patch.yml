@@ -1,0 +1,12 @@
+# dsh-theme-holo bundle patch.
+#
+# Contributes ONE host row. The row registers two read-only file routes:
+# `/holo-theme/assets/*` for the theme's own artwork, and `/holo-theme/link/*`
+# for the whale-widget payload (two role images + one voice line). The theme
+# itself is browser-side, loaded by the `dsh.client` manifest in package.json.
+#
+# A patch replaces the targeted row's whole `config`, so only additive `insert`
+# rows appear here — never an override of a shipped row.
+- insert:
+    - id: theme-holo
+      name: dsh-theme-holo

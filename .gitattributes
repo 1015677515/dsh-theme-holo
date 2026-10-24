@@ -1,0 +1,32 @@
+# 行尾归一化。
+#
+# 仓库内容含中文，而 Windows 检出默认把 LF 转成 CRLF，会让本地文件字节数与 git 记录值
+# 永远对不上。固定成 LF 后本地与远端逐字节一致。
+* text=auto eol=lf
+
+# 二进制素材不做行尾转换。
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.mp3 binary
+*.m4a binary
+*.ogg binary
+*.wav binary
+*.WAV binary
+*.webm binary
+*.mp4 binary
+*.woff binary
+*.woff2 binary
+*.zip binary
+*.tgz binary
+
+# 这些也在仓库里，明确按文本处理（便于 diff 与行尾统一）。
+*.md text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.svg text eol=lf

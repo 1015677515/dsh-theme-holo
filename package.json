@@ -1,0 +1,54 @@
+{
+  "name": "dsh-theme-holo",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "《狼与香辛料》赫萝主题：浅色「麦秋晨光」与深色「星夜麦田」两套暖色皮肤，附带开场动画、动态档案卡、日志标签分类、右栏待机动画与可拖动探头。",
+  "icon": "assets/icon.jpg",
+  "license": "MIT",
+  "author": "1015677515",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1015677515/dsh-theme-holo.git"
+  },
+  "homepage": "https://github.com/1015677515/dsh-theme-holo#readme",
+  "bugs": {
+    "url": "https://github.com/1015677515/dsh-theme-holo/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "theme",
+    "spice-and-wolf",
+    "holo"
+  ],
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "assets",
+    "素材",
+    "locale",
+    "cordis.patch.yml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
