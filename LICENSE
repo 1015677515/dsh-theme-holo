@@ -2,6 +2,29 @@ MIT License
 
 Copyright (c) 2026 holo
 
+------------------------------------------------------------------------------
+适用范围 / Scope
+------------------------------------------------------------------------------
+
+This license applies to the source code of this project only — that is, the
+JavaScript, JSON, YAML, and Markdown files, and does not extend to the image,
+animation, and audio assets under `assets/` and `素材/`.
+
+本许可仅适用于本项目的源代码（JavaScript、JSON、YAML 与 Markdown 文件），
+不适用于 `assets/` 与 `素材/` 目录下的图像、动画与音频素材。
+
+Those assets were collected from the internet and edited for personal,
+non-commercial use. They are not original works of this project's author, the
+original creators could not be traced individually, and no rights over them are
+claimed or granted here. If you are a rights holder and object to any asset
+appearing in this repository, it will be removed on request.
+
+上述素材来自网络，为个人非商业用途收集并二次加工，并非本项目作者原创，
+原作者已难以逐一追溯，此处不主张、也不授予任何权利。若你是权利人并认为
+某件素材不应出现在本仓库，提出后即予移除。
+
+------------------------------------------------------------------------------
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
