@@ -1,4 +1,4 @@
-![dsh-theme-holo — 赫萝主题](素材/横板封面.jpg)
+![dsh-theme-holo — 赫萝主题](assets/cover.webp)
 
 # dsh-theme-holo
 
@@ -49,7 +49,7 @@
 |---|---|
 | 形态 | 正规 DSH 插件：`index.js`（宿主半）+ `client.js`（浏览器半）+ `assets/` + `素材/` + `cordis.patch.yml` |
 | 浏览器半体积 | 约 182 KB，**不内联任何图片或音频**，只记 URL |
-| 素材 | `assets/` 9 件 + `素材/` 33 件，由宿主侧的 HTTP 路由送出 |
+| 素材 | `assets/` 9 件 + `素材/` 9 件（本地另有 24 件设计稿，不进仓库），由宿主侧的 HTTP 路由送出 |
 | 配色 | 浅色「麦秋晨光」与深色「星夜麦田」，110 个别名 token 各一套 |
 | 依赖 | Node ≥ 22；无第三方运行时依赖 |
 
@@ -332,7 +332,7 @@ mklink /J "%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-theme-holo" "<�
 
 `cover.webp` 是**已经烘好浓度的版本**——75% 的整体场与 50% 的边缘淡出烤进了 WebP 的 alpha 通道。
 CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身没有透明度旋钮，所以这一步在导出时做完。
-要调浓淡就重新导出这张图；未压缩原件 `素材/横板封面.jpg` 留在素材目录里备查。
+要调浓淡就重新导出这张图；未压缩原件 `素材/横板封面.jpg` 留在作者本地备查（未随仓库发布）。
 
 ### 右栏待机画面
 
