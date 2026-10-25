@@ -1,6 +1,6 @@
 {
   "name": "dsh-theme-holo",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "《狼与香辛料》赫萝主题：浅色「麦秋晨光」与深色「星夜麦田」两套暖色皮肤，附带开场动画、动态档案卡、日志标签分类、右栏待机动画与可拖动探头。",
   "icon": "assets/icon.jpg",
@@ -40,8 +40,10 @@
     "locale",
     "cordis.patch.yml",
     "README.md",
+    "INSTALL.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE.md"
   ],
   "dsh": {
     "bundle": {
@@ -50,9 +52,20 @@
     "client": {
       "platform": "web",
       "immediately": true
+    },
+    "compatibility": {
+      "dsh": ">=0.2.0-rc.1 <0.3.0-0",
+      "dshReleases": {
+        "0.2.0-rc.1": "compatible",
+        "0.2.0-rc.2": "compatible",
+        "0.2.1-alpha.5": "compatible",
+        "0.2.1-rc.1": "compatible",
+        "0.2.1-rc.2": "compatible"
+      }
     }
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22",
+    "dsh": ">=0.2.0-rc.1 <0.3.0-0"
   }
 }

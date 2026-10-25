@@ -9,8 +9,9 @@
 以及只在你开始页亮着的右栏待机画面。
 
 ![license](https://img.shields.io/badge/license-MIT-c8a04a)
-![version](https://img.shields.io/badge/version-1.0.2-c8a04a)
+![version](https://img.shields.io/badge/version-1.0.3-c8a04a)
 ![node](https://img.shields.io/badge/node-%3E%3D22-c8a04a)
+![dsh](https://img.shields.io/badge/DSH-0.2.0--rc.1%20~%200.2.x-c8a04a)
 ![platform](https://img.shields.io/badge/DSH-Web%20GUI-c8a04a)
 
 ---
@@ -20,15 +21,20 @@
 | 章节 | 功能详解的十个小节 |
 |---|---|
 | [这是什么](#这是什么) | [两套配色](#两套配色) |
-| [功能一览](#功能一览) | [开场动画](#开场动画12-秒实时渲染) |
-| [安装](#安装) | [浮动字标](#浮动字标) |
-| [功能详解](#功能详解) | [偷看的她](#偷看的她) |
-| [插件设置项](#插件设置项) | [动态档案卡](#动态档案卡) |
-| [目录结构与素材](#目录结构与素材) | [日志标签](#日志标签) |
-| [常见问题](#常见问题) | [侧栏脚下的麦田](#侧栏脚下的麦田) |
-| [实现要点](#实现要点) | [插件详情页横幅](#插件详情页横幅) |
-| [已知边界](#已知边界) | [右栏待机画面](#右栏待机画面) |
-| [许可证与版权](#许可证与版权) | [小鲸鱼挂件联动](#小鲸鱼挂件联动) |
+| [界面预览](#界面预览) | [开场动画](#开场动画12-秒实时渲染) |
+| [功能一览](#功能一览) | [浮动字标](#浮动字标) |
+| [环境要求](#环境要求) | [偷看的她](#偷看的她) |
+| [安装](#安装) | [动态档案卡](#动态档案卡) |
+| [功能详解](#功能详解) | [日志标签](#日志标签) |
+| [插件设置项](#插件设置项) | [侧栏脚下的麦田](#侧栏脚下的麦田) |
+| [目录结构与素材](#目录结构与素材) | [插件详情页横幅](#插件详情页横幅) |
+| [常见问题](#常见问题) | [右栏待机画面](#右栏待机画面) |
+| [实现要点](#实现要点) | [小鲸鱼挂件联动](#小鲸鱼挂件联动) |
+| [已知边界](#已知边界) | |
+| [许可证与版权](#许可证与版权) | |
+| [出处声明](#出处声明) | |
+| [相关链接](#相关链接) | |
+| [English](#english) | |
 
 > **关于这个目录的方框**：GitHub 的 Markdown 渲染器会剥掉所有 `style` 与 `color`，
 > 没法给目录加自定义底色的圆角外框。表格是**唯一既自带底色与边框、又保留可点击链接**
@@ -64,6 +70,28 @@
 
 ---
 
+## 界面预览
+
+装上之后，整个 Web GUI 长这样（为保护隐私，余额、今日消耗金额与账号名已遮去，其余为原始截图）：
+
+<p align="center">
+  <img src="docs/gui-overview.png" width="100%" alt="dsh-theme-holo 装到 DeepSeek Harness 后的界面全貌：左侧羊皮纸色侧栏、顶部「狼与香辛料」字标、右上角右栏待机画面、输入框边偷看的她、侧栏脚下麦田">
+</p>
+
+一眼能认出的几处：
+
+| 位置 | 看到什么 |
+| --- | --- |
+| 顶部中间 | 「狼与香辛料」浮雕字标，可拖动、可关 |
+| 右上 | 右栏待机画面（只在右栏自己的开始页亮） |
+| 输入框右侧 | 偷看的她，只露兜帽和一双眼 |
+| 左下角 | 侧栏脚下的麦田，宽度随侧栏走 |
+| 整页 | 羊皮纸底色 + 麦金强调色，所有文字转暖棕 |
+
+更多细节图见下方各功能小节。
+
+---
+
 ## 功能一览
 
 | 功能 | 一句话 |
@@ -82,60 +110,60 @@
 
 ---
 
-## 安装
+## 环境要求
 
-### 前置
+| 项 | 要求 | 说明 |
+| --- | --- | --- |
+| DeepSeek Harness | `>=0.2.0-rc.1 <0.3.0-0` | 用了 `webServer` 路由、`theme.overrideTokens`、`slots` 等接口；低于此版本会静默不生效，不报错 |
+| Node.js | `>=22` | DSH 自带运行时即满足 |
+| 操作系统 | Windows / macOS / Linux | 已在 Windows 11 + DSH `0.2.1-rc.2` 实测 |
+| 磁盘空间 | 约 16 MB | 其中素材约 15 MB（`素材/动画/` 六段视频占 12.9 MB） |
+| 第三方依赖 | 无 | 没有 npm 依赖，安装后不需要 `pnpm install` |
+| 网络 | 安装时需要 | 从 GitHub 取包；运行时不联网 |
 
-- DeepSeek Harness 已安装并能正常打开 Web GUI
-- 本仓库已下载到本地任意目录（下称 `<插件目录>`）
-
-### 方式：本地目录 + `link:` 依赖
-
-**第 1 步**，打开 profile 的 `package.json`：
-
-```
-%USERPROFILE%\.dsh\profiles\desktop\package.json
-```
-
-加入两处（其余内容保持不动）：
+这些版本约束同时写进了 `package.json`：
 
 ```jsonc
-{
-  "dependencies": {
-    "dsh-theme-holo": "link:A:/你的路径/dsh-theme-holo"
-  },
-  "dsh": {
-    "profile": {
-      "bundles": [
-        "dsh-theme-holo"
-      ]
+"engines": { "node": ">=22", "dsh": ">=0.2.0-rc.1 <0.3.0-0" },
+"dsh": {
+  "compatibility": {
+    "dsh": ">=0.2.0-rc.1 <0.3.0-0",
+    "dshReleases": {
+      "0.2.0-rc.1": "compatible",
+      "0.2.0-rc.2": "compatible",
+      "0.2.1-alpha.5": "compatible",
+      "0.2.1-rc.1": "compatible",
+      "0.2.1-rc.2": "compatible"
     }
   }
 }
 ```
 
-> `link:` 后面用**正斜杠**，路径里不要有空格；Windows 盘符写法是 `link:A:/...`。
+`dshReleases` 是逐个版本标注的兼容表——与 `dsh-cost-meter` 等官方插件的写法一致。
 
-**第 2 步**，在 profile 的 `node_modules` 下建一个目录链接（管理员 PowerShell 或 cmd）：
+---
 
-```cmd
-mklink /J "%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-theme-holo" "<插件目录>"
+## 安装
+
+最短的一条路——在 DSH 里打开 `设置 → 插件 → 添加插件`，填入：
+
+```
+github:1015677515/dsh-theme-holo
 ```
 
-**第 3 步**，重启 DSH。
+点安装，等它下载完，**立即启用**，然后重启 DSH。
 
-装好后打开界面：开场动画播完、页面加载完成，如果检测到小鲸鱼挂件，会弹一次
-「要不要把赫萝装进挂件」的对话框（见[小鲸鱼挂件联动](#小鲸鱼挂件联动)）。不想装就选「暂不安装」，
-之后不再弹。
+> **【未验证】** 这条 `github:` 路径没有在隔离环境里逐步实测过。若解析失败
+> （提示找不到包、或装完不出现在列表里），改用下面这条一定可用的本地安装。
 
-### 卸载
+本地安装的核心是三行：profile 的 `package.json` 里加 `link:` 依赖、在
+`dsh.profile.bundles` 里登记插件名、再到 `node_modules` 下建一个目录链接。
 
-删掉上面加的两行（`dependencies` 一行、`bundles` 一行），重启即可。
+**完整的三种安装方式、自检步骤、卸载与故障排查，都在 [INSTALL.md](INSTALL.md)。**
 
-插件所有效果都挂在自己的 fiber 上：样式表、片头层、偷看层、档案卡、浮动字标、
-麦田、待机画面、日志标签属性，都会随 fiber 一起移除，不会在页面上留下任何东西。
-
-目录本身和 junction 可以留着（下次启用只需把两行加回来），也可以一并删掉。
+装好之后：开场动画播完、界面变成羊皮纸色就是生效了。如果检测到小鲸鱼挂件，
+会弹一次「要不要把赫萝装进挂件」的对话框；不想装就选「暂不安装」，之后不再弹
+（见[小鲸鱼挂件联动](#小鲸鱼挂件联动)）。
 
 ---
 
@@ -732,8 +760,11 @@ DSH 的插件加载是全有或全无的，为一条装饰性路由把整个客�
 **作者**：[1015677515](https://github.com/1015677515)
 **联合创始人**：[holoiallo](https://github.com/holoiallo)
 
-**代码**以 [MIT](LICENSE) 许可发布。`LICENSE` 开头写明了适用范围：**MIT 只覆盖源代码**，
-不覆盖 `assets/` 与 `素材/` 里的图像、动画与音频。
+**代码**以 [MIT](LICENSE) 许可发布。`LICENSE` 是标准 MIT 模板，GitHub 能直接识别为 `MIT`
+（早前把适用范围写进 `LICENSE` 开头会导致被识别成 `NOASSERTION`，已拆到 [NOTICE.md](NOTICE.md)）。
+
+**适用范围**：**MIT 只覆盖源代码**，不覆盖 `assets/` 与 `素材/` 里的图像、动画与音频。
+素材的说明与移除承诺见 [NOTICE.md](NOTICE.md)。
 
 **关于《狼与香辛料》**：赫萝、缪莉等角色及「狼与香辛料 / Spice and Wolf」名称的著作权归
 原作权利人（支倉凍砂 / ASCII Media Works 等）所有。本项目是非商业性的同人作品，
@@ -748,3 +779,117 @@ DSH 的插件加载是全有或全无的，为一条装饰性路由把整个客�
 提出后我会立即移除。
 
 苹果 emoji 来自 [Twemoji](https://github.com/twitter/twemoji)（CC-BY 4.0）。
+
+---
+
+## 出处声明
+
+本项目由 [holoiallo](https://github.com/holoiallo) 最初创立，
+[1015677515](https://github.com/1015677515) 完善更新，由 DeepSeek Harness 的 AI 智能体协助开发。
+
+素材均来自网络自用的二创，仅供学习和交流使用，不得用于商业用途。
+
+> This project was originally created by [holoiallo](https://github.com/holoiallo),
+> refined and maintained by [1015677515](https://github.com/1015677515), and developed
+> with the assistance of DeepSeek Harness's AI agent. All assets are second-hand
+> fan-made works collected from the internet for personal use. For learning and
+> exchange only — not for commercial use.
+
+---
+
+## 相关链接
+
+- [INSTALL.md](INSTALL.md) —— 三种安装方式、自检、卸载、故障排查
+- [CHANGELOG.md](CHANGELOG.md) —— 逐版本更新记录
+- [NOTICE.md](NOTICE.md) —— 素材适用范围说明
+- [Issues](https://github.com/1015677515/dsh-theme-holo/issues) —— 问题反馈
+- [Releases](https://github.com/1015677515/dsh-theme-holo/releases) —— 发行版下载
+
+
+---
+
+## English
+
+> **A Holo (Spice and Wolf) theme for the DeepSeek Harness Web GUI.**
+> Parchment background, wheat-gold accents, a 12-second real-time intro animation,
+> Holo peeking at the edge of the composer, a profile mini-card on hover, a draggable
+> "Spice and Wolf" wordmark, and a standby animation that only lights up on the
+> right rail's start page.
+
+[中文](#dsh-theme-holo) | English
+
+### Preview
+
+<p align="center">
+  <img src="docs/gui-overview.png" width="100%" alt="dsh-theme-holo applied to DeepSeek Harness">
+</p>
+
+Balance, daily spend and the account name are hidden in this screenshot; everything
+else is untouched.
+
+### Features
+
+| Feature | What it does |
+| --- | --- |
+| **Two palettes** | Light parchment «Harvest Dawn» and dark «Starry Field» (dark is a test feature) |
+| **Intro animation** | 12 seconds drawn live on canvas: red eyes in the dark → wolf outline traced in red → light burst → title decodes → ready |
+| **Draggable wordmark** | The "Spice and Wolf" mark; position, size and opacity adjustable, can be turned off entirely |
+| **Peeking Holo** | Only a hood and a pair of eyes at the composer edge; rises when the pointer approaches, draggable left and right |
+| **Peek voice** | Clicking her plays a puzzled sound (can be muted) |
+| **Profile mini-card** | Hover the bottom-left account row to raise a Steam-style card |
+| **Log tags** | Inline tags such as "Thinking / Reading / Running command" each get a warm tone |
+| **Sidebar wheat** | A strip of wheat at the foot of the sidebar; width follows the rail, height anchors to the account row |
+| **Plugin cover banner** | A 1920×620 banner at the top of this plugin's page in the plugin manager |
+| **Right-rail standby** | An animation that only lights up on the right rail's own start page, six clips to choose from, fades out once you start working |
+| **Whale widget link** | One click installs two roles plus one voice line into `dsh-whale-widget` |
+
+Every component has its own switch in the plugin settings. Turn one off and it is
+removed completely, leaving no leftover nodes.
+
+### Requirements
+
+| Item | Requirement |
+| --- | --- |
+| DeepSeek Harness | `>=0.2.0-rc.1 <0.3.0-0` |
+| Node.js | `>=22` |
+| OS | Windows / macOS / Linux (tested on Windows 11 with DSH `0.2.1-rc.2`) |
+| Disk | ~16 MB (assets are ~15 MB, six scene videos alone are 12.9 MB) |
+| Runtime dependencies | None |
+
+### Install
+
+In DSH, open `Settings → Plugins → Add plugin` and enter:
+
+```
+github:1015677515/dsh-theme-holo
+```
+
+Install, click **Enable now**, then restart DSH.
+
+> **Not verified**: the `github:` shorthand has not been tested step by step in an
+> isolated environment. If it fails to resolve, use the local install method below.
+
+For the local method (add a `link:` dependency, register the name in
+`dsh.profile.bundles`, then create a directory link in `node_modules`), plus
+self-check, uninstall and troubleshooting steps, see **[INSTALL.md](INSTALL.md)**.
+
+### Credits
+
+Originally created by [holoiallo](https://github.com/holoiallo), refined and
+maintained by [1015677515](https://github.com/1015677515), and developed with the
+assistance of DeepSeek Harness's AI agent. All image, animation and audio assets are
+second-hand fan-made works collected from the internet for personal use. This project
+is for learning and exchange only and must not be used commercially. Character rights
+belong to the original rights holders; this is an unaffiliated, non-commercial fan
+work. If you are a rights holder and object to any asset appearing here, open an
+[issue](https://github.com/1015677515/dsh-theme-holo/issues) and it will be removed.
+
+The source code is [MIT](LICENSE) licensed. The license covers source code only, not
+the assets — see [NOTICE.md](NOTICE.md) for details.
+
+### Links
+
+- [INSTALL.md](INSTALL.md) — install methods, self-check, uninstall, troubleshooting
+- [CHANGELOG.md](CHANGELOG.md) — version history
+- [Issues](https://github.com/1015677515/dsh-theme-holo/issues) — bug reports
+- [Releases](https://github.com/1015677515/dsh-theme-holo/releases) — downloads

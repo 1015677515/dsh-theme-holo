@@ -1,5 +1,47 @@
 # 更新记录
 
+## 1.0.3 — 2026-10-26
+
+### 修复
+
+- **`LICENSE` 被 GitHub 识别成 `NOASSERTION`。** 原因不是缺少许可证，而是 MIT 正文前
+  插了一段「适用范围（Scope）」把标准模板切断，GitHub 的 licensee 模板比对失败，于是
+  落到 `NOASSERTION`。现在 `LICENSE` 恢复为纯 MIT 模板（21 行），GitHub 徽章会显示
+  `MIT license`，依赖图与合规扫描也能正确归类；那段适用范围挪到独立的 `NOTICE.md`。
+  法律效力原本就与 MIT 一致，变的只是机器可识别性。
+
+### 新增
+
+- **`INSTALL.md`**：环境要求表、三种安装方式（`github:` 应用内安装 / 本地 `link:` +
+  `mklink /J`（含 Linux、macOS 的 `ln -s`）/ ZIP 解压）、装好之后的样子、自检：确认装对了
+  （三处特征 + 两种典型失败模式）、卸载（含清理 `localStorage` 与挂件目录）、常见问题。
+- **README「界面预览」节**：一张 1600×862 的真实运行截图（余额、今日消耗、账号名已打码），
+  下附 5 行「位置 → 看到什么」对照表。
+- **README「环境要求」节**：DSH `>=0.2.0-rc.1 <0.3.0-0`、Node `>=22`、三平台、约 16 MB、
+  无第三方依赖、安装需联网运行时不需要，并附 `package.json` 的 `engines` / `compatibility` 片段。
+- **README「出处声明」节**：本项目由 [holoiallo](https://github.com/holoiallo) 最初创立，
+  [1015677515](https://github.com/1015677515) 完善更新，由 DeepSeek Harness 的 AI 智能体
+  协助开发；素材来自网络二创，仅供学习交流。中英双语。
+- **README「相关链接」节**：INSTALL / CHANGELOG / NOTICE / Issues / Releases。
+- **README 英文节**（精简版）：Preview、Features 十一条、Requirements、Install、Credits、Links。
+  不做全文双语，只做一份能读懂「这是什么、怎么装」的摘要。
+- **`NOTICE.md`**：中英双语说明 MIT 只覆盖源代码，不覆盖 `assets/` 与 `素材/` 的音视频图像；
+  素材不主张权利、有异议提出即移除、不得商用。
+- **配图 `docs/gui-overview.png`**（1600×862）。
+
+### 变更
+
+- **`package.json`**：版本 `1.0.2` → `1.0.3`；`files` 补入 `INSTALL.md`、`NOTICE.md`（现 12 项）；
+  `engines` 增加 `"dsh": ">=0.2.0-rc.1 <0.3.0-0"`；新增 `dsh.compatibility`（含 `dshReleases`
+  逐版本兼容表，写法与 `dsh-cost-meter` 等官方插件一致）。
+- **README 安装节重写**：从 60 行压到 20 行，先给 `github:1015677515/dsh-theme-holo` 一行安装，
+  再指向 `INSTALL.md`；`github:` 这条标了【未验证】，解析失败请回退本地安装。
+- **README 目录表**补入界面预览、环境要求、出处声明、相关链接、English 五条。
+
+### 说明
+
+- 本轮**没有**增加「它会动你的哪些文件」节与「运行时验证记录」表——按决定暂时跳过。
+
 ## 1.0.2 — 2026-10-25
 
 ### 文档
