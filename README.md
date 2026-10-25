@@ -57,7 +57,7 @@
 | 项 | 说明 |
 |---|---|
 | 形态 | 正规 DSH 插件：`index.js`（宿主半）+ `client.js`（浏览器半）+ `assets/` + `素材/` + `cordis.patch.yml` |
-| 插件大小 | 约 16 MB（`client.js` 与 `index.js` 合计约 193 KB，其余全是素材；`docs/` 的 0.95 MB 配图不参与运行时） |
+| 插件大小 | 约 16 MB（`client.js` 与 `index.js` 合计约 198 KB，其余全是素材；`docs/` 的 1.7 MB 配图不参与运行时） |
 | 素材 | 图片 9 张、视频 6 组、音频 3 件，由宿主侧的 HTTP 路由送出 |
 | 配色 | 浅色「麦秋晨光」与深色「星夜麦田」（开发中，测试功能） |
 | 依赖 | Node ≥ 22；无第三方运行时依赖 |
@@ -117,7 +117,7 @@
 | DeepSeek Harness | `>=0.2.0-rc.1 <0.3.0-0` | 用了 `webServer` 路由、`theme.overrideTokens`、`slots` 等接口；低于此版本会静默不生效，不报错 |
 | Node.js | `>=22` | DSH 自带运行时即满足 |
 | 操作系统 | Windows / macOS / Linux | 已在 Windows 11 + DSH `0.2.1-rc.2` 实测 |
-| 磁盘空间 | 约 16 MB | 其中素材约 15 MB（`素材/动画/` 六段视频占 12.9 MB） |
+| 磁盘空间 | 约 16 MB | 其中素材约 13 MB（`素材/动画/` 六段视频占 13.2 MB） |
 | 第三方依赖 | 无 | 没有 npm 依赖，安装后不需要 `pnpm install` |
 | 网络 | 安装时需要 | 从 GitHub 取包；运行时不联网 |
 
@@ -537,14 +537,17 @@ dsh-theme-holo/
 
 ### `docs/` —— 本 README 的配图
 
-四张，只给文档用，**运行时不加载**，也不在 `index.js` 的白名单里：
+五张，只给文档用，**运行时不加载**，也不在 `index.js` 的白名单里：
 
 | 文件 | 尺寸 | 用途 |
 |---|---:|---|
 | `readme-banner.png` | 1800×600 | 首屏横幅：米黄底、深米色双线圆角外框、logo、金色分隔线、三行正文 |
+| `gui-overview.png` | 1600×862 | 界面全貌（余额、今日消耗、账号名已打码） |
 | `intro-final.webp` | 1920×1080 | 开场动画最后一帧（标题解码完成、光晕铺满的状态） |
 | `scene-grid.png` | 1844×574 | 六段右栏待机动画各取一帧，从左到右拼成一条 |
 | `wheat-75.png` | 904×146 | 麦穗条，`assets/wheat.png` 压到 75% 不透明度。目前**未被引用**，留作备用 |
+
+合计约 1.7 MB，只在 GitHub 上加载，不影响插件的运行开销。
 
 为什么首屏要画成图：GitHub 的 HTML 消毒器会剥掉 README 里所有 `style` 与 `color`（见[常见问题](#常见问题)），
 页面底色与文字颜色无从修改，**唯一能承载配色的只有图片**。所以首屏做成横幅图，正文仍是可选中、可搜索的文本。
@@ -853,7 +856,7 @@ removed completely, leaving no leftover nodes.
 | DeepSeek Harness | `>=0.2.0-rc.1 <0.3.0-0` |
 | Node.js | `>=22` |
 | OS | Windows / macOS / Linux (tested on Windows 11 with DSH `0.2.1-rc.2`) |
-| Disk | ~16 MB (assets are ~15 MB, six scene videos alone are 12.9 MB) |
+| Disk | ~16 MB (assets are ~13 MB, six scene videos alone are 13.2 MB) |
 | Runtime dependencies | None |
 
 ### Install
