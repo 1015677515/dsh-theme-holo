@@ -2826,6 +2826,52 @@ function render(t) {
     /** localStorage latch: `1` mutes her voice. Absent means sound is on. */
     const PEEK_VOICE_OFF_KEY = 'dsh-theme-holo.peek-voice-off'
 
+    /**
+     * localStorage latch: `1` once the first-run light default has run.
+     *
+     * The host's appearance preference ships as "system", so a machine whose OS
+     * is in dark mode lands on the dark GUI — and this theme's 「星夜麦田」
+     * palette with it — on the very first load, which reads as "installing the
+     * plugin switched me to night mode". New installs therefore start light
+     * once. The switch in the settings card is the only thing allowed to turn
+     * dark back on, and this latch keeps that first run from ever fighting a
+     * choice made later.
+     */
+    const DARK_DEFAULTED_KEY = 'dsh-theme-holo.dark-defaulted'
+
+    /**
+     * First run only: put the host back on its light appearance when it
+     * resolved to dark. The preference is written through the theme service so
+     * it survives a reload; a shell without that service has nothing persistent
+     * to write, so the body attribute is cleared for this session instead.
+     */
+    const applyFirstRunLight = () => {
+      if (typeof document === 'undefined' || !document.body) return
+      try {
+        if (localStorage.getItem(DARK_DEFAULTED_KEY) === '1') return
+      } catch (error) { return }
+      let isDark = false
+      try { isDark = document.body.hasAttribute('data-ds-dark-theme') } catch (error) { isDark = false }
+      if (!isDark) {
+        // Already light: nothing to correct, just stop looking.
+        try { localStorage.setItem(DARK_DEFAULTED_KEY, '1') } catch (error) { /* ignore */ }
+        return
+      }
+      let done = false
+      try {
+        if (themeService && typeof themeService.setTheme === 'function') {
+          themeService.setTheme('light')
+          done = true
+        } else {
+          document.body.removeAttribute('data-ds-dark-theme')
+          done = true
+        }
+      } catch (error) { done = false }
+      if (done) {
+        try { localStorage.setItem(DARK_DEFAULTED_KEY, '1') } catch (error) { /* ignore */ }
+      }
+    }
+
     /* ---- the floating wordmark ------------------------------------------ */
     // The mark is its own fixed layer over the GUI, not a child of the
     // conversation header: the header's flex box, its container units and its
@@ -3969,6 +4015,10 @@ function render(t) {
         }, '黑夜模式'))
         children.push(h('div', { key: 'darkStatus', style: { ...dimStyle, marginTop: '6px' } },
           dark ? '已开启：界面使用「星夜麦田」深色配色。' : '已关闭：界面使用「麦秋晨光」浅色配色。'))
+        children.push(h('div', {
+          key: 'darkWarn',
+          style: { ...dimStyle, marginTop: '4px', color: 'var(--dsw-alias-state-warn-label)' },
+        }, '黑夜模式未完全做好适配，请谨慎打开'))
         children.push(h('div', { key: 'darkRow', style: rowStyle }, h('button', {
           key: 'darkToggle',
           type: 'button',
@@ -4279,6 +4329,9 @@ function render(t) {
         if (typeof ctx.inject === 'function') {
           ctx.inject(['theme'], (tctx) => {
             themeService = (tctx && tctx.theme) || null
+            // Runs after the service is captured: the one-time light default
+            // needs `setTheme` to make the correction stick across reloads.
+            applyFirstRunLight()
           })
         }
 
