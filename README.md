@@ -9,7 +9,7 @@
 以及只在你开始页亮着的右栏待机画面。
 
 ![license](https://img.shields.io/badge/license-MIT-c8a04a)
-![version](https://img.shields.io/badge/version-1.0.4-c8a04a)
+![version](https://img.shields.io/badge/version-1.0.5-c8a04a)
 ![node](https://img.shields.io/badge/node-%3E%3D22-c8a04a)
 ![dsh](https://img.shields.io/badge/DSH-0.2.0--rc.1%20~%200.2.x-c8a04a)
 ![platform](https://img.shields.io/badge/DSH-Web%20GUI-c8a04a)
@@ -46,7 +46,7 @@
 ## 这是什么
 
 <p align="center">
-  <img src="docs/readme-banner.png" width="100%" alt="《狼与香辛料》赫萝主题：本插件为 DeepSeek Harness 的《狼与香辛料（狼と香辛料）》主题插件。装上之后，Web GUI 会从出厂的中性灰变成暖纸色，并且多出若干装饰性组件 —— 它们全部可以单独关掉。">
+  <img src="docs/readme-banner.png" width="100%" alt="《狼与香辛料》赫萝主题：本插件为 DeepSeek Harness 的《狼与香辛料（狼と香辛料）》主题插件。装上之后，Web GUI 会从出厂的中性灰变成暖纸色，并且多出若干装饰性组件 —— 其中六项可以在插件设置里单独关掉。">
 </p>
 
 > **说明**：上方这张横幅是图片，配色取自插件浅色「麦秋晨光」——米黄 `#FBF7EF` 底、
@@ -66,7 +66,10 @@
 
 1. **不改宿主布局。** 所有装饰要么是挂在 `<body>` 上的独立浮动层，要么是纯 CSS 规则，
    不改宿主的 flex 盒、尺寸与 `overflow`。
-2. **全部可关。** 每个组件在插件设置里都有开关，关掉即彻底移除，不留残余节点。
+2. **能关的都给了开关，没开关的如实标出来。** 插件设置里有六个开关——开场动画、偷看的她、
+   探头语音、黑夜模式、右栏待机动画、浮动字标显隐。关掉即彻底移除，不留残余节点。
+   剩下三项是常驻的：**动态档案卡**、**日志标签**、**侧栏麦田**。它们只是静态样式或
+   纯展示层，不拦截点击、不占布局，因此没有做开关——这里不写「全部可关」。
 
 ---
 
@@ -849,8 +852,13 @@ else is untouched.
 | **Right-rail standby** | An animation that only lights up on the right rail's own start page, six clips to choose from plus a `关闭动画` off option, fades out once you start working |
 | **Whale widget link** | One click installs two roles plus one voice line into `dsh-whale-widget` |
 
-Every component has its own switch in the plugin settings. Turn one off and it is
+Six things have a switch in the plugin settings: intro animation, peeking Holo, peek
+voice, dark mode, right-rail standby, and wordmark visibility. Turn one off and it is
 removed completely, leaving no leftover nodes.
+
+Three are always on and are labelled as such rather than claimed to be switchable:
+the **profile mini-card**, the **log tags**, and the **sidebar wheat**. They are plain
+styling or pure display layers — they capture no clicks and take no layout space.
 
 ### Requirements
 
