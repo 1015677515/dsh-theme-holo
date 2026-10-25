@@ -9,7 +9,7 @@
 以及只在你开始页亮着的右栏待机画面。
 
 ![license](https://img.shields.io/badge/license-MIT-c8a04a)
-![version](https://img.shields.io/badge/version-1.0.3-c8a04a)
+![version](https://img.shields.io/badge/version-1.0.4-c8a04a)
 ![node](https://img.shields.io/badge/node-%3E%3D22-c8a04a)
 ![dsh](https://img.shields.io/badge/DSH-0.2.0--rc.1%20~%200.2.x-c8a04a)
 ![platform](https://img.shields.io/badge/DSH-Web%20GUI-c8a04a)
@@ -416,6 +416,9 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 
 选项名与文件名严格一致，**换片只要同名覆盖文件，不用改一行代码**。
 
+下拉框末尾还有第七项 `关闭动画`：它不是文件，选中后右侧栏开始页不显示待机画面，
+进入开始页时连视频都不加载（连解码器都不占用）。选回任意一段即可恢复，不用重启。
+
 六段各取一帧，从左到右：
 
 ![六段待机动画](docs/scene-grid.png)
@@ -485,7 +488,7 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 | 探头的赫萝 | `不启用探头的赫萝` / `启用探头的赫萝` | `localStorage['dsh-theme-holo.peek-off']` |
 | 探头的她说话 | `关闭探头语音` / `开启探头语音` | `localStorage['dsh-theme-holo.peek-voice-off']` |
 | 黑夜模式 | `开启黑夜模式` / `关闭黑夜模式` | 主题服务的 `preference` 字段（同「设置 → 外观」） |
-| 右侧待机动画 | 下拉框，六个选项就是六个文件名 | `localStorage['dsh-theme-holo.scene-name']` |
+| 右侧待机动画 | 下拉框，前六个选项就是六个动画文件名，末尾另有一项 `关闭动画` | `localStorage['dsh-theme-holo.scene-name']` |
 | 更改 logo 位置 | `更改 logo 位置` / `完成调整`，另有 `关闭 logo` / `显示 logo`、`恢复默认位置`，以及一条 10%–100% 的不透明度滑块 | `localStorage['dsh-theme-holo.logo-place']` |
 
 首次安装时，若宿主外观已解析为深色，插件会自动改回浅色一次并把
@@ -500,7 +503,7 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 - **探头的赫萝**——关：「已关闭：输入框边上不再出现探头。」；开：「已开启：鼠标移到输入框边上时她会探出头来。」
 - **探头的她说话**——关：「已关闭：点她只有动作，没有声音。」；开：「已开启：点她会「疑惑」一声。」
 - **黑夜模式**——开：「已开启：界面使用「星夜麦田」深色配色。」；关：「已关闭：界面使用「麦秋晨光」浅色配色。」
-- **右侧待机动画**——「当前：赫萝开心（默认）。只在右侧栏的开始页显示；左右边缘渐变到 50% 不透明度。」
+- **右侧待机动画**——「当前：赫萝开心（默认）。只在右侧栏的开始页显示；左右边缘渐变到 50% 不透明度。」；选 `关闭动画` 时：「已关闭：右侧栏的开始页不再显示待机动画，进入开始页时也不会加载任何视频。」
 - **更改 logo 位置**——编辑中显示实时坐标；关闭时「已关闭：logo 停在原处，不会挡住任何点击。」
 
 ---
@@ -843,7 +846,7 @@ else is untouched.
 | **Log tags** | Inline tags such as "Thinking / Reading / Running command" each get a warm tone |
 | **Sidebar wheat** | A strip of wheat at the foot of the sidebar; width follows the rail, height anchors to the account row |
 | **Plugin cover banner** | A 1920×620 banner at the top of this plugin's page in the plugin manager |
-| **Right-rail standby** | An animation that only lights up on the right rail's own start page, six clips to choose from, fades out once you start working |
+| **Right-rail standby** | An animation that only lights up on the right rail's own start page, six clips to choose from plus a `关闭动画` off option, fades out once you start working |
 | **Whale widget link** | One click installs two roles plus one voice line into `dsh-whale-widget` |
 
 Every component has its own switch in the plugin settings. Turn one off and it is

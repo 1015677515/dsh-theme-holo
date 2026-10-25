@@ -1186,6 +1186,15 @@ ${TOKEN_CSS_DARK}
     const SCENE_NAMES = ['赫萝抱臂', '赫萝开心', '缪莉开心1', '缪莉开心2', '赫萝叉腰', '缪莉挥手']
     /** Shipped default: the clip the plate's geometry was tuned against. */
     const SCENE_NAME_DEFAULT = '赫萝开心'
+    /* Not a clip: the sentinel that turns the plate off entirely. It is kept out
+       of SCENE_NAMES on purpose -- that list is also the file-name source (see
+       sceneSrcFor) and the mirror lookup, and a seventh entry there would build a
+       URL for a .webm that does not exist. The selector offers SCENE_OPTIONS
+       instead, and every consumer tests `=== SCENE_OFF` before touching the
+       video. */
+    const SCENE_OFF = '关闭动画'
+    /** What the <select> renders: the six clips, then the off switch. */
+    const SCENE_OPTIONS = SCENE_NAMES.concat([SCENE_OFF])
     /** Fired on `window` when the settings page switches the clip. */
     const SCENE_CHANGE_EVENT = 'dsh-theme-holo:scene-change'
     /* Two clips predate the split script that bakes the mirror into the file:
@@ -1210,6 +1219,7 @@ ${TOKEN_CSS_DARK}
     function readSceneName() {
       try {
         const saved = localStorage.getItem(SCENE_NAME_KEY)
+        if (saved === SCENE_OFF) return SCENE_OFF
         if (saved !== null && SCENE_NAMES.indexOf(saved) >= 0) return saved
       } catch (error) { /* storage may be unavailable in a headless harness */ }
       return SCENE_NAME_DEFAULT
@@ -3572,16 +3582,30 @@ function render(t) {
       // Switching the clip from the settings page: the page writes the choice and
       // fires the event, this layer only has to re-point the source. The video
       // element is reused rather than rebuilt so the layer never flickers out.
+      //
+      // `sync()` runs unconditionally afterwards because the choice can also
+      // move the layer in or out of existence: picking the off switch has to
+      // tear the plate down (no DOM mutation happens, so the observer will not
+      // do it for us), and picking a clip again while the layer is down has to
+      // bring it back up.
+      //
+      // This listener is registered for the layer's whole life, NOT inside
+      // enter(). Registering it on entry left the off switch one-way: once the
+      // plate was gone nobody was left listening, so choosing a clip again did
+      // nothing until a restart.
       const onSceneChange = () => {
-        if (video === null) return
         try {
           const name = readSceneName()
-          video.src = sceneSrcFor(name)
-          applyMirror(name)
-          video.load()
-          play()
+          if (video !== null && name !== SCENE_OFF) {
+            video.src = sceneSrcFor(name)
+            applyMirror(name)
+            video.load()
+            play()
+          }
         } catch (error) { /* ignore */ }
+        sync()
       }
+      window.addEventListener(SCENE_CHANGE_EVENT, onSceneChange)
 
       const enter = () => {
         if (on) return
@@ -3603,7 +3627,6 @@ function render(t) {
         place()
         clearFills()
         play()
-        window.addEventListener(SCENE_CHANGE_EVENT, onSceneChange)
       }
 
       const leave = () => {
@@ -3611,7 +3634,6 @@ function render(t) {
         on = false
         document.documentElement.removeAttribute('data-holo-scene')
         restoreFills()
-        window.removeEventListener(SCENE_CHANGE_EVENT, onSceneChange)
         if (video !== null) {
           try { video.pause() } catch (error) { /* ignore */ }
           // Dropping the source is what actually frees the decoder; a paused
@@ -3629,6 +3651,9 @@ function render(t) {
       // guide, so the plate leaves with it, and a collapsed column shows nothing
       // because there is no column to stand behind.
       const gateOpen = () => {
+        // The off switch in the settings page wins over the column's state: with
+        // it selected there is no plate at all, so the layer never even enters.
+        if (readSceneName() === SCENE_OFF) return false
         const panel = findColumn()
         if (panel === null) return false
         if (!panel.hasAttribute('data-sidebar-right-open')) return false
@@ -3707,6 +3732,7 @@ function render(t) {
           window.removeEventListener('resize', onResize)
           window.removeEventListener('scroll', onResize, true)
           document.removeEventListener('visibilitychange', onVisible)
+          window.removeEventListener(SCENE_CHANGE_EVENT, onSceneChange)
           if (rebind !== 0) window.clearInterval(rebind)
           if (raf !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf)
           if (observer !== null) observer.disconnect()
@@ -3817,7 +3843,7 @@ function render(t) {
 
         const changeScene = useCallback((event) => {
           const raw = event && event.target ? event.target.value : event
-          const next = SCENE_NAMES.indexOf(raw) >= 0 ? raw : SCENE_NAME_DEFAULT
+          const next = SCENE_OPTIONS.indexOf(raw) >= 0 ? raw : SCENE_NAME_DEFAULT
           try { localStorage.setItem(SCENE_NAME_KEY, next) } catch (err) { /* ignore */ }
           setSceneName(next)
           try {
@@ -4034,9 +4060,11 @@ function render(t) {
           style: { ...strongStyle, marginTop: '14px', paddingTop: '12px', borderTop: '0.5px solid var(--dsw-alias-border-l3)' },
         }, '右侧待机动画'))
         children.push(h('div', { key: 'sceneStatus', style: { ...dimStyle, marginTop: '6px' } },
-          '当前：' + sceneName +
-          (sceneName === SCENE_NAME_DEFAULT ? '（默认）' : '') +
-          '。只在右侧栏的开始页显示；左右边缘渐变到 50% 不透明度。'))
+          sceneName === SCENE_OFF
+            ? '已关闭：右侧栏的开始页不再显示待机动画，进入开始页时也不会加载任何视频。'
+            : '当前：' + sceneName +
+              (sceneName === SCENE_NAME_DEFAULT ? '（默认）' : '') +
+              '。只在右侧栏的开始页显示；左右边缘渐变到 50% 不透明度。'))
         children.push(h('div', { key: 'sceneRow', style: rowStyle }, h('select', {
           key: 'sceneSelect',
           value: sceneName,
@@ -4052,7 +4080,7 @@ function render(t) {
             color: 'var(--dsw-alias-label-primary)',
             minWidth: '180px',
           },
-        }, SCENE_NAMES.map((one) => h('option', { key: one, value: one }, one)))))
+        }, SCENE_OPTIONS.map((one) => h('option', { key: one, value: one }, one)))))
 
         // The wordmark's placement. Editing is a mode rather than an inline
         // form: the mark is a floating layer, so the only honest control is to
