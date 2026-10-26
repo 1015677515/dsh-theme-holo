@@ -77,6 +77,9 @@ const ALLOW = new Map([
     'logo.png',
     'peek-voice.wav',
     'peek.png',
+    'planner-ring.png',
+    'planner.png',
+    'voice-H015.wav',
     'wheat.png',
   ])],
   [LINK_BASE, new Set([

@@ -1163,6 +1163,386 @@ html body[data-ds-dark-theme] {
 ${TOKEN_CSS_DARK}
 }
 
+
+/* ---- planner: the parchment pad and its wheat-ringed badge ---------------
+   Both carry data- attributes rather than ids: the dark-palette rule hides
+   every [id^="holo-"] decoration, and this is a tool, not decoration. */
+[data-holo-planner] { position: fixed; inset: 0; z-index: 2147482810; pointer-events: none; }
+
+[data-holo-planner-badge] {
+  position: fixed;
+  display: none;
+  place-items: center;
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+  filter: drop-shadow(0 5px 16px rgba(58, 38, 18, 0.22));
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+
+[data-holo-planner][data-holo-planner-open="off"] [data-holo-planner-badge] { display: grid; }
+
+[data-holo-planner-badge]:hover {
+  transform: scale(1.04);
+  filter: drop-shadow(0 7px 20px rgba(58, 38, 18, 0.3));
+}
+
+[data-holo-planner-badge]:active { transform: scale(0.985); }
+
+/* The badge is a stack of two layers, and their order matters: the ring sits
+   behind, the photo on top of it. The artwork already carries its own breathing
+   room (its opaque body fills only ~66% x 88% of the canvas), so the photo is
+   inset here to sit inside the ring's clear centre rather than under its
+   spikes. No border-radius: her tail and hand reach past a circle, and clipping
+   them read as damage rather than as a badge. */
+/* The ring's clear centre is ~51% of the badge, so she is scaled to fill it:
+   at 70% x 76% her silhouette nearly touches the wheat while still leaving the
+   spikes clear of her ears and tail. The offsets centre her inside that circle,
+   not inside the square. */
+[data-holo-planner-photo] {
+  position: absolute;
+  left: 15%;
+  top: 12%;
+  width: 70%;
+  height: 76%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 1;
+  filter: drop-shadow(0 2px 5px rgba(58, 38, 18, 0.18));
+}
+
+/* The ring is the wheat from assets/wheat.png, wound into a circle once at
+   build time (assets/planner-ring.png) instead of being redrawn per badge: the
+   source is a real strand of wheat, and no amount of CSS bends a horizontal
+   strip into a believable ring. */
+[data-holo-planner-ring] {
+  position: absolute;
+  left: -6%;
+  top: -6%;
+  width: 112%;
+  height: 112%;
+  display: block;
+  pointer-events: none;
+  background-image: url("${ASSET_BASE}planner-ring.png");
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.96;
+  z-index: 0;
+}
+
+html body[data-ds-dark-theme] [data-holo-planner-ring] {
+  filter: brightness(1.34) saturate(1.08);
+  opacity: 0.9;
+}
+
+[data-holo-planner-panel] {
+  position: fixed;
+  display: none;
+  flex-direction: column;
+  width: 432px;
+  max-width: calc(100vw - 20px);
+  min-height: 292px;
+  max-height: min(640px, calc(100vh - 20px));
+  border-radius: 9px;
+  pointer-events: auto;
+  color: #33291B;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(255, 255, 255, 0.62), transparent 44%),
+    radial-gradient(circle at 84% 92%, rgba(233, 212, 178, 0.42), transparent 52%),
+    linear-gradient(158deg, #FFFCF5 0%, #FBF3E2 48%, #F7EBD6 100%);
+  border: 1px solid rgba(184, 130, 43, 0.52);
+  box-shadow:
+    0 0 0 3px rgba(251, 247, 239, 0.92),
+    0 0 0 4px rgba(184, 130, 43, 0.26),
+    0 20px 48px rgba(58, 38, 18, 0.28);
+  overflow: hidden;
+}
+
+[data-holo-planner][data-holo-planner-open="on"] [data-holo-planner-panel] { display: flex; }
+
+[data-holo-planner-head] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 13px 10px;
+  cursor: grab;
+  user-select: none;
+  border-bottom: 1px solid rgba(184, 130, 43, 0.24);
+  background: linear-gradient(180deg, rgba(255, 252, 245, 0.7), rgba(246, 233, 208, 0.34));
+}
+
+[data-holo-planner-head]:active { cursor: grabbing; }
+
+[data-holo-planner-title] {
+  flex: 1 1 auto;
+  font: 600 13.5px/1.3 Georgia, "Songti SC", "Microsoft YaHei", serif;
+  letter-spacing: 0.06em;
+  color: #7A5B22;
+}
+
+[data-holo-planner-count] {
+  font: 500 11.5px/1 "Microsoft YaHei", system-ui, sans-serif;
+  color: #8C7A61;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-holo-planner-btn] {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(184, 130, 43, 0.4);
+  border-radius: 6px;
+  background: rgba(255, 252, 245, 0.72);
+  color: #7A5B22;
+  font: 500 13px/1 "Microsoft YaHei", system-ui, sans-serif;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+
+[data-holo-planner-btn]:hover {
+  background: rgba(240, 224, 190, 0.9);
+  border-color: rgba(162, 112, 31, 0.62);
+}
+
+[data-holo-planner-body] {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 10px 13px 12px;
+  gap: 9px;
+  overflow-y: auto;
+}
+
+[data-holo-planner-input] {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 146px;
+  resize: none;
+  padding: 0 2px;
+  border: 0;
+  outline: none;
+  background-color: transparent;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 26px,
+    rgba(184, 130, 43, 0.15) 26px,
+    rgba(184, 130, 43, 0.15) 27px
+  );
+  color: #33291B;
+  font: 400 13.5px/27px Georgia, "Songti SC", "Microsoft YaHei", serif;
+  caret-color: #A2701F;
+  overflow-y: auto;
+}
+
+[data-holo-planner-input]::placeholder {
+  color: #A9967A;
+  font-style: italic;
+}
+
+[data-holo-planner-gallery] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 7px;
+}
+
+[data-holo-planner-gallery]:empty { display: none; }
+
+[data-holo-planner-shot] {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(184, 130, 43, 0.4);
+  background: rgba(255, 253, 247, 0.8);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+
+[data-holo-planner-shot] img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+[data-holo-planner-del] {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(58, 38, 18, 0.62);
+  color: #FFFCF5;
+  font: 600 11px/1 "Microsoft YaHei", system-ui, sans-serif;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+
+[data-holo-planner-shot]:hover [data-holo-planner-del] { opacity: 1; }
+
+[data-holo-planner-foot] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px 10px;
+  border-top: 1px solid rgba(184, 130, 43, 0.22);
+  background: linear-gradient(0deg, rgba(246, 233, 208, 0.34), rgba(255, 252, 245, 0.6));
+}
+
+[data-holo-planner-hint] {
+  flex: 1 1 auto;
+  font: 400 11px/1.4 "Microsoft YaHei", system-ui, sans-serif;
+  color: #8C7A61;
+}
+
+[data-holo-planner-hint][data-holo-planner-warn="on"] { color: #B4432F; }
+
+html body[data-ds-dark-theme] [data-holo-planner-panel] {
+  color: #F1E5D0;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(104, 84, 56, 0.42), transparent 46%),
+    radial-gradient(circle at 84% 92%, rgba(58, 44, 26, 0.5), transparent 54%),
+    linear-gradient(158deg, #262019 0%, #1E1813 52%, #17120D 100%);
+  border-color: rgba(224, 174, 92, 0.46);
+  box-shadow:
+    0 0 0 3px rgba(22, 18, 13, 0.9),
+    0 0 0 4px rgba(224, 174, 92, 0.22),
+    0 20px 48px rgba(0, 0, 0, 0.55);
+}
+
+html body[data-ds-dark-theme] [data-holo-planner-head] {
+  border-bottom-color: rgba(224, 174, 92, 0.24);
+  background: linear-gradient(180deg, rgba(44, 36, 26, 0.66), rgba(30, 24, 18, 0.4));
+}
+
+html body[data-ds-dark-theme] [data-holo-planner-title] { color: #E0AE5C; }
+html body[data-ds-dark-theme] [data-holo-planner-count] { color: #A2917A; }
+
+html body[data-ds-dark-theme] [data-holo-planner-input] {
+  color: #F1E5D0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 26px,
+    rgba(224, 174, 92, 0.13) 26px,
+    rgba(224, 174, 92, 0.13) 27px
+  );
+  caret-color: #E0AE5C;
+}
+
+html body[data-ds-dark-theme] [data-holo-planner-input]::placeholder { color: #8A7A64; }
+
+html body[data-ds-dark-theme] [data-holo-planner-btn] {
+  border-color: rgba(224, 174, 92, 0.36);
+  background: rgba(44, 36, 26, 0.7);
+  color: #E0AE5C;
+}
+
+html body[data-ds-dark-theme] [data-holo-planner-btn]:hover {
+  background: rgba(72, 58, 38, 0.9);
+  border-color: rgba(224, 174, 92, 0.6);
+}
+
+html body[data-ds-dark-theme] [data-holo-planner-shot] {
+  border-color: rgba(224, 174, 92, 0.34);
+  background: rgba(30, 24, 18, 0.8);
+}
+
+html body[data-ds-dark-theme] [data-holo-planner-foot] {
+  border-top-color: rgba(224, 174, 92, 0.2);
+  background: linear-gradient(0deg, rgba(30, 24, 18, 0.44), rgba(44, 36, 26, 0.6));
+}
+
+html body[data-ds-dark-theme] [data-holo-planner-hint] { color: #A2917A; }
+
+html[data-holo-planner-off="on"] [data-holo-planner] { display: none !important; }
+/* ---- voice bubble: the translation above her right shoulder -------------
+   Same parchment recipe as the note pad (see [data-holo-planner-panel]):
+   warm paper gradient, gold hairline, serif text. It is a data- attribute
+   rather than an id, so the dark-palette [id^="holo-"] rule leaves it alone. */
+[data-holo-voice-bubble] {
+  position: fixed;
+  z-index: 2147482999;
+  display: none;
+  max-width: 320px;
+  padding: 9px 13px 10px;
+  border-radius: 9px;
+  pointer-events: auto;
+  cursor: pointer;
+  color: #33291B;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(255, 255, 255, 0.62), transparent 44%),
+    linear-gradient(158deg, #FFFCF5 0%, #FBF3E2 48%, #F7EBD6 100%);
+  border: 1px solid rgba(184, 130, 43, 0.52);
+  box-shadow:
+    0 0 0 3px rgba(251, 247, 239, 0.92),
+    0 0 0 4px rgba(184, 130, 43, 0.26),
+    0 12px 30px rgba(58, 38, 18, 0.24);
+  font: 400 13.5px/1.65 Georgia, "Songti SC", "Microsoft YaHei", serif;
+  letter-spacing: 0.01em;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 260ms ease, transform 260ms ease;
+}
+
+/* A little tail pointing down toward her. */
+[data-holo-voice-bubble]::after {
+  content: '';
+  position: absolute;
+  right: 26px;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  background: #F7EBD6;
+  border-right: 1px solid rgba(184, 130, 43, 0.52);
+  border-bottom: 1px solid rgba(184, 130, 43, 0.52);
+  transform: rotate(45deg);
+}
+
+[data-holo-voice-bubble][data-holo-voice-state="shown"] {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+[data-holo-voice-bubble][data-holo-voice-state="fading"] {
+  display: block;
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+[data-holo-voice-text] { display: block; }
+
+html body[data-ds-dark-theme] [data-holo-voice-bubble] {
+  color: #F1E5D0;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(104, 84, 56, 0.42), transparent 46%),
+    linear-gradient(158deg, #262019 0%, #1E1813 52%, #17120D 100%);
+  border-color: rgba(224, 174, 92, 0.46);
+  box-shadow:
+    0 0 0 3px rgba(22, 18, 13, 0.9),
+    0 0 0 4px rgba(224, 174, 92, 0.22),
+    0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+html body[data-ds-dark-theme] [data-holo-voice-bubble]::after {
+  background: #17120D;
+  border-right-color: rgba(224, 174, 92, 0.46);
+  border-bottom-color: rgba(224, 174, 92, 0.46);
+}
+
+
 `
 
 
@@ -1175,6 +1555,11 @@ ${TOKEN_CSS_DARK}
     const PEEK_SRC = ASSET_BASE + 'peek.png'
     const PEEK_VOICE_SRC = ASSET_BASE + 'peek-voice.wav'
     const LOGO_SRC = ASSET_BASE + 'logo.png'
+    /** The folded note pad's badge: her, cut out, inside a wheat ring. */
+    const PLANNER_SRC = ASSET_BASE + 'planner.png'
+    /** Click cue for the account page's 「查询用量」 button. H015 from the
+     *  voice table: 「人の世では何事にも金がかかるからな」. */
+    const USAGE_VOICE_SRC = ASSET_BASE + 'voice-H015.wav'
     /** The idle plate behind the right column. Six clips are staged in
         ./素材/动画 and served from there by the host half (route:
         /holo-theme/anime/), so replacing a file on disk is enough -- nothing is
@@ -1999,7 +2384,7 @@ function render(t) {
      * only write targets; the loop below eases towards them, so the character
      * never snaps.
      */
-    function createPeeker() {
+    function createPeeker(announce) {
       const reduced = typeof matchMedia === 'function'
         && matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -2049,6 +2434,11 @@ function render(t) {
       let card = null
       let cardRect = null
       let geo = { left: 0, width: 0, edge: 0, top: 0, herLeft: 0, fracMin: 0, fracMax: 1 }
+      /** Her on-screen box, published to whoever needs to anchor against her
+       *  (the voice bubble). Local rather than module-level so createPeeker
+       *  stays self-contained — the tests slice this function out and evaluate
+       *  it on its own, and a free variable would break that. */
+      const peekBox = { left: 0, top: 0, width: 0, height: 0, visible: false }
       let hovering = false
       let hoverSince = 0
       let appleDone = false
@@ -2078,13 +2468,32 @@ function render(t) {
       let threadOn = false
 
       const findComposer = () => {
+        // The shell paints this card with `background: linear-gradient(...)`,
+        // and a background shorthand only sets background-image -- the
+        // computed background-color stays rgba(0,0,0,0). Testing the colour
+        // alone therefore never matched, findComposer() returned null and the
+        // companion sat at display:none. Accept either kind of paint.
+        const painted = (el) => {
+          const style = getComputedStyle(el)
+          if (style.backgroundColor !== 'rgba(0, 0, 0, 0)') return true
+          const image = style.backgroundImage
+          return typeof image === 'string' && image !== '' && image !== 'none'
+        }
+        // Preferred anchor: the shell tags the editable surface itself.
+        const tagged = document.querySelector('[data-composer-input]')
+        if (tagged !== null) {
+          let el = tagged.parentElement
+          for (let i = 0; i < 6 && el !== null; i += 1) {
+            if (painted(el) && el.getBoundingClientRect().width > 320) return el
+            el = el.parentElement
+          }
+        }
         const textbox = document.querySelector('[role="textbox"]')
         let el = textbox
-        for (let i = 0; i < 5 && el !== null; i += 1) {
+        for (let i = 0; i < 6 && el !== null; i += 1) {
           el = el.parentElement
           if (el === null) break
-          const style = getComputedStyle(el)
-          if (style.backgroundColor !== 'rgba(0, 0, 0, 0)' && el.getBoundingClientRect().width > 320) return el
+          if (painted(el) && el.getBoundingClientRect().width > 320) return el
         }
         return null
       }
@@ -2097,6 +2506,9 @@ function render(t) {
         return { min: half, max: 1 - half }
       }
 
+      /** Current rendered height of her artwork, in px, for the bubble anchor. */
+      const heightForBox = () => Math.max(1, artH * reveal + SINK)
+
       const place = () => {
         const box = findComposer()
         if (box !== card) {
@@ -2104,11 +2516,13 @@ function render(t) {
         }
         if (card === null) {
           root.style.display = 'none'
+          peekBox.visible = false
           return
         }
         const rect = card.getBoundingClientRect()
         if (rect.width < 200) {
           root.style.display = 'none'
+          peekBox.visible = false
           return
         }
         cardRect = rect
@@ -2131,6 +2545,12 @@ function render(t) {
         root.style.left = `${herLeft.toFixed(1)}px`
         root.style.bottom = `${(window.innerHeight - rect.top - SINK).toFixed(1)}px`
         root.style.clipPath = `inset(0 0 ${SINK}px 0)`
+        // Publish the box so the voice bubble can sit above her right shoulder.
+        peekBox.left = herLeft
+        peekBox.width = width
+        peekBox.height = heightForBox()
+        peekBox.top = rect.top - heightForBox() + SINK
+        peekBox.visible = true
       }
 
       const paint = () => {
@@ -2347,6 +2767,9 @@ function render(t) {
             voice.currentTime = 0
             const started = voice.play()
             if (started !== undefined && typeof started.catch === 'function') started.catch(() => {})
+            // Caption the line. Passed in rather than reached for directly, so
+            // this function stays self-contained (the tests slice it out).
+            if (typeof announce === 'function') announce('peeker')
           }
         } catch (error) { /* a blocked or not-yet-loaded clip must not break the click */ }
       }
@@ -2436,7 +2859,9 @@ function render(t) {
 
       return {
         root,
+        peekBox,
         dispose() {
+          peekBox.visible = false
           disposed = true
           cancelAnimationFrame(raf)
           window.clearInterval(timer)
@@ -3070,6 +3495,890 @@ function render(t) {
       if (logoState.edit) logoState.edit = false
       saveLogoPlace()
       notifyLogo()
+    }
+
+
+    /**
+     * Play a line when the account page's 「查询用量」 button is clicked.
+     *
+     * The button is an <a> whose class comes from a CSS module
+     * (AccountSection_module_css_default.linkButton), so the class is hashed and
+     * not safe to match. Its text is the stable handle, the same way
+     * createLogTags() keys off the label text rather than a class name.
+     *
+     * Listening in the capture phase means the cue fires even if the shell
+     * stops propagation; nothing is preventDefault()ed, so the link still opens
+     * the usage page as usual.
+     */
+    /** The voice-cues handle, or null. Set by the voice-cues effect so the
+     *  peeker effect (which mounts earlier) can captions its line at click time
+     *  without the two effects depending on each other's lifetime. */
+    let holoVoiceAnnounce = null
+
+    /** The live peeker instance, or null. Registered by the peeking-companion
+     *  effect so the voice bubble can anchor above her shoulder without the
+     *  two effects depending on each other's lifetime. */
+    let holoPeekerHandle = null
+
+    /**
+     * Spoken cues attached to shell buttons, plus the bubble that shows the
+     * translation while the line plays.
+     *
+     * Adding a cue is one row in this table — the wiring below is generic, so a
+     * new button needs no new code. `label` is the button's exact text (the
+     * shell's classes are CSS-module hashed and not safe to match); `zh` is what
+     * the bubble shows.
+     *
+     * Every line here comes from 赫萝语音对照表 (231 clips, see
+     * 记录板与语音接入-开发规范.md). Do not re-verify the wording — the table is
+     * the source of truth, `zh` is copied from its `zh` field verbatim.
+     */
+    const VOICE_CUES = [
+      /* ---- 按钮类：label 是按钮文本，我们自己播音频 ---- */
+      {
+        label: '查询用量',
+        src: ASSET_BASE + 'voice-H015.wav',
+        zh: '人世间，什么都要钱嘛。',
+        jp: '人の世では何事にも金がかかるからな',
+        id: 'H015',
+      },
+
+      /* ---- 触发类：音频由别处播放，我们只补字幕 ----
+         这两条的音源是插件自带素材，不在赫萝语音对照表里（已用波形比对
+         确认：与 8 条源音轨的最高相关仅 0.2，属噪声水平，也不是漏选的切片）。
+
+         【台词已确认】这两句 zh 由用户给出：
+             点探头 -> 「汝怎么了」
+             挂件   -> 「怎么会」
+         （注：我无法听音频，此前的自动比对只能证明这两段不来自对照表与
+         那 8 条源音轨，给不出原文，所以台词一律以用户口述为准。） */
+      {
+        trigger: 'peeker',
+        id: 'PEEK',
+        dur: 1.35,
+        zh: '汝怎么了',
+        jp: '',
+      },
+      {
+        trigger: 'whale',
+        id: 'WHALE',
+        dur: 0.84,
+        zh: '怎么会',
+        jp: '',
+      },
+    ]
+
+    /** How long the bubble stays after the line ends, before fading out.
+     *  3s: the caption is meant to linger just long enough to read, then go. */
+    const VOICE_BUBBLE_HOLD_MS = 3000
+    /** Fade duration, kept in step with the CSS transition below. */
+    const VOICE_BUBBLE_FADE_MS = 260
+
+    /**
+     * The bubble itself. One node for the whole plugin: only one line can be
+     * playing at a time, so a second cue reuses the same element rather than
+     * stacking bubbles.
+     *
+     * Placement follows the peeker: it sits above her right shoulder. The
+     * peeker publishes its box as `peekBox` on its return value; apply()
+     * hands this function a getter for it, and this reads it on every show.
+     * A null box (she is hidden or not mounted) falls back to a fixed corner.
+     */
+    function createVoiceBubble(getPeekBox) {
+      const root = document.createElement('div')
+      root.setAttribute('data-holo-voice-bubble', '')
+      root.setAttribute('data-holo-voice-state', 'hidden')
+      root.setAttribute('role', 'status')
+      root.setAttribute('aria-live', 'polite')
+
+      const line = document.createElement('div')
+      line.setAttribute('data-holo-voice-text', '')
+      root.appendChild(line)
+
+      let hideTimer = 0
+      let fadeTimer = 0
+      let disposed = false
+
+      const clearTimers = () => {
+        if (hideTimer !== 0) { clearTimeout(hideTimer); hideTimer = 0 }
+        if (fadeTimer !== 0) { clearTimeout(fadeTimer); fadeTimer = 0 }
+      }
+
+      const place = () => {
+        const box = typeof getPeekBox === 'function' ? getPeekBox() : null
+        const vw = window.innerWidth
+        const vh = window.innerHeight
+        // Default: above the composer's right shoulder, used when she is not
+        // on screen (the peeker hides itself when there is no composer).
+        let anchorRight = vw - 40
+        let anchorBottom = 150
+        if (box !== null && box.visible) {
+          anchorRight = vw - (box.left + box.width)
+          anchorBottom = vh - box.top + 10
+        }
+        root.style.right = Math.max(12, Math.round(anchorRight)) + 'px'
+        root.style.bottom = Math.max(12, Math.round(anchorBottom)) + 'px'
+        // Never let it run off the left edge on a narrow window.
+        root.style.maxWidth = Math.max(160, Math.min(320, vw - 80)) + 'px'
+      }
+
+      const hideNow = () => {
+        clearTimers()
+        root.setAttribute('data-holo-voice-state', 'hidden')
+      }
+
+      /** Show a line, then hold, then fade. Returns immediately. */
+      const show = (zh, holdMs) => {
+        if (disposed) return
+        clearTimers()
+        line.textContent = zh
+        place()
+        root.setAttribute('data-holo-voice-state', 'shown')
+        const hold = Number.isFinite(holdMs) && holdMs >= 0 ? holdMs : VOICE_BUBBLE_HOLD_MS
+        hideTimer = window.setTimeout(() => {
+          hideTimer = 0
+          if (disposed) return
+          root.setAttribute('data-holo-voice-state', 'fading')
+          fadeTimer = window.setTimeout(() => {
+            fadeTimer = 0
+            if (disposed) return
+            root.setAttribute('data-holo-voice-state', 'hidden')
+          }, VOICE_BUBBLE_FADE_MS)
+        }, hold)
+      }
+
+      // Clicking the bubble dismisses it at once — no waiting out the hold.
+      const onClick = (event) => {
+        event.stopPropagation()
+        hideNow()
+      }
+      root.addEventListener('click', onClick)
+
+      const onResize = () => {
+        if (root.getAttribute('data-holo-voice-state') !== 'hidden') place()
+      }
+      window.addEventListener('resize', onResize)
+
+      return {
+        root,
+        show,
+        hide: hideNow,
+        dispose() {
+          disposed = true
+          clearTimers()
+          root.removeEventListener('click', onClick)
+          window.removeEventListener('resize', onResize)
+          try { root.remove() } catch (error) { /* already gone */ }
+        },
+      }
+    }
+
+    /**
+     * The cue dispatcher: one capture-phase click listener for every row in
+     * VOICE_CUES. Kept as a single listener on purpose — a per-button listener
+     * would have to be re-attached whenever the shell re-renders the settings
+     * page, and the capture phase means it still fires if the shell stops
+     * propagation.
+     */
+    function createVoiceCues(bubble) {
+      const byLabel = new Map()
+      const byTrigger = new Map()
+      for (const cue of VOICE_CUES) {
+        if (typeof cue.label === 'string') byLabel.set(cue.label, cue)
+        if (typeof cue.trigger === 'string') byTrigger.set(cue.trigger, cue)
+      }
+
+      const players = new Map()
+      let disposed = false
+
+      /** How long the bubble should stay for a cue, in ms.
+       *  Button cues read the decoded audio's own length; trigger cues carry an
+       *  explicit `dur` because somebody else owns the audio element. */
+      const holdFor = (cue, audio) => {
+        if (Number.isFinite(cue.dur) && cue.dur > 0) {
+          return Math.round(cue.dur * 1000) + VOICE_BUBBLE_HOLD_MS
+        }
+        try {
+          if (audio !== null && audio !== undefined
+            && Number.isFinite(audio.duration) && audio.duration > 0) {
+            return Math.round(audio.duration * 1000) + VOICE_BUBBLE_HOLD_MS
+          }
+        } catch (error) { /* duration not ready yet: fall back */ }
+        return VOICE_BUBBLE_HOLD_MS
+      }
+
+      /** Caption a line whose audio is played by someone else. */
+      const announce = (trigger) => {
+        if (disposed) return
+        const cue = byTrigger.get(trigger)
+        if (cue === undefined) return
+        bubble.show(cue.zh, holdFor(cue, null))
+      }
+
+      const playerFor = (cue) => {
+        let audio = players.get(cue.label)
+        if (audio === undefined) {
+          try {
+            audio = new Audio(cue.src)
+            audio.preload = 'auto'
+            players.set(cue.label, audio)
+          } catch (error) {
+            return null
+          }
+        }
+        return audio
+      }
+
+      /** Walk up from the event target looking for a labelled control. */
+      const cueFor = (node) => {
+        let el = node
+        for (let i = 0; i < 4 && el !== null && el !== undefined; i += 1) {
+          if (el.tagName === 'A' || el.tagName === 'BUTTON') {
+            const label = (el.textContent || '').trim()
+            if (byLabel.has(label)) return byLabel.get(label)
+          }
+          el = el.parentElement
+        }
+        return null
+      }
+
+      const play = (cue) => {
+        if (disposed) return
+        const audio = playerFor(cue)
+        if (audio === null) return
+
+        // Restart rather than stack: rapid clicks re-trigger the line.
+        try {
+          audio.pause()
+          audio.currentTime = 0
+        } catch (error) { /* ignore */ }
+
+        // The bubble holds for the clip's length plus the fixed tail, so the
+        // translation stays up exactly as long as the line is audible.
+        bubble.show(cue.zh, holdFor(cue, audio))
+
+        const played = audio.play()
+        if (played !== undefined && played !== null && typeof played.catch === 'function') {
+          played.catch(() => { /* autoplay blocked: the bubble still showed */ })
+        }
+      }
+
+      const onClick = (event) => {
+        const target = event.target
+        if (!(target instanceof Element)) return
+        // Never let a click on the bubble itself fire a cue.
+        if (typeof target.closest === 'function' && target.closest('[data-holo-voice-bubble]') !== null) return
+        const cue = cueFor(target)
+        if (cue !== null) play(cue)
+      }
+
+      document.addEventListener('click', onClick, true)
+
+      // The whale widget plays its own press sound on pointerdown. We only add
+      // the caption, so we watch the element the press lands on. `.dshwv-body`
+      // is that plugin's own literal class name (hand-written, not a CSS-module
+      // hash), and it is the whale silhouette itself -- so pressing the panels
+      // or the editor does not trigger the caption.
+      const onWhalePress = (event) => {
+        const target = event.target
+        if (!(target instanceof Element)) return
+        if (typeof target.closest !== 'function') return
+        if (target.closest('.dshwv-body') === null) return
+        announce('whale')
+      }
+      document.addEventListener('pointerdown', onWhalePress, true)
+
+      return {
+        announce,
+        dispose() {
+          disposed = true
+          document.removeEventListener('click', onClick, true)
+          document.removeEventListener('pointerdown', onWhalePress, true)
+          for (const audio of players.values()) {
+            try { audio.pause() } catch (error) { /* ignore */ }
+          }
+          players.clear()
+        },
+      }
+    }
+
+
+    /**
+     * The parchment note pad.
+     *
+     * Two faces: a wheat-ringed badge that sits where the settings left it, and
+     * a parchment panel that opens on click. Text lives in localStorage (it is
+     * small and wants to be synchronous on every keystroke); pasted images go
+     * to IndexedDB, because a couple of screenshots would blow the ~5 MB string
+     * quota that one localStorage key shares with everything else on the origin.
+     *
+     * Both the badge and the panel carry data- attributes instead of ids on
+     * purpose: the dark-palette rule `[id^="holo-"] { display: none }` collects
+     * every ornament by id, and a note pad is a tool — the user needs it to
+     * stay put whatever palette is on.
+     */
+    const PLANNER_OFF_KEY = 'dsh-theme-holo.planner-off'
+    const PLANNER_PLACE_KEY = 'dsh-theme-holo.planner-place'
+    const PLANNER_TEXT_KEY = 'dsh-theme-holo.planner-text'
+    /** Badge edge length in px. Same band as the peeker (138–196 at
+     *  client.js:2115) so the two read as one family of floating props.
+     *  151 = 168 minus 10%, after the wheat ring was tightened to hug her. */
+    const PLANNER_BADGE_SIZE = 151
+    const PLANNER_PANEL_W = 432
+    const PLANNER_DB = 'dsh-theme-holo'
+    const PLANNER_DB_VERSION = 1
+    const PLANNER_STORE = 'planner-images'
+    /** Keep the gallery from growing without bound: every image is a real
+     *  paste, but nobody needs fifty screenshots in a scratch pad. */
+    const PLANNER_MAX_IMAGES = 24
+
+    /** Badge placement defaults to just above the composer's right shoulder,
+     *  clear of the peeker (which sits on the composer edge itself). */
+    const PLANNER_DEFAULT = { xPct: 0.82, yPct: 0.55 }
+
+    const plannerState = {
+      xPct: PLANNER_DEFAULT.xPct,
+      yPct: PLANNER_DEFAULT.yPct,
+      /** Panel position in viewport px. Null = never dragged, so paint()
+       *  derives it from the badge instead. */
+      panelLeft: null,
+      panelTop: null,
+      open: false,
+      off: false,
+      loaded: false,
+    }
+    const plannerWatchers = new Set()
+
+    const clamp01 = (value, fallback) => {
+      const num = Number(value)
+      if (!Number.isFinite(num)) return fallback
+      return Math.min(Math.max(num, 0), 1)
+    }
+
+    const loadPlanner = () => {
+      if (plannerState.loaded) return
+      plannerState.loaded = true
+      let raw = null
+      try { raw = localStorage.getItem(PLANNER_PLACE_KEY) } catch (error) { raw = null }
+      if (raw !== null) {
+        let parsed = null
+        try { parsed = JSON.parse(raw) } catch (error) { parsed = null }
+        if (parsed !== null && typeof parsed === 'object') {
+          plannerState.xPct = clamp01(parsed.xPct, PLANNER_DEFAULT.xPct)
+          plannerState.yPct = clamp01(parsed.yPct, PLANNER_DEFAULT.yPct)
+          const pl = Number(parsed.panelLeft)
+          const pt = Number(parsed.panelTop)
+          if (Number.isFinite(pl) && Number.isFinite(pt)) {
+            plannerState.panelLeft = pl
+            plannerState.panelTop = pt
+          }
+        }
+      }
+      try { plannerState.off = localStorage.getItem(PLANNER_OFF_KEY) === '1' } catch (error) { /* ignore */ }
+    }
+
+    const savePlannerPlace = () => {
+      try {
+        localStorage.setItem(PLANNER_PLACE_KEY, JSON.stringify({
+          xPct: plannerState.xPct,
+          yPct: plannerState.yPct,
+          panelLeft: plannerState.panelLeft,
+          panelTop: plannerState.panelTop,
+        }))
+      } catch (error) { /* private mode: placement lasts the session */ }
+    }
+
+    const notifyPlanner = () => {
+      for (const watcher of plannerWatchers) {
+        try { watcher() } catch (error) { /* a dead subscriber must not stop the rest */ }
+      }
+    }
+
+    /** Reflect the opt-out on <html>. Same mechanism as the peeker's latch
+     *  (client.js:4645 writes data-holo-peek): the CSS rule keys off an
+     *  attribute, so writing the attribute IS the switch — without this the
+     *  settings button would flip state and change nothing on screen. */
+    const applyPlannerOff = () => {
+      if (typeof document === 'undefined') return
+      try {
+        document.documentElement.setAttribute('data-holo-planner-off', plannerState.off ? 'on' : 'off')
+      } catch (error) { /* no documentElement: nothing to gate */ }
+    }
+
+    const setPlannerOff = (on) => {
+      loadPlanner()
+      const next = on === true
+      if (plannerState.off === next) return
+      plannerState.off = next
+      try { localStorage.setItem(PLANNER_OFF_KEY, next ? '1' : '0') } catch (error) { /* ignore */ }
+      applyPlannerOff()
+      notifyPlanner()
+    }
+
+    /** Open/close the panel. Kept in module state so the settings card and the
+     *  layer agree, and so a reload remembers where the user left it. */
+    const setPlannerOpen = (on) => {
+      loadPlanner()
+      const next = on === true
+      if (plannerState.open === next) return
+      plannerState.open = next
+      notifyPlanner()
+    }
+
+    // ---------------------------------------------------------------- storage
+
+    /** IndexedDB wrapper. Every failure path returns a usable empty result: a
+     *  browser that refuses the database (private mode, disabled storage) still
+     *  gets a working note pad, it just cannot keep pictures past a reload. */
+    const openPlannerDb = () => new Promise((resolve) => {
+      if (typeof indexedDB === 'undefined') { resolve(null); return }
+      let request = null
+      try { request = indexedDB.open(PLANNER_DB, PLANNER_DB_VERSION) } catch (error) { resolve(null); return }
+      request.onupgradeneeded = () => {
+        const db = request.result
+        if (!db.objectStoreNames.contains(PLANNER_STORE)) {
+          db.createObjectStore(PLANNER_STORE, { keyPath: 'id', autoIncrement: true })
+        }
+      }
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => resolve(null)
+      request.onblocked = () => resolve(null)
+    })
+
+    const plannerListImages = async () => {
+      const db = await openPlannerDb()
+      if (db === null) return []
+      const rows = await new Promise((resolve) => {
+        let tx = null
+        try { tx = db.transaction(PLANNER_STORE, 'readonly') } catch (error) { resolve([]); return }
+        const request = tx.objectStore(PLANNER_STORE).getAll()
+        request.onsuccess = () => resolve(Array.isArray(request.result) ? request.result : [])
+        request.onerror = () => resolve([])
+      })
+      try { db.close() } catch (error) { /* ignore */ }
+      rows.sort((a, b) => (a.id || 0) - (b.id || 0))
+      return rows
+    }
+
+    const plannerAddImage = async (blob) => {
+      const db = await openPlannerDb()
+      if (db === null) return null
+      const row = { blob, addedAt: Date.now() }
+      const id = await new Promise((resolve) => {
+        let tx = null
+        try { tx = db.transaction(PLANNER_STORE, 'readwrite') } catch (error) { resolve(null); return }
+        const request = tx.objectStore(PLANNER_STORE).add(row)
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => resolve(null)
+        tx.onabort = () => resolve(null)
+      })
+      try { db.close() } catch (error) { /* ignore */ }
+      return id === null ? null : id
+    }
+
+    const plannerDeleteImage = async (id) => {
+      const db = await openPlannerDb()
+      if (db === null) return false
+      const ok = await new Promise((resolve) => {
+        let tx = null
+        try { tx = db.transaction(PLANNER_STORE, 'readwrite') } catch (error) { resolve(false); return }
+        tx.objectStore(PLANNER_STORE).delete(id)
+        tx.oncomplete = () => resolve(true)
+        tx.onerror = () => resolve(false)
+        tx.onabort = () => resolve(false)
+      })
+      try { db.close() } catch (error) { /* ignore */ }
+      return ok
+    }
+
+    /**
+     * Build the pad. Everything is plain DOM outside the React tree for the
+     * same reason the wordmark is: the settings card re-renders constantly and
+     * a textarea that lives in it would lose its caret.
+     */
+    function createPlanner() {
+      loadPlanner()
+
+      const root = document.createElement('div')
+      root.setAttribute('data-holo-planner', '')
+      root.setAttribute('data-holo-planner-open', 'off')
+
+      // ---- badge (the folded form) ----
+      const badge = document.createElement('div')
+      badge.setAttribute('data-holo-planner-badge', '')
+      badge.setAttribute('role', 'button')
+      badge.setAttribute('tabindex', '0')
+      badge.setAttribute('title', '羊皮纸便笺')
+      badge.setAttribute('aria-label', '打开羊皮纸便笺')
+
+      const ring = document.createElement('span')
+      ring.setAttribute('data-holo-planner-ring', '')
+      badge.appendChild(ring)
+
+      const photo = document.createElement('img')
+      photo.setAttribute('data-holo-planner-photo', '')
+      photo.src = PLANNER_SRC
+      photo.alt = ''
+      photo.draggable = false
+      badge.appendChild(photo)
+
+      // ---- panel (the unfolded form) ----
+      const panel = document.createElement('div')
+      panel.setAttribute('data-holo-planner-panel', '')
+      // NOT role="dialog": the peeking companion treats any [role=dialog] in
+      // the document as "a modal is open" and fades itself out
+      // (client.js:2534). This panel is display:none most of the time, but the
+      // attribute would still sit in the DOM and keep her at opacity 0 for
+      // good. `region` is the honest role for a section of the page.
+      panel.setAttribute('role', 'region')
+      panel.setAttribute('aria-label', '羊皮纸便笺')
+
+      const head = document.createElement('div')
+      head.setAttribute('data-holo-planner-head', '')
+
+      const title = document.createElement('span')
+      title.setAttribute('data-holo-planner-title', '')
+      title.textContent = '羊皮纸便笺'
+
+      const count = document.createElement('span')
+      count.setAttribute('data-holo-planner-count', '')
+      count.textContent = '0 字'
+
+      const foldBtn = document.createElement('button')
+      foldBtn.setAttribute('data-holo-planner-btn', '')
+      foldBtn.type = 'button'
+      foldBtn.title = '收起到图标'
+      foldBtn.setAttribute('aria-label', '收起到图标')
+      foldBtn.textContent = '—'
+
+      const closeBtn = document.createElement('button')
+      closeBtn.setAttribute('data-holo-planner-btn', '')
+      closeBtn.type = 'button'
+      closeBtn.title = '关闭便笺'
+      closeBtn.setAttribute('aria-label', '关闭便笺')
+      closeBtn.textContent = '×'
+
+      head.appendChild(title)
+      head.appendChild(count)
+      head.appendChild(foldBtn)
+      head.appendChild(closeBtn)
+
+      const body = document.createElement('div')
+      body.setAttribute('data-holo-planner-body', '')
+
+      const input = document.createElement('textarea')
+      input.setAttribute('data-holo-planner-input', '')
+      input.placeholder = '随手记点什么，也可以直接粘贴图片…'
+      input.spellcheck = false
+
+      const gallery = document.createElement('div')
+      gallery.setAttribute('data-holo-planner-gallery', '')
+
+      body.appendChild(input)
+      body.appendChild(gallery)
+
+      const foot = document.createElement('div')
+      foot.setAttribute('data-holo-planner-foot', '')
+
+      const hint = document.createElement('span')
+      hint.setAttribute('data-holo-planner-hint', '')
+      hint.textContent = '文字自动保存'
+
+      foot.appendChild(hint)
+
+      panel.appendChild(head)
+      panel.appendChild(body)
+      panel.appendChild(foot)
+
+      root.appendChild(badge)
+      root.appendChild(panel)
+
+      // ---- text ----
+      let saveTimer = 0
+      const saveText = () => {
+        try { localStorage.setItem(PLANNER_TEXT_KEY, input.value) } catch (error) { /* ignore */ }
+      }
+      const scheduleSave = () => {
+        if (saveTimer !== 0) clearTimeout(saveTimer)
+        saveTimer = setTimeout(() => { saveTimer = 0; saveText() }, 320)
+      }
+      const updateCount = () => {
+        const n = input.value.length
+        count.textContent = n + ' 字'
+      }
+
+      try {
+        const saved = localStorage.getItem(PLANNER_TEXT_KEY)
+        if (typeof saved === 'string') input.value = saved
+      } catch (error) { /* ignore */ }
+      updateCount()
+
+      input.addEventListener('input', () => {
+        updateCount()
+        scheduleSave()
+      })
+
+      // ---- images ----
+      let imageIds = []
+
+      const renderGallery = (rows) => {
+        gallery.textContent = ''
+        imageIds = []
+        for (const row of rows) {
+          if (row === null || row.blob === undefined) continue
+          const cell = document.createElement('div')
+          cell.setAttribute('data-holo-planner-shot', '')
+
+          const img = document.createElement('img')
+          const url = URL.createObjectURL(row.blob)
+          img.src = url
+          img.alt = ''
+          img.loading = 'lazy'
+          img.addEventListener('load', () => URL.revokeObjectURL(url), { once: true })
+
+          const del = document.createElement('button')
+          del.setAttribute('data-holo-planner-del', '')
+          del.type = 'button'
+          del.title = '删除这张图'
+          del.setAttribute('aria-label', '删除这张图')
+          del.textContent = '×'
+          del.addEventListener('click', async (event) => {
+            event.stopPropagation()
+            await plannerDeleteImage(row.id)
+            const next = await plannerListImages()
+            renderGallery(next)
+          })
+
+          cell.appendChild(img)
+          cell.appendChild(del)
+          gallery.appendChild(cell)
+          imageIds.push(row.id)
+        }
+      }
+
+      const refreshImages = async () => {
+        renderGallery(await plannerListImages())
+      }
+      refreshImages()
+
+      const pasteImages = async (event) => {
+        const data = event.clipboardData
+        if (data === null || data === undefined) return
+        const files = []
+        const items = data.items
+        if (items !== undefined && items !== null) {
+          for (const item of items) {
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+              const file = item.getAsFile()
+              if (file !== null) files.push(file)
+            }
+          }
+        }
+        if (files.length === 0) {
+          const plain = data.files
+          if (plain !== undefined && plain !== null) {
+            for (const file of plain) {
+              if (file.type.startsWith('image/')) files.push(file)
+            }
+          }
+        }
+        if (files.length === 0) return
+        event.preventDefault()
+
+        let overflow = false
+        for (const file of files) {
+          if (imageIds.length >= PLANNER_MAX_IMAGES) { overflow = true; break }
+          const id = await plannerAddImage(file)
+          if (id === null) {
+            hint.setAttribute('data-holo-planner-warn', 'on')
+            hint.textContent = '这张图没能存下来（浏览器拒绝写入本地存储）'
+            setTimeout(() => {
+              hint.removeAttribute('data-holo-planner-warn')
+              hint.textContent = '文字自动保存'
+            }, 3600)
+            continue
+          }
+          imageIds.push(id)
+        }
+        if (overflow) {
+          hint.setAttribute('data-holo-planner-warn', 'on')
+          hint.textContent = '最多放 ' + PLANNER_MAX_IMAGES + ' 张图，先删几张吧'
+          setTimeout(() => {
+            hint.removeAttribute('data-holo-planner-warn')
+            hint.textContent = '文字自动保存'
+          }, 3600)
+        }
+        await refreshImages()
+      }
+
+      input.addEventListener('paste', (event) => { pasteImages(event) })
+      panel.addEventListener('paste', (event) => { pasteImages(event) })
+
+      // ---- placement ----
+      const clampBadge = () => {
+        const half = (PLANNER_BADGE_SIZE / 2) / Math.max(1, window.innerWidth)
+        const halfY = (PLANNER_BADGE_SIZE / 2) / Math.max(1, window.innerHeight)
+        plannerState.xPct = Math.min(Math.max(plannerState.xPct, half), 1 - half)
+        plannerState.yPct = Math.min(Math.max(plannerState.yPct, halfY), 1 - halfY)
+      }
+
+      const paint = () => {
+        clampBadge()
+        const vw = window.innerWidth
+        const vh = window.innerHeight
+
+        const left = Math.round(plannerState.xPct * vw - PLANNER_BADGE_SIZE / 2)
+        const top = Math.round(plannerState.yPct * vh - PLANNER_BADGE_SIZE / 2)
+        badge.style.width = PLANNER_BADGE_SIZE + 'px'
+        badge.style.height = PLANNER_BADGE_SIZE + 'px'
+        badge.style.left = left + 'px'
+        badge.style.top = top + 'px'
+
+        // The panel opens beside the badge, flipped when there is no room —
+        // unless it has been dragged, in which case that spot wins and is only
+        // clamped to stay on screen.
+        const gap = 14
+        const panelW = Math.min(PLANNER_PANEL_W, vw - 20)
+        const panelH = Math.min(panel.offsetHeight || 360, vh - 20)
+        let panelLeft
+        let panelTop
+        if (plannerState.panelLeft !== null && plannerState.panelTop !== null) {
+          panelLeft = plannerState.panelLeft
+          panelTop = plannerState.panelTop
+        } else {
+          panelLeft = left + PLANNER_BADGE_SIZE + gap
+          if (panelLeft + panelW > vw - 10) panelLeft = left - panelW - gap
+          if (panelLeft < 10) panelLeft = Math.max(10, Math.min(vw - panelW - 10, left))
+          panelTop = top + PLANNER_BADGE_SIZE / 2 - panelH / 2
+        }
+        panelLeft = Math.max(8, Math.min(vw - panelW - 8, panelLeft))
+        panelTop = Math.max(8, Math.min(vh - panelH - 8, panelTop))
+        plannerState.panelLeft = panelLeft
+        plannerState.panelTop = panelTop
+        panel.style.width = panelW + 'px'
+        panel.style.left = Math.round(panelLeft) + 'px'
+        panel.style.top = Math.round(panelTop) + 'px'
+
+        root.setAttribute('data-holo-planner-open', plannerState.open ? 'on' : 'off')
+      }
+
+      const seen = () => { paint() }
+      plannerWatchers.add(seen)
+
+      // ---- drag the badge ----
+      let drag = null
+      const onDown = (event) => {
+        if (event.button !== undefined && event.button !== 0) return
+        drag = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          originX: plannerState.xPct,
+          originY: plannerState.yPct,
+          moved: false,
+        }
+        try { badge.setPointerCapture(event.pointerId) } catch (error) { /* ignore */ }
+        event.preventDefault()
+      }
+      const onMove = (event) => {
+        if (drag === null || event.pointerId !== drag.pointerId) return
+        const dx = event.clientX - drag.startX
+        const dy = event.clientY - drag.startY
+        if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 5) return
+        drag.moved = true
+        plannerState.xPct = drag.originX + dx / Math.max(1, window.innerWidth)
+        plannerState.yPct = drag.originY + dy / Math.max(1, window.innerHeight)
+        paint()
+      }
+      const onUp = (event) => {
+        if (drag === null) return
+        if (event !== undefined && event.pointerId !== undefined && event.pointerId !== drag.pointerId) return
+        const moved = drag.moved
+        drag = null
+        try { badge.releasePointerCapture(event.pointerId) } catch (error) { /* ignore */ }
+        if (moved) savePlannerPlace()
+        else setPlannerOpen(true)
+      }
+
+      badge.addEventListener('pointerdown', onDown)
+      badge.addEventListener('pointermove', onMove)
+      badge.addEventListener('pointerup', onUp)
+      badge.addEventListener('pointercancel', onUp)
+
+      // ---- open / close ----
+      const closePanel = () => { setPlannerOpen(false); paint() }
+      const foldPanel = () => { setPlannerOpen(false); paint() }
+      foldBtn.addEventListener('click', foldPanel)
+      closeBtn.addEventListener('click', closePanel)
+
+      // ---- drag the panel by its title bar ----
+      // Offset from the badge, in viewport px, kept in module state so the
+      // panel stays where it was put across open/close and reloads. Null means
+      // "not moved yet", and then paint() derives the spot beside the badge.
+      let panelDrag = null
+      const onHeadDown = (event) => {
+        if (event.target === foldBtn || event.target === closeBtn) return
+        if (event.button !== undefined && event.button !== 0) return
+        const rect = panel.getBoundingClientRect()
+        panelDrag = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          originLeft: rect.left,
+          originTop: rect.top,
+        }
+        try { head.setPointerCapture(event.pointerId) } catch (error) { /* ignore */ }
+        event.preventDefault()
+      }
+      const onHeadMove = (event) => {
+        if (panelDrag === null || event.pointerId !== panelDrag.pointerId) return
+        const dx = event.clientX - panelDrag.startX
+        const dy = event.clientY - panelDrag.startY
+        plannerState.panelLeft = panelDrag.originLeft + dx
+        plannerState.panelTop = panelDrag.originTop + dy
+        paint()
+      }
+      const onHeadUp = (event) => {
+        if (panelDrag === null) return
+        panelDrag = null
+        try { head.releasePointerCapture(event.pointerId) } catch (error) { /* ignore */ }
+        savePlannerPlace()
+      }
+      head.addEventListener('pointerdown', onHeadDown)
+      head.addEventListener('pointermove', onHeadMove)
+      head.addEventListener('pointerup', onHeadUp)
+      head.addEventListener('pointercancel', onHeadUp)
+
+      const onKey = (event) => {
+        if (event.key !== 'Escape') return
+        if (!plannerState.open) return
+        closePanel()
+      }
+      document.addEventListener('keydown', onKey, true)
+
+      const onResize = () => { paint() }
+      window.addEventListener('resize', onResize)
+
+      paint()
+
+      return {
+        root,
+        dispose: () => {
+          if (saveTimer !== 0) { clearTimeout(saveTimer); saveTimer = 0; saveText() }
+          plannerWatchers.delete(seen)
+          badge.removeEventListener('pointerdown', onDown)
+          badge.removeEventListener('pointermove', onMove)
+          badge.removeEventListener('pointerup', onUp)
+          badge.removeEventListener('pointercancel', onUp)
+          head.removeEventListener('pointerdown', onHeadDown)
+          head.removeEventListener('pointermove', onHeadMove)
+          head.removeEventListener('pointerup', onHeadUp)
+          head.removeEventListener('pointercancel', onHeadUp)
+          document.removeEventListener('keydown', onKey, true)
+          window.removeEventListener('resize', onResize)
+          try { root.remove() } catch (error) { /* already gone */ }
+        },
+      }
     }
 
     /**
@@ -3893,6 +5202,24 @@ function render(t) {
           setLogoHidden(!logoState.hidden)
         }, [])
 
+        // The note pad is a tool, not an ornament, so it gets its own switch
+        // like the peeker does. State mirrors module state through the same
+        // watcher set the layer paints from.
+        const [plannerOff, setPlannerOffState] = useState(() => {
+          loadPlanner()
+          return plannerState.off
+        })
+
+        useEffect(() => {
+          const seen = () => { setPlannerOffState(plannerState.off) }
+          plannerWatchers.add(seen)
+          return () => { plannerWatchers.delete(seen) }
+        }, [])
+
+        const togglePlanner = useCallback(() => {
+          setPlannerOff(!plannerState.off)
+        }, [])
+
         // The slider hands over a percentage; state stores a fraction. The setter
         // clamps, and the readout is fed the clamped value back so the thumb
         // never sits somewhere the layer is not.
@@ -4082,6 +5409,21 @@ function render(t) {
           },
         }, SCENE_OPTIONS.map((one) => h('option', { key: one, value: one }, one)))))
 
+        children.push(h('div', {
+          key: 'plannerTitle',
+          style: { ...strongStyle, marginTop: '14px', paddingTop: '12px', borderTop: '0.5px solid var(--dsw-alias-border-l3)' },
+        }, '羊皮纸便笺'))
+        children.push(h('div', { key: 'plannerStatus', style: { ...dimStyle, marginTop: '6px' } },
+          plannerOff
+            ? '已关闭：右下角不再出现便笺徽章。'
+            : '已开启：右下角一枚麦穗环徽章，点开是一张羊皮纸便笺，可以打字、可以粘贴图片；拖住徽章可以换位置。'))
+        children.push(h('div', { key: 'plannerRow', style: rowStyle }, h('button', {
+          key: 'plannerToggle',
+          type: 'button',
+          onClick: togglePlanner,
+          style: buttonStyle(true),
+        }, plannerOff ? '启用羊皮纸便笺' : '不启用羊皮纸便笺')))
+
         // The wordmark's placement. Editing is a mode rather than an inline
         // form: the mark is a floating layer, so the only honest control is to
         // make the mark itself draggable.
@@ -4217,9 +5559,15 @@ function render(t) {
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
           try {
-            const peeker = createPeeker()
+            const peeker = createPeeker((trigger) => {
+              if (typeof holoVoiceAnnounce === 'function') holoVoiceAnnounce(trigger)
+            })
             document.body.appendChild(peeker.root)
-            return () => peeker.dispose()
+            holoPeekerHandle = peeker
+            return () => {
+              if (holoPeekerHandle === peeker) holoPeekerHandle = null
+              peeker.dispose()
+            }
           } catch (error) {
             return () => {}
           }
@@ -4288,6 +5636,19 @@ function render(t) {
         // the mark rode the detached subtree into the bin. On <body> there is
         // nothing to be torn down with: the layer outlives every panel swap and
         // needs no observer to come back.
+        ctx.effect(() => {
+          if (typeof document === 'undefined') return () => {}
+          let pad = null
+          try { pad = createPlanner() } catch (error) { pad = null }
+          if (pad === null) return () => {}
+          try {
+            document.body.appendChild(pad.root)
+          } catch (error) {
+            return () => {}
+          }
+          return () => pad.dispose()
+        }, 'theme-holo: parchment note pad')
+
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
           let layer = null
@@ -4372,6 +5733,39 @@ function render(t) {
           document.documentElement.setAttribute('data-holo-peek', off ? 'off' : 'on')
           return () => {}
         }, 'theme-holo: peek latch')
+
+        // Spoken cues for shell buttons (see VOICE_CUES), each with a bubble
+        // showing the translation above her right shoulder.
+        ctx.effect(() => {
+          if (typeof document === 'undefined') return () => {}
+          let bubble = null
+          let cues = null
+          const getPeekBox = () => (holoPeekerHandle !== null ? holoPeekerHandle.peekBox : null)
+          try { bubble = createVoiceBubble(getPeekBox) } catch (error) { bubble = null }
+          if (bubble === null) return () => {}
+          try { document.body.appendChild(bubble.root) } catch (error) { return () => {} }
+          try { cues = createVoiceCues(bubble) } catch (error) { cues = null }
+          holoVoiceAnnounce = (cues !== null && typeof cues.announce === 'function')
+            ? (trigger) => { try { cues.announce(trigger) } catch (error) { /* ignore */ } }
+            : null
+          return () => {
+            holoVoiceAnnounce = null
+            if (cues !== null) cues.dispose()
+            bubble.dispose()
+          }
+        }, 'theme-holo: voice cues')
+
+        // Note pad opt-out: same pattern as the peeker's latch above — the
+        // choice is re-applied on every load so it survives a reload without
+        // writing to the host's own settings document.
+        ctx.effect(() => {
+          if (typeof document === 'undefined') return () => {}
+          loadPlanner()
+          applyPlannerOff()
+          return () => {
+            try { document.documentElement.removeAttribute('data-holo-planner-off') } catch (error) { /* ignore */ }
+          }
+        }, 'theme-holo: planner latch')
 
         let React = null
         try {
