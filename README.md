@@ -617,6 +617,36 @@ GET/HEAD  /holo-theme/anime/<file>    →  素材/动画/
 
 ## 常见问题
 
+**Q：桌面版启动就崩，日志里是 `Unexpected token '\uFEFF'`？（与本插件无关，但很容易被误判成本插件）**
+
+这是 profile 配置清单 `~/.dsh/profiles/desktop/package.json` **开头被写入了 UTF-8 BOM**
+（3 个字节 `EF BB BF`）。DSH 的启动引导读它时是 `JSON.parse(readFileSync(path, 'utf8'))`——
+Node 的 `readFileSync(..., 'utf8')` **不会**去掉 BOM，于是 `JSON.parse` 抛错、Host 进程启动即退出，
+界面根本打不开。
+
+**本插件从不写这个文件。** 宿主半（`index.js`）只注册只读的文件路由；浏览器半只写
+`localStorage` 与 IndexedDB。DSH 自己写这个文件的路径（`writeProfileManifest`）用的是
+`writeFileSync(..., JSON.stringify(...))`，实测写出**不带 BOM**。所以 BOM 来自别处——
+最常见的是用 Windows PowerShell 5.1 的 `Set-Content -Encoding UTF8` / `Out-File -Encoding UTF8`
+改过它（这两者必定写入 BOM）。
+
+修法（改前先备份）：
+
+1. 把 `package.json` 复制一份留底（例如 `package.json.bak`）
+2. **去掉文件开头 3 个字节**，其余内容逐字节不动
+3. 校验：文件能被 `JSON.parse` 读通即可
+4. 重启 DSH
+
+用支持「UTF-8 无 BOM」的编辑器打开该文件、直接另存一次，通常也能达到同样效果。
+
+**避免复发**：不要用 PowerShell 5.1 的 `Set-Content -Encoding UTF8` /
+`Out-File -Encoding UTF8` 改这个文件；改用编辑器「UTF-8 无 BOM」另存，或用 Python / Node 写。
+本插件的开发脚本在需要改这个文件时一律走 Python，并在写后校验首字节不是 `EF BB BF`。
+
+> 这属于 DSH 引导层的健壮性问题（读配置不防 BOM），已按官方渠道反馈。
+> DSH 官方不收 issue/PR，报 bug 请走
+> [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions)。
+
 **Q：装好了但完全没变化？**
 
 检查三件事：① profile 的 `package.json` 里 `dependencies` 和 `bundles` 两处都加了吗；

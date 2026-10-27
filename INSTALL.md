@@ -157,6 +157,17 @@ Object.keys(localStorage)
 
 ## 常见问题
 
+**桌面版启动就崩，日志里是 `Unexpected token '\uFEFF'`？**
+
+不是本插件的问题。profile 配置清单 `%USERPROFILE%\.dsh\profiles\desktop\package.json`
+开头被写入了 UTF-8 BOM，DSH 的引导层用 `JSON.parse` 直接解析它，遇 BOM 即抛错、Host 退出。
+
+**本插件从不写这个文件。** 去掉文件开头 3 个字节（备份后改）、确认文件能被 `JSON.parse`
+读通，再重启 DSH 即可。**别用 PowerShell 5.1 的 `Set-Content -Encoding UTF8` /
+`Out-File -Encoding UTF8` 改它**——那两种写法必定写 BOM。
+
+完整说明见 [README 常见问题](README.md#常见问题)。
+
 **装完没有任何变化？**
 
 按 F12 打开控制台，看有没有 `[dsh-theme-holo]` 开头的报错。没有报错但也没效果，
