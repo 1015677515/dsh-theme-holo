@@ -1167,7 +1167,7 @@ ${TOKEN_CSS_DARK}
 /* ---- planner: the parchment pad and its wheat-ringed badge ---------------
    Both carry data- attributes rather than ids: the dark-palette rule hides
    every [id^="holo-"] decoration, and this is a tool, not decoration. */
-[data-holo-planner] { position: fixed; inset: 0; z-index: 2147482810; pointer-events: none; }
+[data-holo-planner] { position: fixed; inset: 0; z-index: 2147482998; pointer-events: none; }
 
 [data-holo-planner-badge] {
   position: fixed;
@@ -1467,6 +1467,32 @@ html body[data-ds-dark-theme] [data-holo-planner-foot] {
 html body[data-ds-dark-theme] [data-holo-planner-hint] { color: #A2917A; }
 
 html[data-holo-planner-off="on"] [data-holo-planner] { display: none !important; }
+/* ---- the planner's header button (simplified mode) --------------------
+   Matches the neighbouring header utilities button: 24px tall, 6px radius,
+   hairline border. Themed with alias tokens so both palettes follow. */
+.holo-planner-btn {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.28));
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, #6E5D46);
+  font: 500 12.5px/1 "Microsoft YaHei", system-ui, sans-serif;
+  cursor: pointer;
+  transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
+}
+
+.holo-planner-btn:hover {
+  border-color: var(--dsw-alias-border-l1, rgba(128, 128, 128, 0.4));
+  color: var(--dsw-alias-label-primary, #33291B);
+}
+
+html body:not([data-ds-dark-theme]) .holo-planner-btn:hover {
+  background: rgba(184, 130, 43, 0.08);
+  border-color: rgba(184, 130, 43, 0.52);
+  color: #7A5B22;
+}
+
 /* ---- voice bubble: the translation above her right shoulder -------------
    Same parchment recipe as the note pad (see [data-holo-planner-panel]):
    warm paper gradient, gold hairline, serif text. It is a data- attribute
@@ -1557,6 +1583,8 @@ html body[data-ds-dark-theme] [data-holo-voice-bubble]::after {
     const LOGO_SRC = ASSET_BASE + 'logo.png'
     /** The folded note pad's badge: her, cut out, inside a wheat ring. */
     const PLANNER_SRC = ASSET_BASE + 'planner.png'
+    /** 点记录板徽章时的应答（H182「ぬしの頼みならば喜んで」/「你开口，咱乐意。」）。 */
+    const PLANNER_VOICE_SRC = ASSET_BASE + 'voice-H182.wav'
     /** Click cue for the account page's 「查询用量」 button. H015 from the
      *  voice table: 「人の世では何事にも金がかかるからな」. */
     const USAGE_VOICE_SRC = ASSET_BASE + 'voice-H015.wav'
@@ -2509,6 +2537,25 @@ function render(t) {
       /** Current rendered height of her artwork, in px, for the bubble anchor. */
       const heightForBox = () => Math.max(1, artH * reveal + SINK)
 
+      /** Publish her live on-screen box. Called from place(), paint() and
+       *  onDragMove(), because all three move her: place() on layout changes,
+       *  paint() on the eased lean/nod/squash, onDragMove() while the user is
+       *  dragging. The voice bubble reads this every frame. */
+      const syncPeekBox = () => {
+        if (cardRect === null || artH <= 0) {
+          peekBox.visible = false
+          return
+        }
+        const h = heightForBox()
+        // root.style.left already carries herLeft; shift is the eased offset
+        // applied through transform, so it belongs in the box too.
+        peekBox.left = geo.herLeft + shift
+        peekBox.width = geo.width
+        peekBox.height = h
+        peekBox.top = cardRect.top - h + SINK
+        peekBox.visible = true
+      }
+
       const place = () => {
         const box = findComposer()
         if (box !== card) {
@@ -2546,11 +2593,7 @@ function render(t) {
         root.style.bottom = `${(window.innerHeight - rect.top - SINK).toFixed(1)}px`
         root.style.clipPath = `inset(0 0 ${SINK}px 0)`
         // Publish the box so the voice bubble can sit above her right shoulder.
-        peekBox.left = herLeft
-        peekBox.width = width
-        peekBox.height = heightForBox()
-        peekBox.top = rect.top - heightForBox() + SINK
-        peekBox.visible = true
+        syncPeekBox()
       }
 
       const paint = () => {
@@ -2569,6 +2612,9 @@ function render(t) {
         pic.style.transform =
           `translate(calc(-50% + ${leanX.toFixed(2)}px), ${(leanY + nodOffset).toFixed(2)}px) ` +
           `rotate(${tilt.toFixed(2)}deg) scale(1, ${squash})`
+
+        // She just moved (height / shift / lean), so republish the box.
+        syncPeekBox()
       }
 
       const drawThread = () => {
@@ -2814,6 +2860,9 @@ function render(t) {
         if (cardRect !== null) {
           geo.herLeft = cardRect.left + cardRect.width * peekXFrac - geo.width / 2
           root.style.left = `${geo.herLeft.toFixed(1)}px`
+          // Dragging moves her horizontally: keep the published box in step so
+          // the voice bubble travels with her.
+          syncPeekBox()
         }
       }
 
@@ -3515,6 +3564,9 @@ function render(t) {
      *  without the two effects depending on each other's lifetime. */
     let holoVoiceAnnounce = null
 
+    /** 当前挂着的记录板实例，供头部按钮调用其 toggle/open。 */
+    let holoPlannerHandle = null
+
     /** The live peeker instance, or null. Registered by the peeking-companion
      *  effect so the voice bubble can anchor above her shoulder without the
      *  two effects depending on each other's lifetime. */
@@ -3566,6 +3618,51 @@ function render(t) {
         zh: '怎么会',
         jp: '',
       },
+      {
+        // 点记录板徽章。音频由记录板自己播（PLANNER_VOICE_SRC），这里只管字幕。
+        trigger: 'planner',
+        id: 'H182',
+        dur: 2.37,
+        zh: '你开口，咱乐意。',
+        jp: 'ぬしの頼みならば喜んで',
+      },
+      {
+        label: '充值',
+        src: ASSET_BASE + 'voice-H053.wav',
+        zh: '总之，咱俩的相遇就是这样。咱一句话就把人给迷住了。',
+        jp: 'とまぁ、わっちらが出会うたのはこんな感じじゃ。わっちの一言で惚れさせたんじゃ',
+        id: 'H053',
+      },
+      {
+        // 侧栏「新会话」。展开态有可见文字「新会话」，折叠态只有图标，
+        // 此时只能靠 aria-label「新建会话」命中，所以两个都登记。
+        label: '新会话',
+        ariaLabels: ['新建会话'],
+        src: ASSET_BASE + 'voice-H203.wav',
+        zh: '嗯，肯定在打主意。',
+        jp: 'うん、間違いなく考えるの',
+        id: 'H203',
+      },
+      {
+        // 侧栏「插件」导航项（sidebar.panellist slot，aria-label 就是「插件」）。
+        label: '插件',
+        ariaLabels: ['插件'],
+        src: ASSET_BASE + 'voice-H193.wav',
+        zh: '你要是敢花心，咱就从脑袋开始嘎吱嘎吱把你嚼了。',
+        jp: '浮気などしたら頭からバリバリ食べてやるからのー',
+        id: 'H193',
+      },
+      {
+        // 右栏的展开按钮。注意：它的 aria-label 是「打开右侧边栏」
+        // （chrome.expandAria），而 tooltip 文案是「打开侧边栏」（chrome.expand），
+        // 两个都登记，保证悬停提示与 aria 都能命中。
+        label: '打开侧边栏',
+        ariaLabels: ['打开右侧边栏', '打开侧边栏'],
+        src: ASSET_BASE + 'voice-H112.wav',
+        zh: '哈哈哈，厉害吧，爬得真高。',
+        jp: 'くっはっはっは、すごいじゃろ、よく超えておる',
+        id: 'H112',
+      },
     ]
 
     /** How long the bubble stays after the line ends, before fading out.
@@ -3598,10 +3695,43 @@ function render(t) {
       let hideTimer = 0
       let fadeTimer = 0
       let disposed = false
+      /** Follow loop: while the bubble is visible it re-anchors every frame,
+       *  because she moves (dragging, leaning toward the pointer, nodding, and
+       *  the composer itself can shift). A one-shot placement would leave the
+       *  bubble behind her. */
+      let followRaf = 0
+      let lastRight = null
+      let lastBottom = null
 
       const clearTimers = () => {
         if (hideTimer !== 0) { clearTimeout(hideTimer); hideTimer = 0 }
         if (fadeTimer !== 0) { clearTimeout(fadeTimer); fadeTimer = 0 }
+      }
+
+      /** True while the bubble is on screen (shown or fading out). */
+      const isUp = () => {
+        const state = root.getAttribute('data-holo-voice-state')
+        return state === 'shown' || state === 'fading'
+      }
+
+      const stopFollow = () => {
+        if (followRaf !== 0) {
+          if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(followRaf)
+          followRaf = 0
+        }
+      }
+
+      const follow = () => {
+        followRaf = 0
+        if (disposed || !isUp()) return
+        place()
+        followRaf = requestAnimationFrame(follow)
+      }
+
+      const startFollow = () => {
+        if (followRaf !== 0) return
+        if (typeof requestAnimationFrame !== 'function') return
+        followRaf = requestAnimationFrame(follow)
       }
 
       const place = () => {
@@ -3616,14 +3746,25 @@ function render(t) {
           anchorRight = vw - (box.left + box.width)
           anchorBottom = vh - box.top + 10
         }
-        root.style.right = Math.max(12, Math.round(anchorRight)) + 'px'
-        root.style.bottom = Math.max(12, Math.round(anchorBottom)) + 'px'
+        const right = Math.max(12, Math.round(anchorRight))
+        const bottom = Math.max(12, Math.round(anchorBottom))
+        // Write only on change: this now runs every frame while visible, and a
+        // redundant style write would keep invalidating layout for nothing.
+        if (right !== lastRight) {
+          root.style.right = right + 'px'
+          lastRight = right
+        }
+        if (bottom !== lastBottom) {
+          root.style.bottom = bottom + 'px'
+          lastBottom = bottom
+        }
         // Never let it run off the left edge on a narrow window.
         root.style.maxWidth = Math.max(160, Math.min(320, vw - 80)) + 'px'
       }
 
       const hideNow = () => {
         clearTimers()
+        stopFollow()
         root.setAttribute('data-holo-voice-state', 'hidden')
       }
 
@@ -3632,8 +3773,11 @@ function render(t) {
         if (disposed) return
         clearTimers()
         line.textContent = zh
+        lastRight = null
+        lastBottom = null
         place()
         root.setAttribute('data-holo-voice-state', 'shown')
+        startFollow()
         const hold = Number.isFinite(holdMs) && holdMs >= 0 ? holdMs : VOICE_BUBBLE_HOLD_MS
         hideTimer = window.setTimeout(() => {
           hideTimer = 0
@@ -3642,6 +3786,7 @@ function render(t) {
           fadeTimer = window.setTimeout(() => {
             fadeTimer = 0
             if (disposed) return
+            stopFollow()
             root.setAttribute('data-holo-voice-state', 'hidden')
           }, VOICE_BUBBLE_FADE_MS)
         }, hold)
@@ -3666,6 +3811,7 @@ function render(t) {
         dispose() {
           disposed = true
           clearTimers()
+          stopFollow()
           root.removeEventListener('click', onClick)
           window.removeEventListener('resize', onResize)
           try { root.remove() } catch (error) { /* already gone */ }
@@ -3729,6 +3875,15 @@ function render(t) {
         return audio
       }
 
+      /** aria-label → cue。侧栏「新会话」折叠时只有图标、可见文字为空，
+       *  必须靠 aria-label（「新建会话」）才能命中。 */
+      const byAria = new Map()
+      for (const cue of VOICE_CUES) {
+        if (Array.isArray(cue.ariaLabels)) {
+          for (const aria of cue.ariaLabels) byAria.set(aria, cue)
+        }
+      }
+
       /** Walk up from the event target looking for a labelled control. */
       const cueFor = (node) => {
         let el = node
@@ -3736,6 +3891,11 @@ function render(t) {
           if (el.tagName === 'A' || el.tagName === 'BUTTON') {
             const label = (el.textContent || '').trim()
             if (byLabel.has(label)) return byLabel.get(label)
+            // 折叠态没有可见文字，退到 aria-label
+            const aria = typeof el.getAttribute === 'function'
+              ? (el.getAttribute('aria-label') || '').trim()
+              : ''
+            if (aria !== '' && byAria.has(aria)) return byAria.get(aria)
           }
           el = el.parentElement
         }
@@ -3818,6 +3978,8 @@ function render(t) {
      * stay put whatever palette is on.
      */
     const PLANNER_OFF_KEY = 'dsh-theme-holo.planner-off'
+    /** 「简化写字板按钮」：开启后不显示徽章，改为头部工具条里的一个按钮。 */
+    const PLANNER_SIMPLE_KEY = 'dsh-theme-holo.planner-simple'
     const PLANNER_PLACE_KEY = 'dsh-theme-holo.planner-place'
     const PLANNER_TEXT_KEY = 'dsh-theme-holo.planner-text'
     /** Badge edge length in px. Same band as the peeker (138–196 at
@@ -3839,6 +4001,8 @@ function render(t) {
     const plannerState = {
       xPct: PLANNER_DEFAULT.xPct,
       yPct: PLANNER_DEFAULT.yPct,
+      /** true = 按钮模式（隐藏徽章，用头部按钮打开）；false = 徽章模式。 */
+      simple: false,
       /** Panel position in viewport px. Null = never dragged, so paint()
        *  derives it from the badge instead. */
       panelLeft: null,
@@ -3875,6 +4039,7 @@ function render(t) {
         }
       }
       try { plannerState.off = localStorage.getItem(PLANNER_OFF_KEY) === '1' } catch (error) { /* ignore */ }
+      try { plannerState.simple = localStorage.getItem(PLANNER_SIMPLE_KEY) === '1' } catch (error) { /* ignore */ }
     }
 
     const savePlannerPlace = () => {
@@ -3892,6 +4057,16 @@ function render(t) {
       for (const watcher of plannerWatchers) {
         try { watcher() } catch (error) { /* a dead subscriber must not stop the rest */ }
       }
+    }
+
+    /** 切换「简化写字板按钮」模式。徽章与按钮互斥，由 notifyPlanner 驱动重绘。 */
+    const setPlannerSimple = (on) => {
+      loadPlanner()
+      const next = on === true
+      if (plannerState.simple === next) return
+      plannerState.simple = next
+      try { localStorage.setItem(PLANNER_SIMPLE_KEY, next ? '1' : '0') } catch (error) { /* ignore */ }
+      notifyPlanner()
     }
 
     /** Reflect the opt-out on <html>. Same mechanism as the peeker's latch
@@ -3996,7 +4171,7 @@ function render(t) {
      * same reason the wordmark is: the settings card re-renders constantly and
      * a textarea that lives in it would lose its caret.
      */
-    function createPlanner() {
+    function createPlanner(announce) {
       loadPlanner()
 
       const root = document.createElement('div')
@@ -4259,6 +4434,8 @@ function render(t) {
         panel.style.left = Math.round(panelLeft) + 'px'
         panel.style.top = Math.round(panelTop) + 'px'
 
+        // 按钮模式（simple）下徽章不出现：入口换成头部工具条里的按钮。
+        badge.style.display = plannerState.simple ? 'none' : ''
         root.setAttribute('data-holo-planner-open', plannerState.open ? 'on' : 'off')
       }
 
@@ -4266,6 +4443,9 @@ function render(t) {
       plannerWatchers.add(seen)
 
       // ---- drag the badge ----
+      /** 徽章应答语音：全程复用同一个 Audio，连点重播不叠音。 */
+      let plannerVoice = null
+
       let drag = null
       const onDown = (event) => {
         if (event.button !== undefined && event.button !== 0) return
@@ -4296,8 +4476,23 @@ function render(t) {
         const moved = drag.moved
         drag = null
         try { badge.releasePointerCapture(event.pointerId) } catch (error) { /* ignore */ }
-        if (moved) savePlannerPlace()
-        else setPlannerOpen(true)
+        if (moved) {
+          savePlannerPlace()
+          return
+        }
+        // 点一下徽章：播一句应答，并把译文显示在气泡里（与探头同一套机制）。
+        try {
+          if (plannerVoice === null) {
+            plannerVoice = new Audio(PLANNER_VOICE_SRC)
+            plannerVoice.preload = 'auto'
+          }
+          plannerVoice.pause()
+          plannerVoice.currentTime = 0
+          const started = plannerVoice.play()
+          if (started !== undefined && typeof started.catch === 'function') started.catch(() => {})
+        } catch (error) { /* 音频不可用也不能影响打开面板 */ }
+        if (typeof announce === 'function') announce('planner')
+        setPlannerOpen(true)
       }
 
       badge.addEventListener('pointerdown', onDown)
@@ -4363,6 +4558,9 @@ function render(t) {
 
       return {
         root,
+        /** 供头部按钮打开面板（按钮模式下唯一的入口）。 */
+        open: () => { setPlannerOpen(true); paint() },
+        toggle: () => { setPlannerOpen(!plannerState.open); paint() },
         dispose: () => {
           if (saveTimer !== 0) { clearTimeout(saveTimer); saveTimer = 0; saveText() }
           plannerWatchers.delete(seen)
@@ -4376,8 +4574,62 @@ function render(t) {
           head.removeEventListener('pointercancel', onHeadUp)
           document.removeEventListener('keydown', onKey, true)
           window.removeEventListener('resize', onResize)
+          if (plannerVoice !== null) {
+            try { plannerVoice.pause() } catch (error) { /* ignore */ }
+            plannerVoice = null
+          }
           try { root.remove() } catch (error) { /* already gone */ }
         },
+      }
+    }
+
+    /**
+     * 头部工具条里的「写字板」按钮（简化模式专用）。
+     *
+     * 挂在 conversation.session.header.utilities 这个 slot 上——和
+     * dsh-prompt-ErrorNotes-desk 的「提示词 / 错误库」是同一个 slot。
+     * 它的 order 是 30，我们用 20，于是排在「提示词」左边。
+     *
+     * 只有在「简化写字板按钮」开启时才渲染；关闭时返回 null，不占位。
+     * 样式刻意跟随该工具条的按钮（24px 高、6px 圆角、细边框），
+     * 颜色用主题 token，深浅两套自动跟随。
+     */
+    function createHeaderButton(React) {
+      const h = React.createElement
+      return function HoloPlannerButton() {
+        const [simple, setSimple] = React.useState(() => {
+          loadPlanner()
+          return plannerState.simple
+        })
+        const [off, setOff] = React.useState(() => {
+          loadPlanner()
+          return plannerState.off
+        })
+
+        React.useEffect(() => {
+          const seen = () => {
+            setSimple(plannerState.simple)
+            setOff(plannerState.off)
+          }
+          plannerWatchers.add(seen)
+          return () => { plannerWatchers.delete(seen) }
+        }, [])
+
+        if (!simple || off) return null
+
+        const onOpen = () => {
+          if (holoPlannerHandle !== null && typeof holoPlannerHandle.toggle === 'function') {
+            holoPlannerHandle.toggle()
+          }
+        }
+
+        return h('button', {
+          type: 'button',
+          onClick: onOpen,
+          title: '打开羊皮纸便笺',
+          'aria-label': '打开羊皮纸便笺',
+          className: 'holo-planner-btn',
+        }, '写字板')
       }
     }
 
@@ -5216,8 +5468,23 @@ function render(t) {
           return () => { plannerWatchers.delete(seen) }
         }, [])
 
+        const [plannerSimple, setPlannerSimpleState] = useState(() => {
+          loadPlanner()
+          return plannerState.simple
+        })
+
+        useEffect(() => {
+          const seen = () => { setPlannerSimpleState(plannerState.simple) }
+          plannerWatchers.add(seen)
+          return () => { plannerWatchers.delete(seen) }
+        }, [])
+
         const togglePlanner = useCallback(() => {
           setPlannerOff(!plannerState.off)
+        }, [])
+
+        const togglePlannerSimple = useCallback(() => {
+          setPlannerSimple(!plannerState.simple)
         }, [])
 
         // The slider hands over a percentage; state stores a fraction. The setter
@@ -5413,16 +5680,38 @@ function render(t) {
           key: 'plannerTitle',
           style: { ...strongStyle, marginTop: '14px', paddingTop: '12px', borderTop: '0.5px solid var(--dsw-alias-border-l3)' },
         }, '羊皮纸便笺'))
+
+        // 开关一：整个写字板的总开关。
         children.push(h('div', { key: 'plannerStatus', style: { ...dimStyle, marginTop: '6px' } },
           plannerOff
-            ? '已关闭：右下角不再出现便笺徽章。'
-            : '已开启：右下角一枚麦穗环徽章，点开是一张羊皮纸便笺，可以打字、可以粘贴图片；拖住徽章可以换位置。'))
+            ? '已关闭：写字板完全关闭，徽章、面板、头部按钮都不出现。'
+            : (plannerSimple
+              ? '已开启：入口是顶部工具条里的「写字板」按钮，点开是一张羊皮纸便笺；右下角不再显示徽章。'
+              : '已开启：右下角一枚麦穗环徽章，点开是一张羊皮纸便笺，可以打字、可以粘贴图片；拖住徽章可以换位置。')))
         children.push(h('div', { key: 'plannerRow', style: rowStyle }, h('button', {
           key: 'plannerToggle',
           type: 'button',
           onClick: togglePlanner,
           style: buttonStyle(true),
-        }, plannerOff ? '启用羊皮纸便笺' : '不启用羊皮纸便笺')))
+        }, plannerOff ? '启用羊皮纸便笺' : '关闭写字板')))
+
+        // 开关二：简化入口 —— 把「点图标」换成「点头部按钮」。
+        children.push(h('div', {
+          key: 'plannerSimpleRow',
+          style: { ...rowStyle, marginTop: '8px' },
+        }, h('button', {
+          key: 'plannerSimpleToggle',
+          type: 'button',
+          onClick: togglePlannerSimple,
+          disabled: plannerOff,
+          style: buttonStyle(!plannerOff),
+        }, plannerSimple ? '关闭简化写字板按钮' : '简化写字板按钮')))
+        children.push(h('div', { key: 'plannerSimpleHint', style: { ...dimStyle, marginTop: '6px' } },
+          plannerOff
+            ? '写字板已关闭，先启用后再选入口。'
+            : (plannerSimple
+              ? '当前用顶部工具条的「写字板」按钮打开（在「提示词」左边），徽章已隐藏。'
+              : '打开后：隐藏右下角徽章，改在顶部工具条「提示词」左边放一个「写字板」按钮。')))
 
         // The wordmark's placement. Editing is a mode rather than an inline
         // form: the mark is a floating layer, so the only honest control is to
@@ -5639,14 +5928,21 @@ function render(t) {
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
           let pad = null
-          try { pad = createPlanner() } catch (error) { pad = null }
+          const announce = (trigger) => {
+            if (typeof holoVoiceAnnounce === 'function') holoVoiceAnnounce(trigger)
+          }
+          try { pad = createPlanner(announce) } catch (error) { pad = null }
           if (pad === null) return () => {}
           try {
             document.body.appendChild(pad.root)
           } catch (error) {
             return () => {}
           }
-          return () => pad.dispose()
+          holoPlannerHandle = pad
+          return () => {
+            if (holoPlannerHandle === pad) holoPlannerHandle = null
+            pad.dispose()
+          }
         }, 'theme-holo: parchment note pad')
 
         ctx.effect(() => {
@@ -5786,6 +6082,14 @@ function render(t) {
               name: 'plugins.bundle.config',
               key: 'dsh-theme-holo',
             }, (props) => React.createElement(LinkCard, props)))
+            // 「写字板」按钮：与 ErrorNotes 的「提示词 / 错误库」同一个 slot，
+            // order 20 < 它的 30 → 排在「提示词」左边。
+            const PlannerButton = createHeaderButton(React)
+            sctx.slots.inject('conversation.session.header.utilities', () => sctx.slots.register({
+              name: 'conversation.session.header.utilities',
+              id: 'theme-holo-planner',
+              order: 20,
+            }, PlannerButton))
             sctx.slots.inject('plugins.row.config', () => sctx.slots.register({
               name: 'plugins.row.config',
               key: 'dsh-theme-holo#theme-holo',

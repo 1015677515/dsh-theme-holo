@@ -80,6 +80,11 @@ const ALLOW = new Map([
     'planner-ring.png',
     'planner.png',
     'voice-H015.wav',
+    'voice-H053.wav',
+    'voice-H112.wav',
+    'voice-H182.wav',
+    'voice-H193.wav',
+    'voice-H203.wav',
     'wheat.png',
   ])],
   [LINK_BASE, new Set([
