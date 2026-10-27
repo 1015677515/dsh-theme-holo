@@ -79,6 +79,7 @@ const ALLOW = new Map([
     'peek.png',
     'planner-ring.png',
     'planner.png',
+    'voice-H013.wav',
     'voice-H015.wav',
     'voice-H053.wav',
     'voice-H112.wav',

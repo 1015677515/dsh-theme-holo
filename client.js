@@ -1021,6 +1021,21 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
    can show through. The video is cropped into the clip, so the gradient only
    ever shows outside the column -- where the conversation's own opaque root
    covers it anyway. */
+
+/* Click band over the standby plate.
+   It is its OWN layer on <body>, not a child of #holo-scene: that plate is
+   z-index:-1, and a negative-z layer sits below its container's background, so
+   a child with pointer-events:auto in it never receives clicks. This band sits
+   above ordinary content but below every other piece of plugin chrome
+   (peeker 2147482997, planner 2147482998, bubble 2147482999). */
+#holo-scene-hit {
+  position: fixed;
+  z-index: 2147482995;
+  pointer-events: auto;
+  cursor: pointer;
+  background: transparent;
+}
+
 #holo-scene {
   position: fixed;
   inset: 0;
@@ -1585,6 +1600,8 @@ html body[data-ds-dark-theme] [data-holo-voice-bubble]::after {
     const PLANNER_SRC = ASSET_BASE + 'planner.png'
     /** 点记录板徽章时的应答（H182「ぬしの頼みならば喜んで」/「你开口，咱乐意。」）。 */
     const PLANNER_VOICE_SRC = ASSET_BASE + 'voice-H182.wav'
+    /** 点右栏待机画面（Holo 立绘）时的应答：H013。 */
+    const SCENE_VOICE_SRC = ASSET_BASE + 'voice-H013.wav'
     /** Click cue for the account page's 「查询用量」 button. H015 from the
      *  voice table: 「人の世では何事にも金がかかるからな」. */
     const USAGE_VOICE_SRC = ASSET_BASE + 'voice-H015.wav'
@@ -3653,6 +3670,14 @@ function render(t) {
         id: 'H193',
       },
       {
+        // 点右栏待机画面里的 Holo 立绘。音频由 createScene 自己播。
+        trigger: 'scene',
+        id: 'H013',
+        dur: 5.51,
+        zh: '大概到你非抱着咱的尾巴就睡不着、还要撒娇耍赖那么长吧。',
+        jp: 'ぬしがわっちの尻尾がないと眠れぬとダダをこねるようになるあたりまでかなぁ',
+      },
+      {
         // 右栏的展开按钮。注意：它的 aria-label 是「打开右侧边栏」
         // （chrome.expandAria），而 tooltip 文案是「打开侧边栏」（chrome.expand），
         // 两个都登记，保证悬停提示与 aria 都能命中。
@@ -4967,7 +4992,7 @@ function render(t) {
      *
      *  See the STYLE comment on #holo-scene for why the video is oversized and
      *  cropped rather than scaled to the column. */
-    function createScene() {
+    function createScene(announce) {
       if (typeof document === 'undefined' || document.body === null) return null
       const root = document.createElement('div')
       root.id = 'holo-scene'
@@ -4993,6 +5018,75 @@ function render(t) {
       // no space.
       clip.style.width = '0px'
       document.body.appendChild(root)
+
+      // ---- click target for her line -------------------------------------
+      // A SEPARATE layer, not a child of #holo-scene. #holo-scene is
+      // z-index:-1, and a negative-z layer sits below its container's
+      // background: a child with pointer-events:auto inside it still never
+      // receives a click. So the hit band lives on its own, above the content,
+      // and only where the plate's artwork is.
+      //
+      // Shape: a fixed proportion of the plate (top 62%), NOT traced around
+      // her — the six standby clips are swappable and she stands differently in
+      // each, so a silhouette would miss on most of them.
+      const hit = document.createElement('div')
+      hit.id = 'holo-scene-hit'
+      hit.setAttribute('aria-hidden', 'true')
+      hit.style.display = 'none'
+      document.body.appendChild(hit)
+
+      /** Her line for this plate. One element, rewound per tap. */
+      let sceneVoice = null
+
+      const speak = () => {
+        try {
+          if (sceneVoice === null) {
+            sceneVoice = new Audio(SCENE_VOICE_SRC)
+            sceneVoice.preload = 'auto'
+          }
+          sceneVoice.pause()
+          sceneVoice.currentTime = 0
+          const started = sceneVoice.play()
+          if (started !== undefined && started.catch === 'function') started.catch(() => {})
+        } catch (error) { /* audio unavailable: the caption still shows */ }
+        if (typeof announce === 'function') announce('scene')
+      }
+
+      /**
+       * Is a document-level modal open?
+       *
+       * The image lightbox is portalled to <body> as
+       *   <div role="dialog" aria-modal="true" class="backdrop">
+       * with its own close button in the top-right corner. Because it does NOT
+       * replace the right column's start page, gateOpen() stays true while it is
+       * up -- which is why the hit band kept covering it and swallowing the ✕.
+       *
+       * Only role="dialog" / aria-modal are consulted. Deliberately NOT
+       * role="menu" or role="listbox": those are dropdowns that open while the
+       * plate is legitimately in use, and yielding to them would make her
+       * unclickable for no reason.
+       */
+      const modalOpen = () => {
+        try {
+          return document.querySelector('[role="dialog"], [aria-modal="true"]') !== null
+        } catch (error) {
+          return false
+        }
+      }
+
+      const onHit = () => {
+        // Belt and braces: sync() already hides the band while a modal is up, but
+        // a click landing in the same frame would otherwise still get through.
+        if (modalOpen()) return
+        let stillOpen = false
+        try {
+          stillOpen = gateOpen()
+        } catch (error) {
+          stillOpen = false
+        }
+        if (stillOpen) speak()
+      }
+      hit.addEventListener('click', onHit)
 
       let video = null
       let on = false
@@ -5112,11 +5206,13 @@ function render(t) {
         const col = findColumn()
         if (col === null) {
           clip.style.width = '0px'
+          hit.style.display = 'none'
           return
         }
         const box = col.getBoundingClientRect()
         if (box.width <= 0) {
           clip.style.width = '0px'
+          hit.style.display = 'none'
           return
         }
         // Cap the slice at the plate's own width and re-centre it inside the
@@ -5128,6 +5224,13 @@ function render(t) {
         const plate = Math.min(Math.round(box.width), SCENE_PLATE_WIDTH)
         clip.style.left = Math.round(box.left + (box.width - plate) / 2) + 'px'
         clip.style.width = plate + 'px'
+        // Mirror the same rectangle onto the hit band. The band keeps the
+        // plate's own 608x1080 proportion, so it covers the same part of the
+        // artwork whatever the column width is.
+        hit.style.left = Math.round(box.left + (box.width - plate) / 2) + 'px'
+        hit.style.width = plate + 'px'
+        hit.style.top = Math.round(box.top) + 'px'
+        hit.style.height = Math.round(plate * (1080 / 608) * 0.62) + 'px'
       }
 
       const play = () => {
@@ -5187,12 +5290,15 @@ function render(t) {
         clip.insertBefore(video, scrim)
         place()
         clearFills()
+        hit.style.display = 'block'
+        place()
         play()
       }
 
       const leave = () => {
         if (!on) return
         on = false
+        hit.style.display = 'none'
         document.documentElement.removeAttribute('data-holo-scene')
         restoreFills()
         if (video !== null) {
@@ -5227,6 +5333,21 @@ function render(t) {
           show = gateOpen()
         } catch (error) {
           show = false
+        }
+        // The hit band follows the gate AND yields to document-level modals.
+        //
+        // The modal case is the one that bit: the image lightbox is portalled to
+        // <body> with role="dialog" aria-modal="true" and does NOT replace the
+        // right column's start page, so `show` stays true and the band kept
+        // covering the lightbox -- its top-right ✕ swallowed the click and her
+        // line played instead of closing the image.
+        if (hit !== null) {
+          if (show && !modalOpen()) {
+            place()
+            hit.style.display = 'block'
+          } else {
+            hit.style.display = 'none'
+          }
         }
         if (show && !on) enter()
         else if (!show && on) leave()
@@ -5298,6 +5419,12 @@ function render(t) {
           if (raf !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf)
           if (observer !== null) observer.disconnect()
           leave()
+          hit.removeEventListener('click', onHit)
+          if (sceneVoice !== null) {
+            try { sceneVoice.pause() } catch (error) { /* ignore */ }
+            sceneVoice = null
+          }
+          if (hit.parentNode !== null) hit.parentNode.removeChild(hit)
           if (root.parentNode !== null) root.parentNode.removeChild(root)
         },
       }
@@ -6000,7 +6127,14 @@ function render(t) {
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
           let scene = null
-          try { scene = createScene() } catch (error) { scene = null }
+          // Pass a lazy closure, not holoVoiceAnnounce itself: this effect
+          // registers BEFORE the voice-cue effect below, so at registration
+          // time holoVoiceAnnounce is still null. The closure reads it at
+          // click time, by which point it is wired.
+          const announce = (trigger) => {
+            if (typeof holoVoiceAnnounce === 'function') holoVoiceAnnounce(trigger)
+          }
+          try { scene = createScene(announce) } catch (error) { scene = null }
           if (scene === null) return () => {}
           return () => scene.dispose()
         }, 'theme-holo: idle plate behind the right column')
