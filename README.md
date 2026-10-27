@@ -9,7 +9,7 @@
 以及只在你开始页亮着的右栏待机画面。
 
 ![license](https://img.shields.io/badge/license-MIT-c8a04a)
-![version](https://img.shields.io/badge/version-1.0.5-c8a04a)
+![version](https://img.shields.io/badge/version-1.0.6-c8a04a)
 ![node](https://img.shields.io/badge/node-%3E%3D22-c8a04a)
 ![dsh](https://img.shields.io/badge/DSH-0.2.0--rc.1%20~%200.2.x-c8a04a)
 ![platform](https://img.shields.io/badge/DSH-Web%20GUI-c8a04a)
@@ -18,7 +18,7 @@
 
 ## 目录
 
-| 章节 | 功能详解的十个小节 |
+| 章节 | 功能详解的十二个小节 |
 |---|---|
 | [这是什么](#这是什么) | [两套配色](#两套配色) |
 | [界面预览](#界面预览) | [开场动画](#开场动画12-秒实时渲染) |
@@ -30,8 +30,8 @@
 | [目录结构与素材](#目录结构与素材) | [插件详情页横幅](#插件详情页横幅) |
 | [常见问题](#常见问题) | [右栏待机画面](#右栏待机画面) |
 | [实现要点](#实现要点) | [小鲸鱼挂件联动](#小鲸鱼挂件联动) |
-| [已知边界](#已知边界) | |
-| [许可证与版权](#许可证与版权) | |
+| [已知边界](#已知边界) | [羊皮纸便笺](#羊皮纸便笺) |
+| [许可证与版权](#许可证与版权) | [语音与翻译气泡](#语音与翻译气泡) |
 | [出处声明](#出处声明) | |
 | [相关链接](#相关链接) | |
 | [English](#english) | |
@@ -46,7 +46,7 @@
 ## 这是什么
 
 <p align="center">
-  <img src="docs/readme-banner.png" width="100%" alt="《狼与香辛料》赫萝主题：本插件为 DeepSeek Harness 的《狼与香辛料（狼と香辛料）》主题插件。装上之后，Web GUI 会从出厂的中性灰变成暖纸色，并且多出若干装饰性组件 —— 其中六项可以在插件设置里单独关掉。">
+  <img src="docs/readme-banner.png" width="100%" alt="《狼与香辛料》赫萝主题：本插件为 DeepSeek Harness 的《狼与香辛料（狼と香辛料）》主题插件。装上之后，Web GUI 会从出厂的中性灰变成暖纸色，并且多出若干装饰性组件 —— 其中七项可以在插件设置里单独关掉。">
 </p>
 
 > **说明**：上方这张横幅是图片，配色取自插件浅色「麦秋晨光」——米黄 `#FBF7EF` 底、
@@ -57,8 +57,8 @@
 | 项 | 说明 |
 |---|---|
 | 形态 | 正规 DSH 插件：`index.js`（宿主半）+ `client.js`（浏览器半）+ `assets/` + `素材/` + `cordis.patch.yml` |
-| 插件大小 | 约 16 MB（`client.js` 与 `index.js` 合计约 198 KB，其余全是素材；`docs/` 的 1.7 MB 配图不参与运行时） |
-| 素材 | 图片 9 张、视频 6 组、音频 3 件，由宿主侧的 HTTP 路由送出 |
+| 插件大小 | 约 21 MB（`client.js` 与 `index.js` 合计约 264 KB，其余全是素材；`docs/` 的 1.7 MB 配图不参与运行时） |
+| 素材 | 图片 11 张、视频 6 组、音频 10 件，由宿主侧的 HTTP 路由送出 |
 | 配色 | 浅色「麦秋晨光」与深色「星夜麦田」（开发中，测试功能） |
 | 依赖 | Node ≥ 22；无第三方运行时依赖 |
 
@@ -66,8 +66,9 @@
 
 1. **不改宿主布局。** 所有装饰要么是挂在 `<body>` 上的独立浮动层，要么是纯 CSS 规则，
    不改宿主的 flex 盒、尺寸与 `overflow`。
-2. **能关的都给了开关，没开关的如实标出来。** 插件设置里有六个开关——开场动画、偷看的她、
-   探头语音、黑夜模式、右栏待机动画、浮动字标显隐。关掉即彻底移除，不留残余节点。
+2. **能关的都给了开关，没开关的如实标出来。** 插件设置里有七组开关——开场动画、偷看的她、
+   探头语音、黑夜模式、右栏待机动画、羊皮纸便笺（两个按钮：总开关 + 入口模式）、浮动字标显隐。
+   关掉即彻底移除，不留残余节点。
    剩下三项是常驻的：**动态档案卡**、**日志标签**、**侧栏麦田**。它们只是静态样式或
    纯展示层，不拦截点击、不占布局，因此没有做开关——这里不写「全部可关」。
 
@@ -86,7 +87,7 @@
 | 位置 | 看到什么 |
 | --- | --- |
 | 顶部中间 | 「狼与香辛料」浮雕字标，可拖动、可关 |
-| 右上 | 右栏待机画面（只在右栏自己的开始页亮） |
+| 右上 | 右栏待机画面（只在右栏自己的开始页亮；点她会说一句） |
 | 输入框右侧 | 偷看的她，只露兜帽和一双眼 |
 | 左下角 | 侧栏脚下的麦田，宽度随侧栏走 |
 | 整页 | 羊皮纸底色 + 麦金强调色，所有文字转暖棕 |
@@ -103,13 +104,15 @@
 | **开场动画** | 12 秒 canvas 实时绘制：暗里的红眼 → 狼影描红 → 光炸开 → 标题解码 → 就绪 |
 | **浮动字标** | 「狼与香辛料」字标，位置 / 大小 / 不透明度可调，可整个关掉 |
 | **偷看的她** | 输入框边只露兜帽和一双眼，指针靠近会升起；可左右拖动 |
-| **探头语音** | 点她会「疑惑」一声（可关） |
+| **探头语音** | 点她会「疑惑」一声，探头右上角浮出中文译文（可关） |
 | **动态档案卡** | 悬停左下账户行，升起一张 Steam 式小卡 |
 | **日志标签** | 「思考 / 读取 / 运行命令」等行内标签各一档暖色 |
 | **侧栏麦田** | 侧栏脚下的一片麦穗，宽度跟着侧栏走，高度锚在账号行 |
 | **插件详情页横幅** | 插件管理器里点进本插件时，内容顶部一张 1920×620 的封面 |
-| **右栏待机画面** | 只在右栏自己的开始页亮的一段动画，六片可换，一进去干活就熄 |
-| **小鲸鱼联动** | 一键把两个角色 + 一条语音装进 `dsh-whale-widget` |
+| **右栏待机画面** | 只在右栏自己的开始页亮的一段动画，六片可换，一进去干活就熄；点她会应答一句 |
+| **羊皮纸便笺** | 右下角一枚麦穗环徽章，点开是一张能打字、能粘图的便笺；入口可改成顶部按钮 |
+| **语音与翻译气泡** | 按钮、她、挂件、便笺徽章、待机画面各接一句台词，译文浮在探头右上角 |
+| **小鲸鱼联动** | 一键把两个角色 + 一条语音装进 `dsh-whale-widget`；点挂件鲸鱼也有译文气泡 |
 
 ---
 
@@ -120,7 +123,7 @@
 | DeepSeek Harness | `>=0.2.0-rc.1 <0.3.0-0` | 用了 `webServer` 路由、`theme.overrideTokens`、`slots` 等接口；低于此版本会静默不生效，不报错 |
 | Node.js | `>=22` | DSH 自带运行时即满足 |
 | 操作系统 | Windows / macOS / Linux | 已在 Windows 11 + DSH `0.2.1-rc.2` 实测 |
-| 磁盘空间 | 约 16 MB | 其中素材约 13 MB（`素材/动画/` 六段视频占 13.2 MB） |
+| 磁盘空间 | 约 21 MB | 其中素材约 15 MB（`素材/动画/` 六段视频占 12.6 MB） |
 | 第三方依赖 | 无 | 没有 npm 依赖，安装后不需要 `pnpm install` |
 | 网络 | 安装时需要 | 从 GitHub 取包；运行时不联网 |
 
@@ -311,6 +314,11 @@ github:1015677515/dsh-theme-holo
 每次点击先 `pause()` 再把 `currentTime` 归零，所以连点不会互相打断、也不会叠音轨。
 浏览器不给自动播放权限时静默失败——视觉反馈照常，不弹错。
 
+**译文气泡跟着她走**：点她之后，探头右上角浮出一枚羊皮纸气泡，显示那句台词的中文。
+显示期间每帧重算锚点，所以左右拖她、她朝指针倾斜或点头时，气泡都跟着走；隐藏、淡出完成
+或组件销毁时停下跟随循环。点气泡立即收掉，不必等滞留走完。详见
+[语音与翻译气泡](#语音与翻译气泡)。
+
 **关掉她**：插件设置里的「探头的赫萝」开关，关掉后彻底不显示。语音可以单独关：
 「探头的她说话」关掉后，点她只有动作，没有声音。
 
@@ -365,6 +373,61 @@ github:1015677515/dsh-theme-holo
 > 靠素材本身消化——`wheat.png` 顶部 0–20% 有 93.8% 完全透明，遮罩又降到 40%，几乎看不出；
 > `pointer-events: none` 保证账号行仍可点。
 
+### 羊皮纸便笺
+
+右下角一枚**麦穗环徽章**，点开是一张羊皮纸便笺。
+
+| 项 | 做法 |
+|---|---|
+| 徽章 | 151px 圆徽章（`assets/planner.png` + 描金环 `planner-ring.png`），**可以拖**，位置按视口百分比存 |
+| 面板 | 点徽章展开，`position: fixed`，可拖动、可调大小，关掉即撤 |
+| 文字 | 存 `localStorage`，逐键落盘（400ms 防抖） |
+| 图片 | **粘贴的图片存 IndexedDB**——图片体积大，`localStorage` 装不下几张就超限 |
+| 层级 | 容器 `z-index: 2147482998`，压在探头（`…997`）之上、语音气泡（`…999`）之下 |
+| 两个入口 | 默认徽章入口；开启「简化写字板按钮」后徽章隐藏，改在顶部工具条「提示词」左边放一个「写字板」按钮 |
+
+**为什么用 `data-holo-planner*` 而不是 id**：深色模式那条隐藏规则按 `[id^="holo-"]` 匹配，
+便笺若用 id 会被一起收掉，所以它整棵子树走 `data-` 属性，绕开那条规则。
+
+**面板刻意不用 `[role=dialog]`**：探头的状态机把文档里任何 `[role=dialog]` 当作「弹窗打开」而让位，
+便笺若用 `dialog`，探头会在便笺开着时一直缩着。它用的是 `role="region"`。
+
+**顶部那个按钮**：挂在与 ErrorNotes 的「提示词 / 错误库」同一个 slot
+（`conversation.session.header.utilities`），`order: 20` 小于它的 `30`，所以排在「提示词」左边。
+尺寸与配色跟随该工具条（24px 高、6px 圆角），深浅两套自动跟随。
+
+### 语音与翻译气泡
+
+九条语音，分两类，都带**中文译文气泡**。
+
+| 类型 | 谁播音频 | 气泡滞留 |
+|---|---|---|
+| 按钮类 | 本插件 | 音频实际时长 + 3 秒 |
+| 触发类 | 对应组件自己播 | 该条的固定时长 + 3 秒 |
+
+| 触发 | 语音 | 台词 |
+|---|---|---|
+| 按钮「查询用量」 | H015 | 人世间，什么都要钱嘛。 |
+| 按钮「充值」 | H053 | 总之，咱俩的相遇就是这样。咱一句话就把人给迷住了。 |
+| 按钮「新会话」 | H203 | 嗯，肯定在打主意。 |
+| 按钮「插件」 | H193 | 你要是敢花心，咱就从脑袋开始嘎吱嘎吱把你嚼了。 |
+| 按钮「打开侧边栏」 | H112 | 哈哈哈，厉害吧，爬得真高。 |
+| 点探头 | `peek-voice.wav` | 汝怎么了 |
+| 点挂件鲸鱼 | 挂件自带 | 怎么会 |
+| 点便笺徽章 | H182 | 你开口，咱乐意。 |
+| 点待机画面 | H013 | 大概到你非抱着咱的尾巴就睡不着、还要撒娇耍赖那么长吧。 |
+
+**按钮匹配同时看「可见文字」和 `aria-label`**：侧栏「新会话」展开时有文字、折叠时只有图标，
+那时只能靠 `aria-label`，而它的值是「新建会话」，与可见文字「新会话」并不相同；
+「打开侧边栏」的 `aria-label` 其实是「打开右侧边栏」，提示文字才是「打开侧边栏」。
+两条都登记，悬停提示与可访问名称都能命中。
+
+**气泡锚在探头右上角并跟着她走**，见[偷看的她](#偷看的她)。点气泡立即消失。
+
+**台词来源**：七条取自赫萝语音对照表（231 条，含日文原文与时长）；探头与挂件那两句的音源
+**不在表内**（波形比对确认：与 8 条源音轨的最高相关仅 0.2，属噪声水平），
+**台词由用户口述**，不做推测。日文原文一并收在 `VOICE_CUES` 里备查。
+
 ### 插件详情页横幅
 
 插件管理器里点进「赫萝主题」的详情页，内容顶部会有一张 1920×620 的横幅（`assets/cover.webp`）。
@@ -393,6 +456,7 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 | 左右边缘 | 各 10% 区域做模糊 + 透明度淡到 50%，中间保持清晰 |
 | 深色 | 底色渐变 `#14100B → #100D09`，视频 `opacity: .94`，另叠 scrim 与 veil 两层压暗 |
 | 浅色 | 底色渐变 `#FBF7EF → #F6EEDF`，视频 `opacity: .82` + 暖色滤镜 + `mix-blend-mode: multiply`——不是加一层暖色，而是把它**印进纸里** |
+| 点击 | 画面上部一块**固定矩形**热区；点它播 H013 并出气泡。模态打开时热区隐藏 |
 
 **为什么必须清掉宿主的底色**：视频垫在 `z-index: -1`，比宿主外框和右栏自己的不透明背景都要靠后，
 不清就是「什么都没发生」。所以亮着的时候，插件会给**内联**加 `background-color: transparent`
@@ -425,6 +489,15 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 六段各取一帧，从左到右：
 
 ![六段待机动画](docs/scene-grid.png)
+
+**点她会说一句**：热区取画面宽度的 608×1080 比例、**上部 62%**，是一块**固定位置**的矩形，
+不按角色轮廓描——六段动画里她站的位置各不相同，描轮廓在多数片子上都会判错。
+热区是挂在 `<body>` 上的独立节点（`#holo-scene-hit`），**不是** `#holo-scene` 的子节点：
+后者是 `z-index: -1`，负 z 会让子元素收不到点击。
+
+热区浮在内容之上，所以**必须给模态让路**：文档里出现 `[role="dialog"]` 或 `[aria-modal="true"]`
+时立即隐藏。图片预览（`ImageLightbox`）就是这样一个文档级浮层，它**不替换右栏开始页**，
+若不让路，它右上角的 ✕ 会被热区吃掉——1.0.5 里正是这个 bug，1.0.6 已修。
 
 **它看起来糊，通常不是它自己的问题**。素材是 608×1080 的竖裁，按 1:1 显示，**没有上采样**。
 真正把画面变糊的是**装了 wallpaper 插件（`dsh-plugin-wallpaper-engine`）并开着液态玻璃 /
@@ -483,7 +556,7 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 ## 插件设置项
 
 插件页（插件 → 已安装 → `dsh-theme-holo`）的包详情页里，卡片最上面是联动区块，
-下面依次是六组开关。组件行页也有同一块。
+下面依次是七组开关。组件行页也有同一块。
 
 | 小节 | 控件 | 存哪 |
 |---|---|---|
@@ -492,6 +565,8 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 | 探头的她说话 | `关闭探头语音` / `开启探头语音` | `localStorage['dsh-theme-holo.peek-voice-off']` |
 | 黑夜模式 | `开启黑夜模式` / `关闭黑夜模式` | 主题服务的 `preference` 字段（同「设置 → 外观」） |
 | 右侧待机动画 | 下拉框，前六个选项就是六个动画文件名，末尾另有一项 `关闭动画` | `localStorage['dsh-theme-holo.scene-name']` |
+| 羊皮纸便笺 | `关闭写字板` / `启用羊皮纸便笺` | `localStorage['dsh-theme-holo.planner-off']` |
+| 简化写字板按钮 | `简化写字板按钮` / `关闭简化写字板按钮`（写字板关闭时该项禁用） | `localStorage['dsh-theme-holo.planner-simple']` |
 | 更改 logo 位置 | `更改 logo 位置` / `完成调整`，另有 `关闭 logo` / `显示 logo`、`恢复默认位置`，以及一条 10%–100% 的不透明度滑块 | `localStorage['dsh-theme-holo.logo-place']` |
 
 首次安装时，若宿主外观已解析为深色，插件会自动改回浅色一次并把
@@ -507,6 +582,8 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 - **探头的她说话**——关：「已关闭：点她只有动作，没有声音。」；开：「已开启：点她会「疑惑」一声。」
 - **黑夜模式**——开：「已开启：界面使用「星夜麦田」深色配色。」；关：「已关闭：界面使用「麦秋晨光」浅色配色。」
 - **右侧待机动画**——「当前：赫萝开心（默认）。只在右侧栏的开始页显示；左右边缘渐变到 50% 不透明度。」；选 `关闭动画` 时：「已关闭：右侧栏的开始页不再显示待机动画，进入开始页时也不会加载任何视频。」
+- **羊皮纸便笺**——关：「已关闭：写字板完全关闭，徽章、面板、头部按钮都不出现。」；开（徽章入口）：「已开启：右下角一枚麦穗环徽章，点开是一张羊皮纸便笺……」；开（按钮入口）：「已开启：入口是顶部工具条里的「写字板」按钮……右下角不再显示徽章。」
+- **简化写字板按钮**——关：「打开后：隐藏右下角徽章，改在顶部工具条「提示词」左边放一个「写字板」按钮。」；开：「当前用顶部工具条的「写字板」按钮打开（在「提示词」左边），徽章已隐藏。」
 - **更改 logo 位置**——编辑中显示实时坐标；关闭时「已关闭：logo 停在原处，不会挡住任何点击。」
 
 ---
@@ -538,8 +615,17 @@ dsh-theme-holo/
 | `icon.jpg` | 4,516 | 64×64 | 插件列表图标。**不经过 HTTP 路由**，由 DSH 从清单 `icon` 字段读取 |
 | `wheat.png` | 84,582 | 904×146 | 侧栏脚下的麦田，`素材/小麦.png` 镜像拼接成的无缝片 |
 | `cover.webp` | 205,082 | 1920×620 | 插件详情页顶部的横幅 |
+| `planner.png` | 85,852 | 336×336 | 羊皮纸便笺的麦穗环徽章 |
+| `planner-ring.png` | 189,918 | 512×512 | 徽章外面的描金麦穗环 |
+| `voice-H013.wav` | 529,004 | — | 点待机画面里的立绘 |
+| `voice-H015.wav` | 313,964 | — | 按钮「查询用量」 |
+| `voice-H053.wav` | 601,964 | — | 按钮「充值」 |
+| `voice-H112.wav` | 484,844 | — | 按钮「打开侧边栏」 |
+| `voice-H182.wav` | 227,564 | — | 点便笺徽章 |
+| `voice-H193.wav` | 446,444 | — | 按钮「插件」 |
+| `voice-H203.wav` | 321,642 | — | 按钮「新会话」 |
 
-合计约 1.07 MB。改素材直接替换同名文件即可，**不需要任何构建步骤**。
+合计约 4.13 MB（另有 `icon-market.jpg` 31,138 字节，插件市场卡片专用、不经路由）。改素材直接替换同名文件即可，**不需要任何构建步骤**。
 
 ### `docs/` —— 本 README 的配图
 
@@ -595,7 +681,7 @@ GET/HEAD  /holo-theme/anime/<file>    →  素材/动画/
 
 **每条路由都只送白名单里点名的文件**，不是「目录里有什么就送什么」：
 
-- `index.js` 顶部的 `ALLOW` 是一张 `路由前缀 → 确切文件名集合` 的表，共 18 项。
+- `index.js` 顶部的 `ALLOW` 是一张 `路由前缀 → 确切文件名集合` 的表，共 27 项（`assets/` 18、`素材/` 3、`素材/动画/` 6）。
   请求路径规范化后算出相对路径，不在集合里一律 `404`——即使文件确实在磁盘上。
 - 为什么要这样：`素材/` 是加工现场，混着未修白边的原件、封面草稿和 24 张字形切图。
   整目录放行等于把这些全部挂到页面上，谁都能直接下载。白名单同时挡住「以后往素材目录里
@@ -791,6 +877,9 @@ DSH 的插件加载是全有或全无的，为一条装饰性路由把整个客�
 | 没有侧栏就没有麦田 | 窄布局会把侧栏整个收掉，此时不挂空节点、也不报错 |
 | 新增素材要同时改白名单 | 路由只送 `index.js` 里 `ALLOW` 点名的文件。往 `assets/`、`素材/`、`素材/动画/` 里加了新文件却没加进 `ALLOW`，页面会 404 而不是自动生效 |
 | 待机画面看着糊，多半是 wallpaper 插件的雾化 | 调低雾化强度即可缓解。见[右栏待机画面](#右栏待机画面)末段 |
+| 待机画面的点击热区要避开模态 | 热区浮在内容之上，有 `[role="dialog"]` / `[aria-modal="true"]` 的模态打开时它会隐藏。宿主改了模态的标记方式，这一处要跟着改 |
+| 新增语音素材要重启 DSH | 与改 `client.js` 同理：白名单在宿主进程启动时读取，不重启就是 404、**有画面没声音** |
+| 语音台词以对照表为准 | 七条取自对照表；探头与挂件那两句的音源不在表内，台词由用户口述，不做推测 |
 
 ---
 
@@ -874,17 +963,20 @@ else is untouched.
 | **Intro animation** | 12 seconds drawn live on canvas: red eyes in the dark → wolf outline traced in red → light burst → title decodes → ready |
 | **Draggable wordmark** | The "Spice and Wolf" mark; position, size and opacity adjustable, can be turned off entirely |
 | **Peeking Holo** | Only a hood and a pair of eyes at the composer edge; rises when the pointer approaches, draggable left and right |
-| **Peek voice** | Clicking her plays a puzzled sound (can be muted) |
+| **Peek voice** | Clicking her plays a puzzled sound and floats the Chinese caption above her right shoulder (can be muted) |
 | **Profile mini-card** | Hover the bottom-left account row to raise a Steam-style card |
 | **Log tags** | Inline tags such as "Thinking / Reading / Running command" each get a warm tone |
 | **Sidebar wheat** | A strip of wheat at the foot of the sidebar; width follows the rail, height anchors to the account row |
 | **Plugin cover banner** | A 1920×620 banner at the top of this plugin's page in the plugin manager |
-| **Right-rail standby** | An animation that only lights up on the right rail's own start page, six clips to choose from plus a `关闭动画` off option, fades out once you start working |
+| **Right-rail standby** | An animation that only lights up on the right rail's own start page, six clips to choose from plus a `关闭动画` off option, fades out once you start working; clicking her plays a line |
+| **Parchment note pad** | A wheat-ring badge in the corner opens a pad you can type into and paste images onto; the entry can be moved to a toolbar button |
+| **Voice & captions** | Nine lines wired to buttons, the peeker, the whale widget, the note-pad badge and the standby plate, each with a Chinese caption bubble |
 | **Whale widget link** | One click installs two roles plus one voice line into `dsh-whale-widget` |
 
-Six things have a switch in the plugin settings: intro animation, peeking Holo, peek
-voice, dark mode, right-rail standby, and wordmark visibility. Turn one off and it is
-removed completely, leaving no leftover nodes.
+Seven groups have a switch in the plugin settings: intro animation, peeking Holo, peek
+voice, dark mode, right-rail standby, the parchment note pad (two buttons: master switch
+plus entry mode), and wordmark visibility. Turn one off and it is removed completely,
+leaving no leftover nodes.
 
 Three are always on and are labelled as such rather than claimed to be switchable:
 the **profile mini-card**, the **log tags**, and the **sidebar wheat**. They are plain
@@ -897,7 +989,7 @@ styling or pure display layers — they capture no clicks and take no layout spa
 | DeepSeek Harness | `>=0.2.0-rc.1 <0.3.0-0` |
 | Node.js | `>=22` |
 | OS | Windows / macOS / Linux (tested on Windows 11 with DSH `0.2.1-rc.2`) |
-| Disk | ~16 MB (assets are ~13 MB, six scene videos alone are 13.2 MB) |
+| Disk | ~21 MB (the `素材/` sources are ~15 MB, six scene videos alone are 12.6 MB) |
 | Runtime dependencies | None |
 
 ### Install
