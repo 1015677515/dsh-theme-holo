@@ -1512,43 +1512,62 @@ html body:not([data-ds-dark-theme]) .holo-planner-btn:hover {
    Same parchment recipe as the note pad (see [data-holo-planner-panel]):
    warm paper gradient, gold hairline, serif text. It is a data- attribute
    rather than an id, so the dark-palette [id^="holo-"] rule leaves it alone. */
+/* ---- the voice bubble: the same parchment plate the promo film uses -----
+   Fill, shadow, 6px radius, hairline deckled edge, and a wheat sprig at each
+   end. No tail and no double ring: those made it read as a chat popup, while
+   the film's captions are flat torn paper. */
 [data-holo-voice-bubble] {
   position: fixed;
   z-index: 2147482999;
   display: none;
   max-width: 320px;
-  padding: 9px 13px 10px;
-  border-radius: 9px;
+  padding: 11px 26px 12px;
+  border-radius: 6px;
   pointer-events: auto;
   cursor: pointer;
-  color: #33291B;
-  background:
-    radial-gradient(circle at 16% 10%, rgba(255, 255, 255, 0.62), transparent 44%),
-    linear-gradient(158deg, #FFFCF5 0%, #FBF3E2 48%, #F7EBD6 100%);
-  border: 1px solid rgba(184, 130, 43, 0.52);
-  box-shadow:
-    0 0 0 3px rgba(251, 247, 239, 0.92),
-    0 0 0 4px rgba(184, 130, 43, 0.26),
-    0 12px 30px rgba(58, 38, 18, 0.24);
-  font: 400 13.5px/1.65 Georgia, "Songti SC", "Microsoft YaHei", serif;
-  letter-spacing: 0.01em;
+  color: #6E5D46;
+  background-color: rgba(251, 247, 239, 0.95);
+  /* the deckled edges, drawn as two thin torn lines instead of a clean stroke */
+  background-image:
+    linear-gradient(90deg, transparent 0, rgba(220, 201, 168, 0.9) 3%, rgba(220, 201, 168, 0.9) 97%, transparent 100%),
+    linear-gradient(90deg, transparent 0, rgba(220, 201, 168, 0.9) 3%, rgba(220, 201, 168, 0.9) 97%, transparent 100%);
+  background-size: 100% 1px, 100% 1px;
+  background-position: 0 0, 0 100%;
+  background-repeat: no-repeat;
+  border: 0;
+  box-shadow: 0 6px 24px rgba(110, 93, 70, 0.18);
+  font: 500 14px/1.72 "Songti SC", Georgia, "Microsoft YaHei", serif;
+  letter-spacing: 0.012em;
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 260ms ease, transform 260ms ease;
 }
 
-/* A little tail pointing down toward her. */
+/* a wheat sprig at each end, three short strokes each */
+[data-holo-voice-bubble]::before,
 [data-holo-voice-bubble]::after {
   content: '';
   position: absolute;
-  right: 26px;
-  bottom: -7px;
-  width: 12px;
-  height: 12px;
-  background: #F7EBD6;
-  border-right: 1px solid rgba(184, 130, 43, 0.52);
-  border-bottom: 1px solid rgba(184, 130, 43, 0.52);
-  transform: rotate(45deg);
+  top: 50%;
+  width: 9px;
+  height: 26px;
+  margin-top: -13px;
+  background-image:
+    linear-gradient(24deg, transparent 44%, rgba(162, 112, 31, 0.52) 44%, rgba(162, 112, 31, 0.52) 52%, transparent 52%),
+    linear-gradient(24deg, transparent 44%, rgba(162, 112, 31, 0.52) 44%, rgba(162, 112, 31, 0.52) 52%, transparent 52%),
+    linear-gradient(24deg, transparent 44%, rgba(162, 112, 31, 0.52) 44%, rgba(162, 112, 31, 0.52) 52%, transparent 52%);
+  background-size: 100% 7px, 100% 7px, 100% 7px;
+  background-position: 0 0, 0 10px, 0 20px;
+  background-repeat: no-repeat;
+}
+
+[data-holo-voice-bubble]::before {
+  left: 9px;
+  transform: scaleX(-1);
+}
+
+[data-holo-voice-bubble]::after {
+  right: 9px;
 }
 
 [data-holo-voice-bubble][data-holo-voice-state="shown"] {
@@ -1565,22 +1584,22 @@ html body:not([data-ds-dark-theme]) .holo-planner-btn:hover {
 
 [data-holo-voice-text] { display: block; }
 
+/* dark mode keeps the same geometry, only the paper turns to warm ink */
 html body[data-ds-dark-theme] [data-holo-voice-bubble] {
   color: #F1E5D0;
-  background:
-    radial-gradient(circle at 16% 10%, rgba(104, 84, 56, 0.42), transparent 46%),
-    linear-gradient(158deg, #262019 0%, #1E1813 52%, #17120D 100%);
-  border-color: rgba(224, 174, 92, 0.46);
-  box-shadow:
-    0 0 0 3px rgba(22, 18, 13, 0.9),
-    0 0 0 4px rgba(224, 174, 92, 0.22),
-    0 12px 30px rgba(0, 0, 0, 0.5);
+  background-color: rgba(30, 24, 19, 0.96);
+  background-image:
+    linear-gradient(90deg, transparent 0, rgba(224, 174, 92, 0.55) 3%, rgba(224, 174, 92, 0.55) 97%, transparent 100%),
+    linear-gradient(90deg, transparent 0, rgba(224, 174, 92, 0.55) 3%, rgba(224, 174, 92, 0.55) 97%, transparent 100%);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 
+html body[data-ds-dark-theme] [data-holo-voice-bubble]::before,
 html body[data-ds-dark-theme] [data-holo-voice-bubble]::after {
-  background: #17120D;
-  border-right-color: rgba(224, 174, 92, 0.46);
-  border-bottom-color: rgba(224, 174, 92, 0.46);
+  background-image:
+    linear-gradient(24deg, transparent 44%, rgba(224, 174, 92, 0.55) 44%, rgba(224, 174, 92, 0.55) 52%, transparent 52%),
+    linear-gradient(24deg, transparent 44%, rgba(224, 174, 92, 0.55) 44%, rgba(224, 174, 92, 0.55) 52%, transparent 52%),
+    linear-gradient(24deg, transparent 44%, rgba(224, 174, 92, 0.55) 44%, rgba(224, 174, 92, 0.55) 52%, transparent 52%);
 }
 
 
@@ -5202,18 +5221,55 @@ function render(t) {
         else video.classList.remove('is-mirrored')
       }
 
+      // Where the first quick-action card starts, in viewport coordinates.
+      //
+      // The start page's entries (工作区文件 / 新建终端 / 浏览器 ...) are
+      // <button data-sidebar-right-guide-entry> elements laid out at the top of
+      // the column. The hit band used to be measured from the column's own top
+      // and stopped at a flat 62% of the plate, which put its lower edge in the
+      // middle of those buttons -- clicking 工作区文件 or 新建终端 landed on the
+      // band and her line played instead of the action running.
+      //
+      // The entries are centred vertically (`justify-content: center` with
+      // `min-height: 100%`), so their top edge moves whenever the window
+      // height changes. That is why this is a live measurement taken inside
+      // place() rather than a constant worked out once.
+      //
+      // Returns null when no entry is on screen (a different tab in that
+      // column), in which case the caller keeps the plain proportion.
+      const guideEntryTop = () => {
+        const col = findColumn()
+        const scope = col === null ? document : col
+        let best = null
+        try {
+          const all = scope.querySelectorAll('[data-sidebar-right-guide-entry]')
+          if (all !== null && all !== undefined && typeof all.length === 'number') {
+            for (let i = 0; i < all.length; i += 1) {
+              const el = all[i]
+              if (!visible(el)) continue
+              const box = el.getBoundingClientRect()
+              if (box.height <= 0) continue
+              if (best === null || box.top < best) best = box.top
+            }
+          }
+        } catch (error) {
+          return null
+        }
+        return best
+      }
+
       const place = () => {
         const col = findColumn()
         if (col === null) {
           clip.style.width = '0px'
           hit.style.display = 'none'
-          return
+          return false
         }
         const box = col.getBoundingClientRect()
         if (box.width <= 0) {
           clip.style.width = '0px'
           hit.style.display = 'none'
-          return
+          return false
         }
         // Cap the slice at the plate's own width and re-centre it inside the
         // column. The mask's fade band is a percentage OF THE SLICE, so a slice
@@ -5229,8 +5285,30 @@ function render(t) {
         // artwork whatever the column width is.
         hit.style.left = Math.round(box.left + (box.width - plate) / 2) + 'px'
         hit.style.width = plate + 'px'
-        hit.style.top = Math.round(box.top) + 'px'
-        hit.style.height = Math.round(plate * (1080 / 608) * 0.62) + 'px'
+        const top = Math.round(box.top)
+        hit.style.top = top + 'px'
+        let height = Math.round(plate * (1080 / 608) * 0.62)
+        // Never reach into the quick-action cards. Their top edge is measured
+        // live (see guideEntryTop) because the shell centres them vertically and
+        // they shuffle as the window resizes. A 6px gap keeps the band off the
+        // button's own rounded corner, where a stray click would otherwise land
+        // on whichever of the two sits on top.
+        const entryTop = guideEntryTop()
+        if (entryTop !== null) {
+          const room = Math.round(entryTop - box.top) - 6
+          if (room < height) height = room
+        }
+        // A column too short to leave any room collapses the band to zero
+        // instead of going negative. The height is always written, even when it
+        // is 0: place() must not leave a stale taller value behind, because the
+        // caller (sync) is what decides whether the band is shown at all.
+        if (height < 0) height = 0
+        hit.style.height = height + 'px'
+        // Tell the caller whether there is any clickable band left, so sync can
+        // keep it out of the tree entirely rather than displaying a 0-height
+        // box. A zero-height element eats no clicks either way; hiding it just
+        // keeps the DOM honest.
+        return height > 0
       }
 
       const play = () => {
@@ -5290,8 +5368,12 @@ function render(t) {
         clip.insertBefore(video, scrim)
         place()
         clearFills()
+        // place() runs again once the band is displayable: the cards' own
+        // positions are only final after the plate is in the tree, and the band
+        // is measured against them (see guideEntryTop).
         hit.style.display = 'block'
-        place()
+        const hasBand = place()
+        if (hasBand === false) hit.style.display = 'none'
         play()
       }
 
@@ -5343,8 +5425,8 @@ function render(t) {
         // line played instead of closing the image.
         if (hit !== null) {
           if (show && !modalOpen()) {
-            place()
-            hit.style.display = 'block'
+            const hasBand = place()
+            hit.style.display = hasBand === false ? 'none' : 'block'
           } else {
             hit.style.display = 'none'
           }
