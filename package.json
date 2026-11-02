@@ -38,6 +38,8 @@
     "docs",
     "素材",
     "locale",
+    "tavern/lesson",
+    "tavern/vendor",
     "cordis.patch.yml",
     "README.md",
     "INSTALL.md",

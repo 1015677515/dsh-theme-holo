@@ -5547,6 +5547,12 @@ function render(t) {
         const [busy, setBusy] = useState(false)
         const [note, setNote] = useState('')
         const [error, setError] = useState('')
+        // 酒馆入口的三份状态：下载中、提示文案、以及一个「读一次 localStorage」
+        // 的触发器。tavernStatus() 在每次渲染时现读，tick 只负责让清除记录后
+        // 重新渲染一次，不把 localStorage 复制进 state 里做双份真相。
+        const [tavernBusyState, setTavernBusy] = useState(false)
+        const [tavernNote, setTavernNote] = useState('')
+        const [, setTavernTick] = useState(0)
         const [skipBoot, setSkipBoot] = useState(() => {
           try { return localStorage.getItem(BOOT_SKIP_KEY) === '1' } catch (err) { return false }
         })
@@ -5986,6 +5992,95 @@ function render(t) {
             accentColor: 'var(--dsw-alias-label-primary, #3A2C1A)',
           },
         })))
+
+        /* ---- 赫萝的黄昏酒馆 ------------------------------------------------
+           一个独立的 3D 互动小场景，按需下载、默认不装。
+
+           为什么不做进主包：酒馆含一个 1.8 MB 的骨骼模型和一组物品图，
+           装进来会让每个用户都多背几 MB，而大多数人只想要主题本身。
+           所以它走「代码随插件走、素材按需下」：
+             - tavern/ 的 html/js/css/vendor 随插件安装（约 150 KB）
+             - tavern/assets 不进 package.json 的 files，要下载才有
+           下载源是 Release 附件 zip，版本号跟插件版本对齐。
+
+           这一段目前是骨架：入口和按钮都在，但 download 分支还没有接上
+           真实的下载地址（等附件上传后再填）。点了会如实说明「还没上传」，
+           不会假装成功。 */
+        const TAVERN_STATE_KEY = 'dsh-theme-holo.tavern-installed'
+        const TAVERN_VERSION_KEY = 'dsh-theme-holo.tavern-version'
+        const TAVERN_URL = '/holo-tavern/lesson/index.html'
+
+        const tavernStatus = () => {
+          try {
+            const installed = localStorage.getItem(TAVERN_STATE_KEY) === '1'
+            const version = localStorage.getItem(TAVERN_VERSION_KEY) || ''
+            return { installed, version }
+          } catch (err) {
+            return { installed: false, version: '' }
+          }
+        }
+
+        children.push(h('div', {
+          key: 'tavernTitle',
+          style: { ...strongStyle, marginTop: '14px', paddingTop: '12px', borderTop: '0.5px solid var(--dsw-alias-border-l3)' },
+        }, '赫萝的黄昏酒馆'))
+
+        const tavern = tavernStatus()
+        children.push(h('div', { key: 'tavernStatus', style: { ...dimStyle, marginTop: '6px' } },
+          tavern.installed
+            ? '已下载' + (tavern.version ? '（v' + tavern.version + '）' : '') + '：点下面「前往黄昏酒馆」在新标签页打开。'
+            : '未下载。酒馆是一个独立的 3D 互动小场景（约 3.8 MB），默认不随插件安装，需要时再下。'))
+
+        const tavernBusy = tavernBusyState
+        const tavernButtons = [
+          h('button', {
+            key: 'tavernOpen',
+            type: 'button',
+            disabled: !tavern.installed,
+            onClick: () => {
+              try {
+                window.open(TAVERN_URL, '_blank', 'noopener')
+              } catch (err) { /* 弹窗被拦：不假装成功 */ }
+            },
+            style: buttonStyle(tavern.installed),
+          }, '前往黄昏酒馆'),
+          h('button', {
+            key: 'tavernDownload',
+            type: 'button',
+            disabled: tavernBusy,
+            onClick: () => {
+              if (tavernBusy) return
+              setTavernBusy(true)
+              setTavernNote('')
+              // 骨架阶段：附件还没上传，这里如实报告，不伪造进度。
+              setTavernNote('下载通道还没接上：酒馆素材包尚未上传到 Release。上传后这里会自动接上真实下载。')
+              setTavernBusy(false)
+            },
+            style: buttonStyle(!tavernBusy),
+          }, tavernBusy ? '正在下载…' : (tavern.installed ? '重新下载' : '下载酒馆（约 3.8 MB）')),
+        ]
+        if (tavern.installed) {
+          tavernButtons.push(h('button', {
+            key: 'tavernRemove',
+            type: 'button',
+            onClick: () => {
+              try {
+                localStorage.removeItem(TAVERN_STATE_KEY)
+                localStorage.removeItem(TAVERN_VERSION_KEY)
+              } catch (err) { /* ignore */ }
+              setTavernNote('已清除本地记录。素材文件仍在磁盘上，如需彻底删除请手动删掉插件目录下的 tavern/assets。')
+              setTavernTick((n) => n + 1)
+            },
+            style: ghostButtonStyle,
+          }, '清除记录'))
+        }
+        children.push(h('div', { key: 'tavernRow', style: rowStyle }, tavernButtons))
+        if (tavernNote !== '') {
+          children.push(h('div', {
+            key: 'tavernNote',
+            style: { ...dimStyle, marginTop: '6px', color: 'var(--dsw-alias-state-warn-label)' },
+          }, tavernNote))
+        }
 
         return h('div', { style: { padding: '4px 0 2px' } }, children)
       }

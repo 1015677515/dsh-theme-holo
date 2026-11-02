@@ -67,6 +67,42 @@ const ANIME_DIR = join(dirname(fileURLToPath(import.meta.url)), '素材', '动�
  * keeps a stray file dropped into a staging folder from silently becoming
  * public. Keys are forward-slash relative paths, matched exactly.
  */
+/**
+ * Fourth prefix, for the tavern: the standalone 3D scene under `./tavern`.
+ *
+ * Unlike the three routes above, this one is NOT an exact-file whitelist. The
+ * scene ships a directory tree (lesson/js, lesson/css, vendor, assets/items)
+ * and the list would be 25+ entries that change whenever the scene does. So it
+ * is scoped by DIRECTORY instead: only paths under `tavern/lesson`,
+ * `tavern/vendor` and `tavern/assets` are served, and `resolveIn` still rejects
+ * anything that normalises outside `tavern/` (traversal, absolute paths).
+ *
+ * `tavern/_png_backup` is deliberately not under any served prefix, and the
+ * extra `TAVERN_DENY` check keeps a stray copy of it unreachable even if
+ * someone moves it into `assets/`.
+ */
+const TAVERN_BASE = '/holo-tavern'
+
+/** Directory the tavern lives in, next to this file. */
+const TAVERN_DIR = join(dirname(fileURLToPath(import.meta.url)), 'tavern')
+
+/** Served subtrees under TAVERN_DIR. Anything else 404s. */
+const TAVERN_ALLOW_DIRS = ['lesson/', 'vendor/', 'assets/']
+
+/** Never served, even inside an allowed subtree (compression backups). */
+const TAVERN_DENY = ['_png_backup/', 'final_png_backup']
+
+/** Is this relative path servable from the tavern route? */
+function tavernAllowed(rel) {
+  if (rel === '' || rel.includes('\0')) return false
+  if (!TAVERN_ALLOW_DIRS.some((prefix) => rel.startsWith(prefix))) return false
+  if (TAVERN_DENY.some((bad) => rel.includes(bad))) return false
+  // No dotfiles, no source maps, no editor droppings.
+  const parts = rel.split('/')
+  if (parts.some((p) => p.startsWith('.') || p === '' || p === '..')) return false
+  return true
+}
+
 const ALLOW = new Map([
   [BASE, new Set([
     'avatar.jpg',
@@ -104,17 +140,26 @@ const ALLOW = new Map([
 ])
 
 const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.png': 'image/png',
   '.webp': 'image/webp',
-  '.svg': 'image/svg+xml',
+  '.glb': 'model/gltf-binary',
+  '.gltf': 'model/gltf+json',
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav',
   '.ogg': 'audio/ogg',
   '.webm': 'video/webm',
   '.mp4': 'video/mp4',
+  '.woff': 'font/woff',
   '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
 }
 
 /**
@@ -273,4 +318,41 @@ export function apply(ctx) {
     () => claim(ANIME_BASE, ANIME_DIR, ALLOW.get(ANIME_BASE), 'standby clips'),
     'theme-holo: anime route',
   )
+
+  /* The tavern: a directory-scoped static route rather than a file whitelist
+     (see TAVERN_ALLOW_DIRS). It has to answer the bare directory too, because a
+     browser opening /holo-tavern/ should land on the scene instead of a 404. */
+  const tavernRoute = webServer.register({
+    kind: 'prefix',
+    path: TAVERN_BASE,
+    handler: (req, res) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        res.statusCode = 405
+        res.setHeader('Allow', 'GET, HEAD')
+        res.end()
+        return
+      }
+      let urlPath = (req.url ?? '').split('?')[0]
+      // `/holo-tavern` and `/holo-tavern/` both mean "the scene's entry page".
+      let rel = urlPath.slice(TAVERN_BASE.length).replace(/^\/+/, '')
+      if (rel === '') rel = 'lesson/index.html'
+
+      const file = resolveIn(TAVERN_DIR, TAVERN_BASE, TAVERN_BASE + '/' + rel)
+      if (file === undefined) {
+        res.statusCode = 404
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+        res.end('not found')
+        return
+      }
+      const relFromDir = file.slice(TAVERN_DIR.length + 1).split(sep).join('/')
+      if (!tavernAllowed(relFromDir)) {
+        res.statusCode = 404
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+        res.end('not found')
+        return
+      }
+      return serveFile(req, res, file)
+    },
+  })
+  ctx.effect(() => tavernRoute, 'theme-holo: tavern route')
 }

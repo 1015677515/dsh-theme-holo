@@ -1,5 +1,44 @@
 # 更新记录
 
+## 未发布
+
+### 新增
+
+- **赫萝的黄昏酒馆：插件设置里的入口 + 按需下载按钮（骨架）**。一个独立的
+  3D 互动小场景，默认**不随插件安装**——`package.json` 的 `files` 只收
+  `tavern/lesson` 与 `tavern/vendor`（约 150 KB 代码），**`tavern/assets`
+  刻意不收**，所以装完插件不会有那 1.8 MB 的骨骼模型，点下载才有。
+  设置卡片里有「前往黄昏酒馆」与「下载酒馆（约 3.8 MB）」两个按钮，
+  未下载时「前往」是禁用的。
+  **本版是骨架**：下载分支还没接真实地址（Release 附件尚未上传），
+  点了会如实说明「还没上传」，不伪造进度、不假装成功。
+- **`/holo-tavern/` 静态路由**。与前三条路由不同，这条**不是逐文件白名单**
+  ——酒馆有 25+ 文件且会随场景变动，逐个列举不现实。改为**目录级白名单**：
+  只放行 `tavern/lesson`、`tavern/vendor`、`tavern/assets` 三棵子树，
+  仍然经过 `resolveIn` 做穿越防护，另加 `TAVERN_DENY` 挡住压缩备份目录
+  （`_png_backup`）、点文件与 `..`。裸路径 `/holo-tavern` 与
+  `/holo-tavern/` 都落到 `lesson/index.html`。
+
+### 变更
+
+- **`MIME` 表补全**：原先只有图片/音视频/woff2，缺 `.html`、`.js`、`.css`、
+  `.json`、`.glb`、`.woff`、`.ttf`。酒馆是完整的网页应用，缺这几项会让
+  `index.html` 以 `application/octet-stream` 下发、浏览器直接下载而不是渲染。
+  补全后 `index.html` 是 `text/html; charset=utf-8`，`holo.glb` 是
+  `model/gltf-binary`。
+
+### 测试
+
+- 新增三套，共 **80 项断言**：
+  - `tavern_entry_test`（22 项）：入口结构、按钮文案、未装时禁用「前往」、
+    **骨架阶段不伪造下载成功**、状态不存双份。
+  - `tavern_route_test`（38 项）：`tavernAllowed` 的放行与拦截边界——
+    11 条该放行、15 条该挡住（穿越、备份、点文件、非允许目录）。
+  - `tavern_e2e_test`（20 项）：**真起 HTTP 服务**打请求，验证 6 个资源
+    返回 200、4 类穿越返回 404、POST 返回 405。
+    穿越用例必须用 `http.request` 发原始 path —— `fetch()` 会在发出前把
+    `/holo-tavern/../client.js` 规范化成 `/client.js`，那样测不到 handler。
+
 ## 1.0.6 — 2026-10-27
 
 ### 新增

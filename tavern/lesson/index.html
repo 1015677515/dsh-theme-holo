@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>赫萝的黄昏课堂</title>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+<canvas id="app"></canvas>
+<div class="vignette"></div>
+
+<!-- 加载 -->
+<div id="loading">
+  <div class="ld-mark">SPICE &amp; WOLF</div>
+  <div class="ld-title">赫萝的黄昏课堂</div>
+  <div class="ld-sub">一堂关于「值多少」的课</div>
+  <div class="ld-bar"><i id="bar"></i></div>
+  <div class="ld-text" id="barText">准备中</div>
+</div>
+
+<!-- 顶部信息 -->
+<header id="topbar">
+  <div class="tb-title">赫萝的黄昏课堂</div>
+  <div class="tb-hint">移动鼠标 · 视线微转　　点击 / 空格 · 继续</div>
+</header>
+
+<!-- 场景提示（挑东西的时候出现） -->
+<div id="hudHint"></div>
+
+<!-- 悬停物品名 -->
+<div id="tip"></div>
+
+<!-- 短提示 -->
+<div id="flash"></div>
+
+<!-- 对话框 -->
+<div id="dlg" class="dlg" data-who="holo">
+  <div class="dlg-inner">
+    <div class="dlg-name" id="dlgName">赫萝</div>
+    <div class="dlg-text" id="dlgText"></div>
+    <div class="dlg-arrow" id="dlgArrow">▼</div>
+  </div>
+</div>
+
+<!-- 选择支 -->
+<div id="choices"></div>
+
+<!-- 场景切换：架子 ↔ 餐桌 -->
+<button id="navBtn">‹ 回到餐桌</button>
+
+<!-- 结局 -->
+<div id="endNote">
+  <div class="en-line">一堂课结束了</div>
+  <div class="en-sub">「咱不保证汝不赔。咱只保证——汝会知道自己赔在哪一步。」</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "../vendor/three.module.js"
+  }
+}
+</script>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
