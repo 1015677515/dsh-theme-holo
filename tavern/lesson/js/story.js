@@ -3,9 +3,15 @@
  *
  * 节点格式：
  *   { who: 'holo' | 'me' | 'nar', text }        一句台词
+ *   { voice: 'H053' }                           给这一句挂配音（assets/voice/<id>.wav）
  *   { fx: 'shelf' | 'face' | 'show' | 'hide' }   场景指令（可与台词同一步）
  *   { choice: [{ label, reply: [...] }] }        选择支，选完把 reply 插进来继续
  *   { act: 'bite' }                              特殊动作钩子
+ *
+ * 关于 voice：
+ *   不是每句都配。只在「语气能对上」的地方挂，宁可少不要滥。
+ *   挂了 voice 的句子，字幕照常显示（配音讲的内容未必和字幕一字不差，
+ *   是从原作语音库里挑的、语气贴的片段）。
  *
  * 语气基准（赫萝）：
  *   - 自称「咱」，称对方「汝」；越熟越少用「汝」。
@@ -16,17 +22,23 @@
  * 设计原则：一件东西最多一个选择支，讲完就走，不拖。
  */
 
-/* ─────────────── 开场 ─────────────── */
+/* ─────────────── 开场 ───────────────
+ * 配音原则：**字幕与配音逐字一致**。
+ * 做法是先看库里有什么台词，再把原文原样搬来当字幕 ——
+ * 不写「字幕是 A、配音说 B」的句子。
+ * 没挂 voice 的句子是纯字幕（库里没有能对上的话）。
+ */
 export const INTRO = [
   { who: 'nar', text: '炉火噼啪响了一声。焦木的气味混着面包的暖香，压在这个小小的屋子里。' },
-  { who: 'holo', em: { mouth: 'smile', ear: 0.5, blush: 0.28 }, text: '来了？坐。桌子那头的位置，咱给你留着。' },
-  { who: 'holo', em: { mouth: 'serious', brow: -0.3, tilt: 0.35 }, text: '别摆那副脸。今天不跟你谈生意。' },
-  { who: 'holo', em: { mouth: 'smirk', headTilt: 0.7, ear: 0.55, blush: 0.3 }, text: '……今天，咱当一回先生。' },
-  { who: 'me', text: '（贤狼赫萝，教我？）' },
-  { who: 'holo', em: { mouth: 'smirk', brow: 0.25 }, text: '哼。咱活过的年头，比汝吃过的面包还多。教汝，绰绰有余。' },
-  { who: 'holo', em: { mouth: 'neutral', ear: 0.25, headTilt: 0.2 }, text: '喏，架子就在身后。上头那些东西，汝随便指一样，咱就讲一样。' },
-  { who: 'holo', em: { mouth: 'smirk', headTilt: -0.45, brow: 0.3 }, text: '丑话说在前头——咱一开口，可不一定收得住。' },
-  { fx: 'shelf', who: 'holo', text: '转过去吧。别急着伸手，先看清楚。' },
+  { who: 'holo', voice: 'H003', em: { mouth: 'smile', ear: 0.5, blush: 0.28 }, text: '吃的喝的，也就备到这儿了。' },
+  { who: 'holo', em: { mouth: 'smirk', headTilt: 0.3, ear: 0.5 }, text: '坐吧。桌子那头的位置，咱给你留着。' },
+  { who: 'holo', voice: 'H006', em: { mouth: 'neutral', ear: 0.3, tilt: 0.2 }, text: '人世间啊，稀罕事多着呢。' },
+  { who: 'me', text: '（她今天好像不太一样。）' },
+  { who: 'holo', voice: 'H037', em: { mouth: 'smile', ear: 0.55, blush: 0.3, headTilt: 0.25 }, text: '咱懂！那种又怀念、肚子里又痒痒的感觉。' },
+  { who: 'holo', em: { mouth: 'smirk', ear: 0.5, headTilt: -0.35 }, text: '……汝想听什么？问吧。' },
+  // 注意：这里**不再转场到架子**。
+  // 转场交给 MEMORY_OFFER 的选择支 —— 分岔要在餐桌上问，
+  // 选完「看收藏品」才转过去，否则镜头会先跑到架子再问，顺序就乱了。
 ];
 
 /* ─────────────── 在架子前 ─────────────── */
@@ -370,3 +382,166 @@ export const ITEMS = {
     ],
   },
 };
+
+/* ═══════════════════════════════════════════════════════════════
+   回忆模式
+   —— 赫萝的 2D 立绘（右侧）讲述往事，左侧是舞台剧画面。
+
+   与「课堂」的区别：
+     · 不写 em（那是 3D 面部的表情骨骼），改用 tail（2D 尾巴姿态）
+     · art 是舞台剧画面 id，对应的图放在 assets/stage/<id>.webp
+       图还没到位时，main.js 会留着占位框，不会报错
+     · go 用来跳出当前流程（进回忆 / 回架子），由 main.js 接住
+
+   语气：她是「回忆者」，不是「讲课的先生」。
+        少一点居高临下，多一点自言自语。句子更碎，停顿更多。
+   ═══════════════════════════════════════════════════════════════ */
+
+/** 章节清单。第二章做好后往这里加一条即可。 */
+export const MEMORY_CHAPTERS = [
+  { id: 'ch1', name: '第一章 · 初次相遇', sub: '那辆装麦子的车' },
+];
+
+/** 赫萝问要不要听往事（INTRO 之后的分岔）
+ *
+ *  分两条路：
+ *    A「听旅行的故事」→ 回忆模式（舞台剧）
+ *    B「看旅行的收藏品」→ 置物架（原有的课堂）
+ *
+ *  听完故事后（MEMORY_AFTER）会再给一次选择：可以再听一遍。
+ */
+export const MEMORY_OFFER = [
+  { who: 'nar', text: '她把手里的杯子放下。火光在她眼睛里跳了一下。' },
+  { who: 'holo', tail: 'curl', text: '……坐都坐下了。汝脸上写着「想问点什么」。' },
+  { who: 'holo', tail: 'drop', text: '问吧。不过咱先说好——有些事，咱讲一遍就够了。' },
+  { who: 'me', text: '（她难得没摆架子。）' },
+  {
+    choice: [
+      {
+        label: '想听旅行的故事。',
+        reply: [
+          { who: 'holo', tail: 'up', text: '……唔。' },
+          { who: 'holo', tail: 'curl', text: '哼，汝倒会挑。那是咱这辈子最狼狈、也最划算的一晚。' },
+          { go: 'memory' },
+        ],
+      },
+      {
+        label: '想看看旅行的收藏品。',
+        reply: [
+          { who: 'holo', tail: 'drop', text: '也好。东西比人实在——它们至少不会拿话绕汝。' },
+          { who: 'holo', em: { mouth: 'smirk', ear: 0.45, headTilt: -0.3 }, text: '转过去吧。别急着伸手，先看清楚。' },
+          // 先转镜头，再进架子 —— 转场和「进流程」分开写，顺序才稳
+          { fx: 'shelf' },
+          { go: 'shelf' },
+        ],
+      },
+    ],
+  },
+];
+
+/** 第一章 · 初次相遇
+ *
+ *  ★ 配音原则：**字幕与配音逐字一致**。
+ *    所有 voice 句子的 text 都是从配音库原样搬来的，一个字没改。
+ *
+ *  ★ 画面原则：**点击驱动 + 大部分演出发生在马车停留期间**。
+ *    用户要求「大部分演出都在马车停留期间」，所以镜头 4~7 承载了
+ *    全部叙事台词；特写只在最后一小段出现。
+ *
+ *  镜头表（stage_v2.js 的 SHOTS）：
+ *    0 开场·月亮已在        1 村子与麦田
+ *    2 祭典/神              3 时代变了
+ *    4 最后一束麦·绳出      5 马车被吊进场（绳在拉）
+ *    6 马车停留·绳渐隐      ← 叙事主战场
+ *    7 马车停留·车身沉      ← 叙事主战场
+ *    8 特写·绳全消失        9 掀开·月亮爆亮
+ *   10 报名字·特写         11 收尾·绳拉马车离开
+ */
+export const MEMORY_CH1 = [
+  { fx: 'memOn', shot: 0, title: '第一章 · 初次相遇' },
+  { who: 'nar', shot: 0, text: '她往椅背上一靠，声音慢下来。像在翻一本只有她自己读过的书。' },
+
+  // ── 麦田与神（月亮缓慢横移）──
+  { who: 'holo', shot: 1, voice: 'H026', tail: 'drop', text: '这是很久以前的记忆了。咱在这个村子里，掌管过麦子的丰收。' },
+  { who: 'holo', shot: 1, voice: 'H023', tail: 'drop', text: '嗯——这村子从前是靠麦子出名的。' },
+  { who: 'holo', shot: 2, voice: 'H038', tail: 'curl', text: '这是这村子祭典上的事——' },
+  { who: 'holo', shot: 2, voice: 'H029', tail: 'drop', text: '话虽如此，当年也确实被人叫作神。' },
+  { who: 'holo', shot: 3, voice: 'H030', tail: 'curl', text: '唉，是咱待得太久了。时代它自己会变。' },
+
+  // ── 粗绳出现，马车被吊进场 ──
+  { who: 'holo', shot: 4, voice: 'H039', tail: 'up', text: '为了不让咱从这片麦田走掉，就让人拿着最后一束麦，把那人当成咱来抓。' },
+  { who: 'nar', shot: 5, text: '她顿了一下。炉火的光在她脸上晃。' },
+  { who: 'holo', shot: 5, voice: 'H216', tail: 'curl', text: '瞧，钻进你的马车了。' },
+
+  // ── 马车停留期：叙事主体（镜头 6~7）──
+  { who: 'holo', shot: 6, voice: 'H013', tail: 'drop', text: '大概到你非抱着咱的尾巴就睡不着、还要撒娇耍赖那么长吧。' },
+  { who: 'holo', shot: 6, tail: 'drop', text: '那一晚咱睡得沉。' },
+  { who: 'holo', shot: 6, tail: 'curl', text: '结果半夜里，布被人一把掀开。' },
+  { who: 'me', shot: 6, text: '（……那是我。）' },
+  { who: 'holo', shot: 7, tail: 'up', text: '他举着手僵在那儿，一个字都吐不出来。' },
+  { who: 'holo', shot: 7, voice: 'H124', tail: 'curl', text: '照看它们，是贤狼的本分。' },
+  { who: 'holo', shot: 7, tail: 'drop', text: '咱就对着月亮嚎了一声。' },
+
+  // ── 特写：掀开与报名字 ──
+  { who: 'holo', shot: 8, voice: 'H140', tail: 'curl', text: '咱是赫萝。' },
+  { who: 'holo', shot: 9, voice: 'H122', tail: 'curl', text: '哼，咱可是贤狼赫萝。' },
+  { who: 'nar', shot: 9, text: '（他那天，大概以为自己遇上了麻烦。）' },
+  { who: 'holo', shot: 10, voice: 'H009', tail: 'curl', text: '要说准了，那是那家伙对咱一见钟情时候的事。' },
+
+  // ── 收尾：绳回来拉走马车 ──
+  { who: 'holo', shot: 11, voice: 'H053', tail: 'up', text: '总之，咱俩的相遇就是这样。咱一句话就把人给迷住了。' },
+  { who: 'holo', shot: 11, voice: 'H055', tail: 'drop', text: '咱俩后来的旅程，写成画卷也好、冒险故事也好，都够格。' },
+];
+
+/** 第一章讲完之后
+ *
+ *  这里只负责「收尾画面」，**不再放选择支**。
+ *  选什么交给「回到餐桌」那个分岔点（TABLE_OFFER）——
+ *  这样只有一个地方管「接下来做什么」，不会两处各弹一次。
+ */
+export const MEMORY_AFTER = [
+  { fx: 'memOff' },
+  { who: 'nar', text: '她端起杯子，喝了一口。炉火重新亮起来。' },
+  { who: 'holo', em: { mouth: 'smirk', ear: 0.45, headTilt: 0.3 }, text: '……讲完了。就这么多。' },
+  { who: 'holo', em: { mouth: 'smirk', ear: 0.5, headTilt: -0.35 }, text: '后头的事还长着呢。汝要是还想听，得看今晚舍不舍得给咱添酒。' },
+  { who: 'nar', text: '（她把杯子往前推了推，等着你开口。）' },
+];
+
+/** 回到餐桌：这里是「接下来做什么」的唯一分岔点
+ *
+ *  三条路：
+ *    · 再听一遍旅行故事  → go: 'memory'
+ *    · 看看旅行的收藏品  → go: 'shelf'
+ *    · 今晚就到这儿      → 留在餐桌（不 go）
+ */
+export const TABLE_OFFER = [
+  { who: 'holo', tail: 'curl', em: { mouth: 'smirk', ear: 0.45, headTilt: 0.2 }, text: '……唔？看累了，还是舍不得挑？' },
+  { who: 'holo', tail: 'drop', em: { mouth: 'neutral', ear: 0.3 }, text: '还是说——汝还想听咱讲点什么？' },
+  {
+    choice: [
+      {
+        label: '再听一遍旅行的故事。',
+        reply: [
+          { who: 'holo', em: { mouth: 'smile', ear: 0.55, blush: 0.35, headTilt: 0.25 }, text: '……哦？汝这是听上瘾了。' },
+          { who: 'holo', em: { mouth: 'smirk', ear: 0.5 }, text: '行吧。反正咱也没别的事。坐下，别打岔。' },
+          { go: 'memory' },
+        ],
+      },
+      {
+        label: '看看旅行的收藏品。',
+        reply: [
+          { who: 'holo', em: { mouth: 'smirk', ear: 0.45, headTilt: -0.3 }, text: '嗯。东西就在身后，汝自己挑。' },
+          { fx: 'shelf' },
+          { go: 'shelf' },
+        ],
+      },
+      {
+        label: '今晚就到这儿吧。',
+        reply: [
+          { who: 'holo', em: { mouth: 'smile', ear: 0.4, blush: 0.3 }, text: '……唔。那汝路上小心。' },
+          { who: 'holo', em: { mouth: 'smirk', ear: 0.5, headTilt: -0.25 }, text: '下回带酒来。空手来的，咱可不讲故事。' },
+        ],
+      },
+    ],
+  },
+];

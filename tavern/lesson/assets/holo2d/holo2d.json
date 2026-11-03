@@ -1,0 +1,82 @@
+{
+  "canvas": {
+    "w": 512,
+    "h": 878
+  },
+  "scaleFrom": {
+    "w": 818,
+    "h": 1404
+  },
+  "scale": 0.6259,
+  "file": "holo_base.webp",
+  "defaultTail": "curl",
+  "tailRoot": {
+    "x": 301.69,
+    "y": 441.27
+  },
+  "tails": {
+    "curl": {
+      "file": "tail_curl.webp",
+      "left": 241.6,
+      "top": 361.78,
+      "w": 320,
+      "h": 287,
+      "rootPct": [
+        18.75,
+        27.6
+      ],
+      "pad": [
+        60,
+        54
+      ],
+      "content": {
+        "left": 301.6,
+        "top": 415.78,
+        "w": 200,
+        "h": 179
+      }
+    },
+    "drop": {
+      "file": "tail_drop.webp",
+      "left": 241.6,
+      "top": 315.46,
+      "w": 320,
+      "h": 436,
+      "rootPct": [
+        18.75,
+        28.83
+      ],
+      "pad": [
+        60,
+        82
+      ],
+      "content": {
+        "left": 301.6,
+        "top": 397.46,
+        "w": 200,
+        "h": 272
+      }
+    },
+    "up": {
+      "file": "tail_up.webp",
+      "left": 241.6,
+      "top": 237.85,
+      "w": 320,
+      "h": 345,
+      "rootPct": [
+        18.75,
+        59.0
+      ],
+      "pad": [
+        60,
+        65
+      ],
+      "content": {
+        "left": 301.6,
+        "top": 302.85,
+        "w": 200,
+        "h": 215
+      }
+    }
+  }
+}

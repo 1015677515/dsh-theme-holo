@@ -19,6 +19,10 @@ import { stat } from 'node:fs/promises'
 import { dirname, extname, join, normalize, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+/* tar.gz 解包与路径校验。抽成独立模块是为了让测试能 import 真函数，
+ * 而不是用正则从本文件里"抠"函数体（那种做法一改缩进就假失败）。 */
+import { untar, safeRel } from './tavern-kit/tar.mjs'
+
 /** Stable Cordis plugin name. */
 export const name = 'themeHolo'
 
@@ -82,6 +86,14 @@ const ANIME_DIR = join(dirname(fileURLToPath(import.meta.url)), '素材', '动�
  * someone moves it into `assets/`.
  */
 const TAVERN_BASE = '/holo-tavern'
+
+/**
+ * 内部端点：返回宿主的真实 HTTP 根地址（webApp.getAdvertisedUrl()）。
+ *
+ * 单独一条前缀，不放在 TAVERN_BASE 下 —— /holo-tavern/* 整段由静态路由
+ * 接管，它的目录白名单会把这个端点判成 404。
+ */
+const BASE_URL_PATH = '/holo-base-url'
 
 /** Directory the tavern lives in, next to this file. */
 const TAVERN_DIR = join(dirname(fileURLToPath(import.meta.url)), 'tavern')
@@ -319,6 +331,39 @@ export function apply(ctx) {
     'theme-holo: anime route',
   )
 
+  /* 真实 HTTP 地址，供「前往黄昏酒馆」拼绝对 URL。
+   *
+   * 为什么需要它：桌面版的 window.location.origin 是 `dsh-app://app`，
+   * 那是 DSH 自己的协议。Electron 主窗口的 setWindowOpenHandler 只把
+   * http:/https: 转交系统浏览器，其余一律 deny —— 所以用 dsh-app:// 的
+   * 地址调 window.open 什么都不会发生（这就是点了没反应的原因）。
+   *
+   * webApp.getAdvertisedUrl() 是宿主提供的真实地址（同一个值也用于
+   * DSH_WEB_URL 与启动时的 URL 行）。它不硬依赖：取不到就回空串，前端
+   * 会退回 location.origin，不至于让插件启动失败。 */
+  const baseUrlRoute = webServer.register({
+    kind: 'prefix',
+    // 独立前缀，不挂在 TAVERN_BASE 下面：/holo-tavern/* 由下面的静态路由
+    // 整段接管，它的白名单会把这个内部端点判成 404。两者互不重叠最省心。
+    path: BASE_URL_PATH,
+    handler: (req, res) => {
+      let url = ''
+      try {
+        const webApp = typeof ctx.get === 'function' ? ctx.get('webApp') : null
+        if (webApp && typeof webApp.getAdvertisedUrl === 'function') {
+          url = String(webApp.getAdvertisedUrl() || '')
+        }
+      } catch (error) {
+        url = ''
+      }
+      res.statusCode = 200
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      res.setHeader('Cache-Control', 'no-store')
+      res.end(JSON.stringify({ url }))
+    },
+  })
+  ctx.effect(() => baseUrlRoute, 'theme-holo: tavern base url route')
+
   /* The tavern: a directory-scoped static route rather than a file whitelist
      (see TAVERN_ALLOW_DIRS). It has to answer the bare directory too, because a
      browser opening /holo-tavern/ should land on the scene instead of a 404. */
@@ -355,4 +400,97 @@ export function apply(ctx) {
     },
   })
   ctx.effect(() => tavernRoute, 'theme-holo: tavern route')
+
+  /* ───────────────── 酒馆安装端点 ─────────────────
+   *
+   * POST /holo-tavern-install
+   *   从素材仓库的 Release 下载 tar.gz，解压写进 <插件目录>/tavern/。
+   *
+   * 为什么让 host 下载、而不是浏览器下载：
+   *   浏览器拿到的字节存不进插件目录（前端没有文件系统权限）；
+   *   host 侧有 node:fs，能直接落地，静态路由也就能立刻服务这些文件。
+   *
+   * 为什么用 tar.gz 而不是 zip：
+   *   Node 标准库有 zlib（gunzip），但没有 zip 解析器。
+   *   tar 格式简单、能手工稳妥解析，不必引第三方依赖（本插件零依赖）。
+   *
+   * 安全：
+   *   · 解压时逐条校验路径，禁止 ../ 与绝对路径（防 zip-slip）
+   *   · 只往 TAVERN_DIR 里面写
+   *   · 拒绝 SymbolicLink / 设备文件等非常规条目
+   */
+  const INSTALL_PATH = '/holo-tavern-install'
+  const ASSET_URL =
+    'https://github.com/1015677515/holo-tavern-assets/releases/download/v1.0.0/tavern-assets.tar.gz'
+
+  const installRoute = webServer.register({
+    kind: 'prefix',
+    path: INSTALL_PATH,
+    handler: async (req, res) => {
+      const send = (code, obj) => {
+        res.statusCode = code
+        res.setHeader('Content-Type', 'application/json; charset=utf-8')
+        res.setHeader('Cache-Control', 'no-store')
+        res.end(JSON.stringify(obj))
+      }
+
+      if (req.method !== 'POST') {
+        send(405, { ok: false, error: '只接受 POST' })
+        return
+      }
+
+      try {
+        // 1) 下载
+        const r = await fetch(ASSET_URL, { redirect: 'follow' })
+        if (!r.ok) {
+          send(502, { ok: false, error: '下载失败：HTTP ' + r.status })
+          return
+        }
+        const gz = Buffer.from(await r.arrayBuffer())
+
+        // 2) 解压
+        const { gunzipSync } = await import('node:zlib')
+        let tar
+        try {
+          tar = gunzipSync(gz)
+        } catch (e) {
+          send(500, { ok: false, error: '解压失败：' + e.message })
+          return
+        }
+
+        const entries = untar(tar)
+        if (entries.length === 0) {
+          send(500, { ok: false, error: '包内没有文件' })
+          return
+        }
+
+        // 3) 落盘
+        const { mkdir, writeFile } = await import('node:fs/promises')
+        let written = 0
+        const skipped = []
+        for (const { name, buf } of entries) {
+          const rel = safeRel(name)
+          if (rel === undefined) {
+            skipped.push(name)
+            continue
+          }
+          const target = join(TAVERN_DIR, rel.slice('tavern/'.length))
+          await mkdir(dirname(target), { recursive: true })
+          await writeFile(target, buf)
+          written++
+        }
+
+        send(200, {
+          ok: true,
+          written,
+          skipped: skipped.length,
+          bytes: gz.length,
+          dir: TAVERN_DIR,
+        })
+      } catch (e) {
+        send(500, { ok: false, error: String(e && e.message ? e.message : e) })
+      }
+    },
+  })
+  ctx.effect(() => installRoute, 'theme-holo: tavern install route')
 }

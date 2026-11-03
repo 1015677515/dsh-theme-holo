@@ -34,12 +34,11 @@
   "files": [
     "index.js",
     "client.js",
+    "tavern-kit",
     "assets",
     "docs",
     "素材",
     "locale",
-    "tavern/lesson",
-    "tavern/vendor",
     "cordis.patch.yml",
     "README.md",
     "INSTALL.md",

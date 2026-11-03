@@ -164,6 +164,20 @@ html, body {
   text-shadow: 0 2px 8px #000;
 }
 
+/* 构建号：右上角那行小字。刷新后先看它 —— 数字没变就是还在跑缓存 */
+.tb-build {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #d8b46a;
+  opacity: 0.62;
+  text-shadow: 0 2px 8px #000;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
+  border: 1px solid rgba(207, 168, 99, 0.28);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 /* ───────────── 场景提示（羊皮纸小签） ───────────── */
 #hudHint {
   position: fixed;

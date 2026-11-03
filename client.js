@@ -6008,7 +6008,48 @@ function render(t) {
            不会假装成功。 */
         const TAVERN_STATE_KEY = 'dsh-theme-holo.tavern-installed'
         const TAVERN_VERSION_KEY = 'dsh-theme-holo.tavern-version'
-        const TAVERN_URL = '/holo-tavern/lesson/index.html'
+
+        /* 必须是「绝对 URL」，不能是相对路径。
+         *
+         * DSH 桌面版（Electron）在 app.asar 里装了这个：
+         *   webContents.setWindowOpenHandler(({ url }) => {
+         *     if (["http:", "https:"].includes(new URL(url).protocol))
+         *       shell.openExternal(url)
+         *     return { action: "deny" }
+         *   })
+         * 也就是说 window.open 一律不开窗口，只把 http/https 转交系统浏览器。
+         *
+         * ⚠️ 桌面版的 window.location.origin 是 `dsh-app://app` —— DSH 自己的
+         * 协议，不是 http。用它拼出来的地址同样会被 deny（实测：点了没反应，
+         * 诊断里显示「目标：dsh-app://app/holo-tavern/...」）。
+         *
+         * 所以真实地址要从宿主取：/holo-base-url 返回
+         * webApp.getAdvertisedUrl()，那才是 http://127.0.0.1:<端口>。
+         * 端口每次启动都会变，只能现取。 */
+        const TAVERN_PATH = '/holo-tavern/lesson/index.html'
+        const BASE_URL_ENDPOINT = '/holo-base-url'
+
+        /** 取真实 HTTP 根地址；取不到就退回 location.origin（网页版仍是对的）。 */
+        const resolveBaseUrl = async () => {
+          try {
+            const res = await fetch(BASE_URL_ENDPOINT, { cache: 'no-store' })
+            if (res.ok) {
+              const data = await res.json()
+              const url = String((data && data.url) || '')
+              if (/^https?:\/\//i.test(url)) return url.replace(/\/+$/, '')
+            }
+          } catch (err) { /* 落回下面的兜底 */ }
+          try {
+            return String(window.location.origin || '').replace(/\/+$/, '')
+          } catch (err) {
+            return ''
+          }
+        }
+
+        const tavernUrl = async () => {
+          const base = await resolveBaseUrl()
+          return base + TAVERN_PATH
+        }
 
         const tavernStatus = () => {
           try {
@@ -6020,46 +6061,128 @@ function render(t) {
           }
         }
 
+        /* 素材到底在不在磁盘上？
+         *
+         * 只看 localStorage 是不够的：开发机上素材已经随仓库提交进
+         * tavern/assets，但那两个 localStorage 键没人写过，于是「前往」按钮
+         * 会被永久禁用——而它禁用的理由（怕白屏）其实不成立。
+         *
+         * 所以改为真问一次服务器：HEAD /holo-tavern/assets/holo.glb。
+         * 200 就是有，其余都当没有。这样两种情况都对：
+         *   - 开发机（assets 已提交）     -> 探测通过，按钮立刻可点
+         *   - 别人装了发布版（files 不收
+         *     tavern/assets）             -> 探测 404，按钮保持禁用等下载
+         */
+        const [tavernProbe, setTavernProbe] = useState('pending')
+
+        useEffect(() => {
+          let alive = true
+          const check = async () => {
+            try {
+              const res = await fetch('/holo-tavern/assets/holo.glb', {
+                method: 'HEAD',
+                cache: 'no-store',
+              })
+              if (alive) setTavernProbe(res.ok ? 'present' : 'absent')
+            } catch (err) {
+              if (alive) setTavernProbe('absent')
+            }
+          }
+          check()
+          return () => { alive = false }
+        }, [])
+
         children.push(h('div', {
           key: 'tavernTitle',
           style: { ...strongStyle, marginTop: '14px', paddingTop: '12px', borderTop: '0.5px solid var(--dsw-alias-border-l3)' },
         }, '赫萝的黄昏酒馆'))
 
         const tavern = tavernStatus()
+        // 「能用」= localStorage 记过下载，或者服务器上真的有模型。
+        const tavernReady = tavern.installed || tavernProbe === 'present'
         children.push(h('div', { key: 'tavernStatus', style: { ...dimStyle, marginTop: '6px' } },
-          tavern.installed
-            ? '已下载' + (tavern.version ? '（v' + tavern.version + '）' : '') + '：点下面「前往黄昏酒馆」在新标签页打开。'
-            : '未下载。酒馆是一个独立的 3D 互动小场景（约 3.8 MB），默认不随插件安装，需要时再下。'))
+          tavernProbe === 'pending'
+            ? '正在检查本地素材…'
+            : tavernReady
+              ? (tavern.installed
+                ? '已下载' + (tavern.version ? '（v' + tavern.version + '）' : '') + '：点下面「前往黄昏酒馆」在新标签页打开。'
+                : '素材已就位（本地已存在，无需下载）：点下面「前往黄昏酒馆」在新标签页打开。')
+              : '未下载。酒馆是一个独立的 3D 互动小场景（约 3.8 MB），默认不随插件安装，需要时再下。'))
 
         const tavernBusy = tavernBusyState
         const tavernButtons = [
           h('button', {
             key: 'tavernOpen',
             type: 'button',
-            disabled: !tavern.installed,
-            onClick: () => {
+            // 地址解析已走通（host 侧 /__base-url），恢复按状态禁用。
+            disabled: !tavernReady,
+            onClick: async () => {
+              /* 目标地址必须现取：桌面版要问宿主拿 http://127.0.0.1:<端口>，
+               * 因为 location.origin 是 dsh-app://app，用它拼的地址会被
+               * Electron 的 setWindowOpenHandler 直接 deny（点了没反应）。 */
+              setTavernNote('正在打开…')
+              let url = ''
               try {
-                window.open(TAVERN_URL, '_blank', 'noopener')
-              } catch (err) { /* 弹窗被拦：不假装成功 */ }
+                url = await tavernUrl()
+              } catch (err) {
+                setTavernNote('取地址失败：' + String(err && err.message ? err.message : err))
+                return
+              }
+              const lines = ['目标：' + url]
+              if (!/^https?:\/\//i.test(url)) {
+                lines.push('⚠ 这个地址不是 http(s)，桌面版不会转交浏览器。')
+                setTavernNote(lines.join('\n'))
+                return
+              }
+              try {
+                const w = window.open(url, '_blank')
+                lines.push('已请求打开' + (w === null ? '（由 Electron 转交系统浏览器）' : ''))
+              } catch (err) {
+                lines.push('window.open 抛错：' + String(err && err.message ? err.message : err))
+              }
+              setTavernNote(lines.join('\n'))
             },
-            style: buttonStyle(tavern.installed),
+            style: buttonStyle(tavernReady),
           }, '前往黄昏酒馆'),
           h('button', {
             key: 'tavernDownload',
             type: 'button',
             disabled: tavernBusy,
-            onClick: () => {
+            onClick: async () => {
               if (tavernBusy) return
               setTavernBusy(true)
-              setTavernNote('')
-              // 骨架阶段：附件还没上传，这里如实报告，不伪造进度。
-              setTavernNote('下载通道还没接上：酒馆素材包尚未上传到 Release。上传后这里会自动接上真实下载。')
-              setTavernBusy(false)
+              setTavernNote('正在下载酒馆素材（约 4.9 MB）…')
+              try {
+                /* 交给 host 做：前端拿到的字节存不进插件目录，
+                 * host 有 node:fs，能直接写进 tavern/，静态路由立刻就能服务。 */
+                const res = await fetch('/holo-tavern-install', { method: 'POST' })
+                let data = null
+                try { data = await res.json() } catch (err) { /* 非 JSON */ }
+
+                if (res.ok && data && data.ok) {
+                  const mb = (data.bytes / 1024 / 1024).toFixed(1)
+                  localStorage.setItem(TAVERN_STATE_KEY, '1')
+                  localStorage.setItem(TAVERN_VERSION_KEY, String(data.bytes))
+                  setTavernNote('已下载 ' + mb + ' MB，写入 ' + data.written + ' 个文件。'
+                    + (data.skipped ? '（跳过 ' + data.skipped + ' 个可疑路径）' : '')
+                    + '可以点「前往黄昏酒馆」了。')
+                  setTavernTick((n) => n + 1)
+                } else {
+                  const why = (data && data.error) ? data.error : ('HTTP ' + res.status)
+                  setTavernNote('下载失败：' + why + '\n（网络问题请稍后重试；反复失败请提 issue）')
+                }
+              } catch (err) {
+                setTavernNote('下载失败：' + String(err && err.message ? err.message : err))
+              } finally {
+                setTavernBusy(false)
+              }
             },
             style: buttonStyle(!tavernBusy),
-          }, tavernBusy ? '正在下载…' : (tavern.installed ? '重新下载' : '下载酒馆（约 3.8 MB）')),
+          }, tavernBusy
+            ? '正在下载…'
+            : (tavern.installed ? '重新下载素材' : '下载酒馆（约 4.9 MB）')),
         ]
-        if (tavern.installed) {
+        if (tavernReady) {
           tavernButtons.push(h('button', {
             key: 'tavernRemove',
             type: 'button',
@@ -6078,7 +6201,17 @@ function render(t) {
         if (tavernNote !== '') {
           children.push(h('div', {
             key: 'tavernNote',
-            style: { ...dimStyle, marginTop: '6px', color: 'var(--dsw-alias-state-warn-label)' },
+            style: {
+              ...dimStyle,
+              marginTop: '6px',
+              color: 'var(--dsw-alias-state-warn-label)',
+              // 诊断信息是多行的，必须保留换行且可选中复制
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+              userSelect: 'text',
+              fontFamily: 'ui-monospace, Consolas, monospace',
+              fontSize: '12px',
+            },
           }, tavernNote))
         }
 
