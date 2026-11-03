@@ -1033,6 +1033,9 @@ DSH 的插件加载是全有或全无的，为一条装饰性路由把整个客�
 > Holo peeking at the edge of the composer, a profile mini-card on hover, a draggable
 > "Spice and Wolf" wordmark, and a standby animation that only lights up on the
 > right rail's start page.
+>
+> Ship with it an optional **3D tavern** — a separate interactive scene where Holo
+> tells you about the first time you met, acted out as a string-puppet stage.
 
 [中文](#dsh-theme-holo) | English
 
@@ -1062,6 +1065,7 @@ else is untouched.
 | **Parchment note pad** | A wheat-ring badge in the corner opens a pad you can type into and paste images onto; the entry can be moved to a toolbar button |
 | **Voice & captions** | Nine lines wired to buttons, the peeker, the whale widget, the note-pad badge and the standby plate, each with a Chinese caption bubble |
 | **Whale widget link** | One click installs two roles plus one voice line into `dsh-whale-widget` |
+| **Holo's Tavern** | A separate 3D interactive scene, **not installed with the plugin** — grab it from the settings card (~4.9 MB). Inside: a 2D live portrait and a string-puppet stage retelling the first meeting |
 
 Seven groups have a switch in the plugin settings: intro animation, peeking Holo, peek
 voice, dark mode, right-rail standby, the parchment note pad (two buttons: master switch
@@ -1072,6 +1076,49 @@ Three are always on and are labelled as such rather than claimed to be switchabl
 the **profile mini-card**, the **log tags**, and the **sidebar wheat**. They are plain
 styling or pure display layers — they capture no clicks and take no layout space.
 
+### Holo's Tavern
+
+An **optional 3D scene**, shipped separately from the theme: a fresh install has
+nothing, you download it from the plugin settings card.
+
+**Why it is not bundled.** The tavern carries a 1.8 MB rigged model plus stage and
+voice assets — 7.1 MB in total. Most people just want the theme and should not pay
+that cost.
+
+**How you get it.** The plugin settings card has a «Holo's Tavern» section with three
+buttons: **Download (~4.9 MB)**, **Open the tavern** (disabled until downloaded), and
+**Clear record** once installed.
+
+**Where it writes.** The download runs on the **host side**
+(`POST /holo-tavern-install`), not in the browser: bytes fetched by the browser cannot
+be written into the plugin directory (the front end has no filesystem access), while
+the host has `node:fs` and can drop them straight into `tavern/`, where the static
+route serves them immediately.
+
+**What it downloads.** `tavern-assets.tar.gz` (4.91 MB, 62 files) from the release of
+the asset repo [`holo-tavern-assets`](https://github.com/1015677515/holo-tavern-assets).
+tar.gz rather than zip because Node's standard library has `zlib` (gunzip) but no zip
+parser — this keeps the plugin at zero third-party dependencies. Unpacking lives in
+`tavern-kit/tar.mjs` with zip-slip protection (rejects `..`, absolute paths, NUL
+bytes, and anything outside `tavern/`).
+
+**Inside.** Holo sits across the table and asks what you want. Two paths: listen to
+the travel stories (memory mode, below), or look at the travel collection — a shelf
+of eleven objects, each with its own anecdote.
+
+**Memory mode — chapter one, "the first meeting".** The left half is a puppeteer's
+stage; the right half is a 2D live portrait of Holo telling the story.
+
+- The portrait is the felt-doll Holo in 2D: swaying from the feet, breathing, a tail
+  that swings around its root with three poses to switch between.
+- The stage runs 12 shots. A rope hangs down from off-screen holding the moon, which
+  drifts slowly across the sky to mark the passage of time; the cart rolls in from the
+  right (2 seconds, or 1 second if you click to hurry it), stays a while, then leaves.
+- **Click-driven**: every line of dialogue carries a shot number, so each click advances
+  one line and cuts the stage to match — the two never drift apart.
+- 17 voice lines, all picked from the original audio library, **word-for-word matched
+  to the subtitles** (guarded by a test).
+
 ### Requirements
 
 | Item | Requirement |
@@ -1079,8 +1126,9 @@ styling or pure display layers — they capture no clicks and take no layout spa
 | DeepSeek Harness | `>=0.2.0-rc.1 <0.3.0-0` |
 | Node.js | `>=22` |
 | OS | Windows / macOS / Linux (tested on Windows 11 with DSH `0.2.1-rc.2`) |
-| Disk | ~21 MB (the `素材/` sources are ~15 MB, six scene videos alone are 12.6 MB) |
+| Disk | ~21 MB (the `素材/` sources are ~15 MB, six scene videos alone are 12.6 MB). **The tavern is not included** — it adds ~4.9 MB on top |
 | Runtime dependencies | None |
+| Network | Needed at install time (fetching from GitHub); nothing at runtime — **except when you actively click "Download the tavern"** |
 
 ### Install
 
