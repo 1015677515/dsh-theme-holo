@@ -2497,7 +2497,6 @@ function render(t) {
       `
       const canvas = root.querySelector('.boot-canvas')
       const soundBtn = root.querySelector('.boot-sound')
-      const skipBtn = root.querySelector('.boot-skip')
 
       // Optional score: default off, remembered per machine.
       const SOUND_KEY = 'dsh-theme-horo.intro-sound'
@@ -2532,7 +2531,10 @@ function render(t) {
         // Stop swallowing clicks the moment the reel is over: the fade takes
         // 620ms, and a pointer-events-free overlay cannot eat a real click.
         root.style.pointerEvents = 'none'
-        window.setTimeout(() => root.remove(), 620)
+        window.setTimeout(() => {
+          detach()
+          root.remove()
+        }, 620)
         // Hand the screen back first, then let the caller offer something on top
         // of it — a dialog raised while the reel still covers the viewport is a
         // dialog nobody sees.
@@ -2598,34 +2600,42 @@ function render(t) {
         finish()
       })
 
+      // Presses are taken on `window` in the capture phase, the first stop of
+      // any event. Widgets that hit-test by coordinates from document capture
+      // (dsh-whale-widget parked in the bottom-right corner, for one) swallow
+      // the press and the click there even though the reel is drawn on top,
+      // which killed both corner buttons. Handling the press here, and
+      // stopping it, keeps it from them -- and from the page under the reel.
+      const onSoundTarget = (target) => target instanceof Element && target.closest('.boot-sound') !== null
       const skip = (event) => {
-        const target = event.target
+        if (done) return
         // The score switch is the only control that must not end the reel.
-        // The skip button used to be exempted here as well, which left it
-        // depending on its own `click` listener alone: a shell that stops
-        // propagation during the capture phase never delivers that click, so
-        // the button looked dead while clicking anywhere else still skipped.
-        // Routing the button through this same listener makes both paths end
-        // the reel, and `finish` is idempotent.
-        if (target instanceof Element && target.closest('.boot-sound') !== null) return
+        if (event.type === 'pointerdown') event.stopPropagation()
+        if (onSoundTarget(event.target)) return
         finish()
       }
+      const onTap = (event) => {
+        if (done) return
+        const target = event.target
+        if (!(target instanceof Element) || target.closest('#horo-boot') === null) return
+        event.preventDefault()
+        event.stopPropagation()
+        if (onSoundTarget(target)) toggleSound()
+        else if (target.closest('.boot-skip') !== null) finish()
+      }
       if (!captureMode) {
-        document.addEventListener('pointerdown', skip, true)
+        window.addEventListener('pointerdown', skip, true)
+        window.addEventListener('click', onTap, true)
         document.addEventListener('keydown', skip, true)
       }
 
-      skipBtn.addEventListener('pointerdown', (event) => event.stopPropagation())
-      skipBtn.addEventListener('click', (event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        finish()
-      })
+      const detach = () => {
+        window.removeEventListener('pointerdown', skip, true)
+        window.removeEventListener('click', onTap, true)
+        document.removeEventListener('keydown', skip, true)
+      }
 
-      soundBtn.addEventListener('pointerdown', (event) => event.stopPropagation())
-      soundBtn.addEventListener('click', (event) => {
-        event.preventDefault()
-        event.stopPropagation()
+      const toggleSound = () => {
         soundOn = !soundOn
         paintSound()
         try { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0') } catch (error) { /* ignore */ }
@@ -2640,7 +2650,7 @@ function render(t) {
           soundOn = false
           paintSound()
         })
-      })
+      }
 
       return {
         dispose() {
@@ -2648,8 +2658,7 @@ function render(t) {
           cancelAnimationFrame(raf)
           window.clearTimeout(timer)
           audio.pause()
-          document.removeEventListener('pointerdown', skip, true)
-          document.removeEventListener('keydown', skip, true)
+          detach()
           root.remove()
         },
       }
@@ -2867,14 +2876,19 @@ function render(t) {
         if (box !== card) {
           card = box
         }
+        // Off screen: cardRect goes too, or the next paint() would republish
+        // her stale box as visible and the caption would think she is still
+        // here.
         if (card === null) {
           root.style.display = 'none'
+          cardRect = null
           peekBox.visible = false
           return
         }
         const rect = card.getBoundingClientRect()
         if (rect.width < 200) {
           root.style.display = 'none'
+          cardRect = null
           peekBox.visible = false
           return
         }
@@ -3060,6 +3074,10 @@ function render(t) {
 
       const loop = () => {
         if (disposed) return
+        // Leaving a chat unmounts the composer. Waiting for the 900ms poll
+        // left her hanging over the next page for up to a second, so a
+        // detached (or hidden) composer re-runs place() on the very next frame.
+        if (card !== null && (!card.isConnected || card.offsetWidth === 0)) place()
         const t = clock()
         if (t - lastRead > 110) {
           lastRead = t
@@ -3198,6 +3216,20 @@ function render(t) {
 
       place()
       const timer = window.setInterval(place, 900)
+      // The other direction: entering a chat mounts a composer, and she should
+      // come up with it rather than on the next poll. Only does work while she
+      // has no composer, and at most once a frame.
+      let seekRaf = 0
+      const seek = typeof MutationObserver === 'function'
+        ? new MutationObserver(() => {
+          if (card !== null || seekRaf !== 0 || disposed) return
+          seekRaf = requestAnimationFrame(() => {
+            seekRaf = 0
+            if (card === null && !disposed) place()
+          })
+        })
+        : null
+      if (seek !== null) seek.observe(document.body, { childList: true, subtree: true })
       window.addEventListener('resize', place)
       window.addEventListener('scroll', place, true)
       document.addEventListener('pointermove', onPointerMove, true)
@@ -3219,6 +3251,8 @@ function render(t) {
           peekBox.visible = false
           disposed = true
           cancelAnimationFrame(raf)
+          if (seekRaf !== 0) cancelAnimationFrame(seekRaf)
+          if (seek !== null) seek.disconnect()
           window.clearInterval(timer)
           window.removeEventListener('resize', place)
           window.removeEventListener('scroll', place, true)
@@ -3336,7 +3370,9 @@ function render(t) {
       })
 
       const body = document.createElement('div')
-      body.style.cssText = 'padding:24px 14px 10px'
+      // The ring hangs 24px below the banner (62 - 38) plus its 3.5px halo;
+      // 36px leaves the name a clear gap under it instead of touching.
+      body.style.cssText = 'padding:36px 14px 11px'
       const name = document.createElement('div')
       name.style.cssText = 'font:600 13.5px/1.35 var(--dsw-font-family, "Microsoft YaHei", sans-serif);color:#F1E5D0'
       const sub = document.createElement('div')
@@ -4078,9 +4114,26 @@ function render(t) {
         }
       }
 
+      /** Captions are her lines, so they belong where she is: a chat page,
+       *  i.e. one with a composer (she may be switched off, so her own box is
+       *  not the only test). Elsewhere -- plugin settings, the whale or the
+       *  note pad on a settings page -- the line is not captioned, and a
+       *  caption still up when the page changes goes with it. */
+      const onChatPage = () => {
+        const box = typeof getPeekBox === 'function' ? getPeekBox() : null
+        if (box !== null && box !== undefined && box.visible) return true
+        const input = document.querySelector('[data-composer-input]') || document.querySelector('[role="textbox"]')
+        if (input === null || !input.isConnected) return false
+        return input.offsetWidth > 0 && input.offsetHeight > 0
+      }
+
       const follow = () => {
         followRaf = 0
         if (disposed || !isUp()) return
+        if (!onChatPage()) {
+          hideNow()
+          return
+        }
         place()
         followRaf = requestAnimationFrame(follow)
       }
@@ -4126,12 +4179,11 @@ function render(t) {
        * Where the caption goes, in order:
        *  1. above her right shoulder, while the peeker is on screen -- she is
        *     the one speaking;
-       *  2. otherwise beside whatever triggered the line (a sidebar item, a
-       *     button on the plugin page, the whale, the note pad badge): to its
+       *  2. otherwise (she is switched off) beside whatever triggered the
+       *     line (a sidebar item, the whale, the note pad badge): to its
        *     right when it sits in the left half of the window, else just below
-       *     or above it. The old fallback was a fixed spot above the composer's
-       *     right shoulder, which on a page with no composer (the plugin
-       *     settings, for one) left the caption floating over unrelated content;
+       *     or above it. Pages without a composer get no caption at all --
+       *     see onChatPage();
        *  3. with neither, a caption strip at the top centre of the window.
        */
       const place = () => {
@@ -4180,6 +4232,10 @@ function render(t) {
       /** Show a line, then hold, then fade. Returns immediately. */
       const show = (zh, holdMs, from) => {
         if (disposed) return
+        if (!onChatPage()) {
+          if (isUp()) hideNow()
+          return
+        }
         clearTimers()
         line.textContent = zh
         anchor = from === undefined ? null : from
