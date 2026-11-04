@@ -488,6 +488,55 @@ html body:not([data-ds-dark-theme]) #horo-profile-card img {
   border: 1px solid rgba(162, 112, 31, .35);
 }
 
+/* The account menu rises out of the row as the profile card sinks into it
+   (card.handoff), so hover-card and menu read as one surface turning over.
+   The individual translate / scale properties are used, not transform: the
+   menu primitive may position itself with a transform, and these compose with
+   it instead of overwriting it. Tagged by the profile-card effect. */
+@keyframes horo-account-menu-rise {
+  from { opacity: 0; translate: 0 10px; scale: .97; }
+  to { opacity: 1; translate: 0 0; scale: 1; }
+}
+[data-horo-account-menu] {
+  transform-origin: 50% 100%;
+  animation: horo-account-menu-rise .2s cubic-bezier(.2, .8, .2, 1) .04s both;
+}
+html body:not([data-ds-dark-theme]) [data-horo-account-menu] {
+  border: .5px solid rgba(184, 130, 43, .32);
+  box-shadow: 0 18px 44px rgba(58, 38, 18, .18);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-horo-account-menu] { animation: none; }
+}
+
+/* The account button sits on the wheat field (#horo-wheat). It is lifted
+   above the field and given a translucent parchment plate, so the field shows
+   through around and behind it while the name stays readable. The field is
+   z-index 1 in the root stacking context; nothing between the button and the
+   root forms a stacking context of its own, so z-index 2 is enough. */
+html body [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]) {
+  position: relative;
+  z-index: 2;
+  background: rgba(251, 247, 239, .62);
+  -webkit-backdrop-filter: blur(5px) saturate(1.05);
+  backdrop-filter: blur(5px) saturate(1.05);
+  box-shadow: inset 0 0 0 .5px rgba(184, 130, 43, .30), 0 2px 10px rgba(58, 38, 18, .08);
+  transition: background .16s ease, box-shadow .16s ease;
+}
+html body [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]):hover,
+html body [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"])[aria-expanded="true"] {
+  background: rgba(251, 247, 239, .84);
+  box-shadow: inset 0 0 0 .5px rgba(184, 130, 43, .48), 0 4px 14px rgba(58, 38, 18, .12);
+}
+html body[data-ds-dark-theme] [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]) {
+  background: rgba(27, 21, 16, .58);
+  box-shadow: inset 0 0 0 .5px rgba(224, 174, 92, .26);
+}
+html body[data-ds-dark-theme] [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]):hover,
+html body[data-ds-dark-theme] [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"])[aria-expanded="true"] {
+  background: rgba(27, 21, 16, .80);
+}
+
 
 
 
@@ -965,17 +1014,6 @@ html[data-horo-peek="off"] #horo-peek-fx { display: none !important; }
   -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, .4) 0%, #000 16%, #000 84%, rgba(0, 0, 0, .4) 100%);
   mask-image: linear-gradient(to right, rgba(0, 0, 0, .4) 0%, #000 16%, #000 84%, rgba(0, 0, 0, .4) 100%);
 }
-/* The clearing around the account row's avatar and name. Without a measured
-   row the radii stay at 0, and a zero-size radial gradient paints its last
-   stop everywhere -- opaque mask, nothing cleared. With one, the wheat thins to
-   18% inside the ellipse and returns to full strength at its rim. */
-#horo-wheat b {
-  display: block;
-  width: 100%;
-  height: 100%;
-  -webkit-mask-image: radial-gradient(var(--horo-clear-rx, 0px) var(--horo-clear-ry, 0px) at var(--horo-clear-x, 0px) var(--horo-clear-y, 0px), rgba(0, 0, 0, .18) 0%, rgba(0, 0, 0, .18) 55%, #000 100%);
-  mask-image: radial-gradient(var(--horo-clear-rx, 0px) var(--horo-clear-ry, 0px) at var(--horo-clear-x, 0px) var(--horo-clear-y, 0px), rgba(0, 0, 0, .18) 0%, rgba(0, 0, 0, .18) 55%, #000 100%);
-}
 #horo-wheat i {
   display: block;
   width: 100%;
@@ -1056,18 +1094,16 @@ html[data-horo-peek="off"] #horo-peek-fx { display: none !important; }
    ever shows outside the column -- where the conversation's own opaque root
    covers it anyway. */
 
-/* Click band over the standby plate.
-   It is its OWN layer on <body>, not a child of #horo-scene: that plate is
-   z-index:-1, and a negative-z layer sits below its container's background, so
-   a child with pointer-events:auto in it never receives clicks. This band sits
-   above ordinary content but below every other piece of plugin chrome
-   (peeker 2147482997, planner 2147482998, bubble 2147482999). */
-#horo-scene-hit {
-  position: fixed;
-  z-index: 2147482995;
-  pointer-events: auto;
-  cursor: pointer;
-  background: transparent;
+/* Clicking her on the standby plate.
+   There is no overlay for this any more. A transparent band above the content
+   swallowed every click in its rectangle -- the column's own tab strip and its
+   split / fullscreen / close buttons sat under it and could not be pressed. The
+   plate is now hit-tested from a document click listener instead (createScene),
+   which ignores anything interactive, so the host's controls always win. The
+   attribute below only swaps the cursor while the pointer is over her. */
+html[data-horo-scene-hover="on"] [data-sidebar-right-panel],
+html[data-horo-scene-hover="on"] [data-sidebar-right-panel] * {
+  cursor: pointer !important;
 }
 
 #horo-scene {
@@ -1638,12 +1674,116 @@ html body:not([data-ds-dark-theme]) .horo-planner-btn:hover {
   color: #7A5B22;
 }
 
+/* ---- the themed listbox on the settings card (右侧待机动画) ------------
+   Replaces a native <select>, whose popup is drawn by the OS and ignores the
+   palette. Trigger: the same 9px-radius outline as the card's other ghost
+   buttons. Popup: the note pad's parchment, a gold hairline, the selected
+   row marked with the wax-seal dot. */
+[data-horo-select] { position: relative; display: inline-block; }
+[data-horo-select-btn] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 184px;
+  padding: 7px 10px 7px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--dsw-alias-border-l3);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: 500 13px/1.2 "Microsoft YaHei", system-ui, sans-serif;
+  cursor: pointer;
+  transition: border-color .14s ease, background .14s ease, box-shadow .14s ease;
+}
+[data-horo-select-btn] svg { flex: none; color: #A2701F; transition: transform .16s ease; }
+[data-horo-select][data-horo-select-open="on"] [data-horo-select-btn] svg { transform: rotate(180deg); }
+[data-horo-select-btn]:hover,
+[data-horo-select][data-horo-select-open="on"] [data-horo-select-btn] {
+  border-color: rgba(184, 130, 43, .55);
+  background: rgba(184, 130, 43, .07);
+}
+html body [data-horo-select-btn]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(184, 130, 43, .45);
+}
+@keyframes horo-select-drop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+[data-horo-select-list] {
+  position: absolute;
+  z-index: 50;
+  left: 0;
+  top: calc(100% + 6px);
+  min-width: 100%;
+  box-sizing: border-box;
+  padding: 5px;
+  border-radius: 12px;
+  border: .5px solid rgba(184, 130, 43, .42);
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(255, 255, 255, .55), transparent 60%),
+    linear-gradient(180deg, #FCF8EE 0%, #F5EBD6 100%);
+  box-shadow: 0 14px 34px rgba(58, 38, 18, .18), inset 0 0 0 1px rgba(255, 255, 255, .5);
+  animation: horo-select-drop .14s ease-out both;
+}
+[data-horo-select-list] [role="option"] {
+  position: relative;
+  padding: 7px 12px 7px 26px;
+  border-radius: 8px;
+  color: #4A3A26;
+  font: 500 13px/1.3 "Microsoft YaHei", system-ui, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+[data-horo-select-list] [role="option"]:hover { background: rgba(184, 130, 43, .12); }
+[data-horo-select-list] [role="option"][aria-selected="true"] {
+  color: #7A4E14;
+  background: rgba(184, 130, 43, .16);
+}
+[data-horo-select-list] [role="option"][aria-selected="true"]::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #C9604A, #A8402F 70%);
+}
+[data-horo-select-list] [data-horo-select-opt="off"] {
+  margin-top: 4px;
+  color: #8A7A64;
+}
+[data-horo-select-list] [data-horo-select-opt="off"]::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: -3px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(184, 130, 43, .35), transparent);
+}
+html body[data-ds-dark-theme] [data-horo-select-btn] svg { color: #E0AE5C; }
+html body[data-ds-dark-theme] [data-horo-select-list] {
+  border-color: rgba(224, 174, 92, .35);
+  background: linear-gradient(180deg, #2A2017 0%, #211912 100%);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .5);
+}
+html body[data-ds-dark-theme] [data-horo-select-list] [role="option"] { color: #E8DCC6; }
+html body[data-ds-dark-theme] [data-horo-select-list] [role="option"]:hover { background: rgba(224, 174, 92, .12); }
+html body[data-ds-dark-theme] [data-horo-select-list] [role="option"][aria-selected="true"] {
+  color: #F1D9A8;
+  background: rgba(224, 174, 92, .16);
+}
+html body[data-ds-dark-theme] [data-horo-select-list] [data-horo-select-opt="off"] { color: #A2917A; }
+
 /* ---- voice bubble: the translation above her right shoulder -------------
    Same parchment recipe as the note pad (see [data-horo-planner-panel]):
    warm paper gradient, gold hairline, serif text. It is a data- attribute
    rather than an id, so the dark-palette [id^="horo-"] rule leaves it alone. */
 /* ---- the voice bubble: the same parchment plate the promo film uses -----
-   Fill, shadow, 6px radius, hairline deckled edge, and a wheat sprig at each
+   Fill, shadow, 14px radius, hairline deckled edge, and a wheat sprig at each
    end. No tail and no double ring: those made it read as a chat popup, while
    the film's captions are flat torn paper. */
 [data-horo-voice-bubble] {
@@ -1652,15 +1792,15 @@ html body:not([data-ds-dark-theme]) .horo-planner-btn:hover {
   display: none;
   max-width: 320px;
   padding: 11px 26px 12px;
-  border-radius: 6px;
+  border-radius: 14px;
   pointer-events: auto;
   cursor: pointer;
   color: #6E5D46;
   background-color: rgba(251, 247, 239, 0.95);
   /* the deckled edges, drawn as two thin torn lines instead of a clean stroke */
   background-image:
-    linear-gradient(90deg, transparent 0, rgba(220, 201, 168, 0.9) 3%, rgba(220, 201, 168, 0.9) 97%, transparent 100%),
-    linear-gradient(90deg, transparent 0, rgba(220, 201, 168, 0.9) 3%, rgba(220, 201, 168, 0.9) 97%, transparent 100%);
+    linear-gradient(90deg, transparent 0, transparent 14px, rgba(220, 201, 168, 0.9) 22px, rgba(220, 201, 168, 0.9) calc(100% - 22px), transparent calc(100% - 14px)),
+    linear-gradient(90deg, transparent 0, transparent 14px, rgba(220, 201, 168, 0.9) 22px, rgba(220, 201, 168, 0.9) calc(100% - 22px), transparent calc(100% - 14px));
   background-size: 100% 1px, 100% 1px;
   background-position: 0 0, 0 100%;
   background-repeat: no-repeat;
@@ -1719,8 +1859,8 @@ html body[data-ds-dark-theme] [data-horo-voice-bubble] {
   color: #F1E5D0;
   background-color: rgba(30, 24, 19, 0.96);
   background-image:
-    linear-gradient(90deg, transparent 0, rgba(224, 174, 92, 0.55) 3%, rgba(224, 174, 92, 0.55) 97%, transparent 100%),
-    linear-gradient(90deg, transparent 0, rgba(224, 174, 92, 0.55) 3%, rgba(224, 174, 92, 0.55) 97%, transparent 100%);
+    linear-gradient(90deg, transparent 0, transparent 14px, rgba(224, 174, 92, 0.55) 22px, rgba(224, 174, 92, 0.55) calc(100% - 22px), transparent calc(100% - 14px)),
+    linear-gradient(90deg, transparent 0, transparent 14px, rgba(224, 174, 92, 0.55) 22px, rgba(224, 174, 92, 0.55) calc(100% - 22px), transparent calc(100% - 14px));
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 
@@ -3121,11 +3261,16 @@ function render(t) {
       const root = document.createElement('div')
       root.id = 'horo-profile-card'
       root.setAttribute('aria-hidden', 'true')
+      // left / bottom / width are written by layout() from the account row
+      // itself, so the card is exactly as wide as the button and floats the
+      // same distance above it as the account menu does.
       Object.assign(root.style, {
         position: 'fixed',
         left: '10px',
         bottom: '74px',
         width: '272px',
+        boxSizing: 'border-box',
+        transformOrigin: '50% 100%',
         zIndex: '2147482998',
         borderRadius: '16px',
         overflow: 'hidden',
@@ -3134,7 +3279,7 @@ function render(t) {
         boxShadow: '0 0 0 .5px rgba(243,227,199,.18), 0 22px 50px rgba(0,0,0,.6)',
         opacity: '0',
         transform: 'translateY(8px)',
-        transition: 'opacity .18s ease, transform .18s ease',
+        transition: 'opacity .18s ease, transform .2s cubic-bezier(.2,.8,.2,1)',
       })
 
       const banner = document.createElement('div')
@@ -3191,7 +3336,7 @@ function render(t) {
       })
 
       const body = document.createElement('div')
-      body.style.cssText = 'padding:28px 14px 12px'
+      body.style.cssText = 'padding:24px 14px 10px'
       const name = document.createElement('div')
       name.style.cssText = 'font:600 13.5px/1.35 var(--dsw-font-family, "Microsoft YaHei", sans-serif);color:#F1E5D0'
       const sub = document.createElement('div')
@@ -3204,20 +3349,51 @@ function render(t) {
       root.appendChild(body)
       root.appendChild(avatar)
 
+      /** Match the account row: same left edge, same width, and `gap` px
+       *  above it. The banner keeps its 16:9 frame at any width, and the
+       *  avatar ring stays straddling its lower edge. */
+      const layout = (row, gap) => {
+        if (row === null || row === undefined) return
+        const at = row.getBoundingClientRect()
+        if (at.width <= 0 || at.height <= 0) return
+        const width = Math.max(208, Math.round(at.width))
+        const bannerH = Math.round(width * 0.5625)
+        const vh = window.innerHeight > 0 ? window.innerHeight : at.bottom
+        root.style.left = Math.round(at.left) + 'px'
+        root.style.width = width + 'px'
+        root.style.bottom = Math.max(4, Math.round(vh - at.top + gap)) + 'px'
+        banner.style.height = bannerH + 'px'
+        avatar.style.top = (bannerH - 38) + 'px'
+      }
+
       let visible = false
       return {
-        enter(label) {
+        enter(label, row, gap) {
           if (label) name.textContent = label
+          layout(row, gap)
           if (visible) return
           visible = true
+          root.style.transition = 'opacity .18s ease, transform .2s cubic-bezier(.2,.8,.2,1)'
           root.style.opacity = '1'
-          root.style.transform = 'translateY(0)'
+          root.style.transform = 'translateY(0) scale(1)'
         },
         leave() {
           if (!visible) return
           visible = false
+          root.style.transition = 'opacity .18s ease, transform .2s cubic-bezier(.2,.8,.2,1)'
           root.style.opacity = '0'
           root.style.transform = 'translateY(8px)'
+        },
+        /** The click hand-off: the card sinks into the button and fades fast,
+         *  while the account menu rises out of the same spot (see the
+         *  [data-horo-account-menu] keyframes), so the two read as one surface
+         *  turning over rather than one popup vanishing and another appearing. */
+        handoff() {
+          if (!visible) return
+          visible = false
+          root.style.transition = 'opacity .12s ease-in, transform .16s ease-in'
+          root.style.opacity = '0'
+          root.style.transform = 'translateY(14px) scale(.94)'
         },
         dispose() {
           root.remove()
@@ -3883,8 +4059,6 @@ function render(t) {
        *  the composer itself can shift). A one-shot placement would leave the
        *  bubble behind her. */
       let followRaf = 0
-      let lastRight = null
-      let lastBottom = null
 
       const clearTimers = () => {
         if (hideTimer !== 0) { clearTimeout(hideTimer); hideTimer = 0 }
@@ -3917,32 +4091,84 @@ function render(t) {
         followRaf = requestAnimationFrame(follow)
       }
 
+      /** What the current line was triggered from: an element (the button
+       *  that was clicked) or a viewport point. Used only when she is not on
+       *  screen -- see place(). */
+      let anchor = null
+
+      const anchorRect = () => {
+        if (anchor === null || anchor === undefined) return null
+        if (typeof Element !== 'undefined' && anchor instanceof Element) {
+          if (!anchor.isConnected) return null
+          const r = anchor.getBoundingClientRect()
+          return r.width > 0 || r.height > 0 ? r : null
+        }
+        if (Number.isFinite(anchor.left) && Number.isFinite(anchor.top)) {
+          const w = anchor.width || 0
+          const h = anchor.height || 0
+          return { left: anchor.left, top: anchor.top, right: anchor.left + w, bottom: anchor.top + h, width: w, height: h }
+        }
+        return null
+      }
+
+      let lastPos = ''
+      const put = (pos) => {
+        const key = pos.left + '|' + pos.right + '|' + pos.top + '|' + pos.bottom
+        if (key === lastPos) return
+        lastPos = key
+        root.style.left = pos.left
+        root.style.right = pos.right
+        root.style.top = pos.top
+        root.style.bottom = pos.bottom
+      }
+
+      /**
+       * Where the caption goes, in order:
+       *  1. above her right shoulder, while the peeker is on screen -- she is
+       *     the one speaking;
+       *  2. otherwise beside whatever triggered the line (a sidebar item, a
+       *     button on the plugin page, the whale, the note pad badge): to its
+       *     right when it sits in the left half of the window, else just below
+       *     or above it. The old fallback was a fixed spot above the composer's
+       *     right shoulder, which on a page with no composer (the plugin
+       *     settings, for one) left the caption floating over unrelated content;
+       *  3. with neither, a caption strip at the top centre of the window.
+       */
       const place = () => {
         const box = typeof getPeekBox === 'function' ? getPeekBox() : null
         const vw = window.innerWidth
         const vh = window.innerHeight
-        // Default: above the composer's right shoulder, used when she is not
-        // on screen (the peeker hides itself when there is no composer).
-        let anchorRight = vw - 40
-        let anchorBottom = 150
+        const maxW = Math.max(160, Math.min(320, vw - 80))
+        root.style.maxWidth = maxW + 'px'
+        const px = (n) => Math.round(n) + 'px'
         if (box !== null && box.visible) {
-          anchorRight = vw - (box.left + box.width)
-          anchorBottom = vh - box.top + 10
+          put({
+            left: 'auto',
+            right: px(Math.max(12, vw - (box.left + box.width))),
+            top: 'auto',
+            bottom: px(Math.max(12, vh - box.top + 10)),
+          })
+          return
         }
-        const right = Math.max(12, Math.round(anchorRight))
-        const bottom = Math.max(12, Math.round(anchorBottom))
-        // Write only on change: this now runs every frame while visible, and a
-        // redundant style write would keep invalidating layout for nothing.
-        if (right !== lastRight) {
-          root.style.right = right + 'px'
-          lastRight = right
+        const at = anchorRect()
+        if (at !== null) {
+          const h = root.offsetHeight || 48
+          const w = root.offsetWidth || maxW
+          if (at.left < vw / 2 && at.right + 12 + w <= vw - 12) {
+            const top = Math.min(Math.max(12, at.top + at.height / 2 - h / 2), vh - h - 12)
+            put({ left: px(at.right + 12), right: 'auto', top: px(top), bottom: 'auto' })
+            return
+          }
+          const right = Math.max(12, vw - at.right)
+          if (at.bottom + 10 + h <= vh - 12) {
+            put({ left: 'auto', right: px(right), top: px(at.bottom + 10), bottom: 'auto' })
+          } else {
+            put({ left: 'auto', right: px(right), top: 'auto', bottom: px(Math.max(12, vh - at.top + 10)) })
+          }
+          return
         }
-        if (bottom !== lastBottom) {
-          root.style.bottom = bottom + 'px'
-          lastBottom = bottom
-        }
-        // Never let it run off the left edge on a narrow window.
-        root.style.maxWidth = Math.max(160, Math.min(320, vw - 80)) + 'px'
+        const w = root.offsetWidth || maxW
+        put({ left: px(Math.max(12, (vw - w) / 2)), right: 'auto', top: '64px', bottom: 'auto' })
       }
 
       const hideNow = () => {
@@ -3952,12 +4178,15 @@ function render(t) {
       }
 
       /** Show a line, then hold, then fade. Returns immediately. */
-      const show = (zh, holdMs) => {
+      const show = (zh, holdMs, from) => {
         if (disposed) return
         clearTimers()
         line.textContent = zh
-        lastRight = null
-        lastBottom = null
+        anchor = from === undefined ? null : from
+        lastPos = ''
+        // Measure with the text in place: placing beside an anchor needs the
+        // bubble's own size, and a display:none box measures 0.
+        root.setAttribute('data-horo-voice-state', 'shown')
         place()
         root.setAttribute('data-horo-voice-state', 'shown')
         startFollow()
@@ -4037,11 +4266,11 @@ function render(t) {
       }
 
       /** Caption a line whose audio is played by someone else. */
-      const announce = (trigger) => {
+      const announce = (trigger, from) => {
         if (disposed) return
         const cue = byTrigger.get(trigger)
         if (cue === undefined) return
-        bubble.show(cue.zh, holdFor(cue, null))
+        bubble.show(cue.zh, holdFor(cue, null), from)
       }
 
       const playerFor = (cue) => {
@@ -4085,7 +4314,7 @@ function render(t) {
         return null
       }
 
-      const play = (cue) => {
+      const play = (cue, from) => {
         if (disposed) return
         const audio = playerFor(cue)
         if (audio === null) return
@@ -4098,7 +4327,7 @@ function render(t) {
 
         // The bubble holds for the clip's length plus the fixed tail, so the
         // translation stays up exactly as long as the line is audible.
-        bubble.show(cue.zh, holdFor(cue, audio))
+        bubble.show(cue.zh, holdFor(cue, audio), from)
 
         const played = audio.play()
         if (played !== undefined && played !== null && typeof played.catch === 'function') {
@@ -4112,7 +4341,7 @@ function render(t) {
         // Never let a click on the bubble itself fire a cue.
         if (typeof target.closest === 'function' && target.closest('[data-horo-voice-bubble]') !== null) return
         const cue = cueFor(target)
-        if (cue !== null) play(cue)
+        if (cue !== null) play(cue, target.closest('a, button') || target)
       }
 
       document.addEventListener('click', onClick, true)
@@ -4126,8 +4355,9 @@ function render(t) {
         const target = event.target
         if (!(target instanceof Element)) return
         if (typeof target.closest !== 'function') return
-        if (target.closest('.dshwv-body') === null) return
-        announce('whale')
+        const whale = target.closest('.dshwv-body')
+        if (whale === null) return
+        announce('whale', whale)
       }
       document.addEventListener('pointerdown', onWhalePress, true)
 
@@ -4727,8 +4957,10 @@ function render(t) {
           const started = plannerVoice.play()
           if (started !== undefined && typeof started.catch === 'function') started.catch(() => {})
         } catch (error) { /* 音频不可用也不能影响打开面板 */ }
-        if (typeof announce === 'function') announce('planner')
+        // Open first, then caption: the badge hides as the panel opens, so the
+        // caption is anchored to the panel that takes its place.
         setPlannerOpen(true)
+        if (typeof announce === 'function') announce('planner', panel)
       }
 
       badge.addEventListener('pointerdown', onDown)
@@ -4748,7 +4980,11 @@ function render(t) {
       // "not moved yet", and then paint() derives the spot beside the badge.
       let panelDrag = null
       const onHeadDown = (event) => {
-        if (event.target === foldBtn || event.target === closeBtn) return
+        // The press usually lands on the button's <svg> or <path>, not the
+        // button itself, so match by ancestry. An identity check let the drag
+        // grab the pointer (and preventDefault the press) before the click.
+        const target = event.target
+        if (target instanceof Element && target.closest('[data-horo-planner-btn], button') !== null) return
         if (event.button !== undefined && event.button !== 0) return
         const rect = panel.getBoundingClientRect()
         panelDrag = {
@@ -5056,34 +5292,11 @@ function render(t) {
       const root = document.createElement('div')
       root.id = 'horo-wheat'
       root.setAttribute('aria-hidden', 'true')
-      // root (side falloff) > clearing (hole around the name) > field (top
-      // falloff): one mask gradient per element, so no mask-composite needed.
-      const clearing = document.createElement('b')
+      // root (side falloff) > field (top falloff): one mask gradient per
+      // element, so no mask-composite support is needed.
       const field = document.createElement('i')
-      clearing.appendChild(field)
-      root.appendChild(clearing)
+      root.appendChild(field)
       document.body.appendChild(root)
-
-      /** Thin the wheat out around the avatar and name, so the stalk tips the
-       *  field paints over the row never sit behind the text. The ellipse is
-       *  centred on the row's content, in field-local pixels. */
-      const clearAround = (row, box, fieldTop) => {
-        if (row === null) {
-          root.style.removeProperty('--horo-clear-rx')
-          root.style.removeProperty('--horo-clear-ry')
-          return
-        }
-        const at = row.getBoundingClientRect()
-        const label = row.querySelector('[class*="_label"]')
-        const right = label !== null ? label.getBoundingClientRect().right : at.left + at.width * 0.6
-        const left = at.left
-        const cx = (left + right) / 2 - box.left
-        const cy = at.top + at.height / 2 - fieldTop
-        root.style.setProperty('--horo-clear-x', Math.round(cx) + 'px')
-        root.style.setProperty('--horo-clear-y', Math.round(cy) + 'px')
-        root.style.setProperty('--horo-clear-rx', Math.round((right - left) / 2 + 30) + 'px')
-        root.style.setProperty('--horo-clear-ry', Math.round(at.height / 2 + 16) + 'px')
-      }
 
       /** The account row is the one anchor in the column with a stable label;
        *  the fallback keeps the strip visible should the label ever change. */
@@ -5109,15 +5322,16 @@ function render(t) {
           root.style.width = '0px'
           return
         }
+        // The full field: 18% of the column, and never shorter than the reach
+        // to a little above the account row, so the button always stands in
+        // the wheat. The button carries its own translucent plate and sits
+        // above this layer (see the account-button rule in STYLE), so the
+        // name stays readable without thinning the field around it.
         const row = accountRow()
-        let height
+        let height = Math.round(box.height * 0.18)
         if (row !== null) {
           const at = row.getBoundingClientRect()
-          // Middle of the row, measured against the column foot. Rounding keeps
-          // the value off the sub-pixel grid so a repeated layout cannot walk.
-          height = Math.round(box.bottom - (at.top + at.height / 2))
-        } else {
-          height = Math.round(box.height * 0.18)
+          if (at.height > 0) height = Math.max(height, Math.round(box.bottom - at.top + 18))
         }
         // Guard rails: a hidden or scrolled-away row can produce nonsense, and
         // a field taller than its column would be drawn under the whole GUI.
@@ -5134,7 +5348,6 @@ function render(t) {
         root.style.width = Math.round(box.width) + 'px'
         root.style.bottom = Math.round(Math.max(0, viewportH - box.bottom)) + 'px'
         root.style.height = height + 'px'
-        clearAround(row, box, box.bottom - height)
       }
 
       let queued = 0
@@ -5257,25 +5470,50 @@ function render(t) {
       document.body.appendChild(root)
 
       // ---- click target for her line -------------------------------------
-      // A SEPARATE layer, not a child of #horo-scene. #horo-scene is
-      // z-index:-1, and a negative-z layer sits below its container's
-      // background: a child with pointer-events:auto inside it still never
-      // receives a click. So the hit band lives on its own, above the content,
-      // and only where the plate's artwork is.
+      // No overlay. #horo-scene is z-index:-1, so it can never receive a click
+      // itself, and the transparent band that used to sit above the content to
+      // catch them also caught the column's tab strip and its header buttons
+      // (split / fullscreen / close), which then could not be pressed. Instead
+      // the band is only a rectangle in memory: a document-level click inside
+      // it plays her line, unless the click landed on something interactive --
+      // so the host's own controls always win.
       //
       // Shape: a fixed proportion of the plate (top 62%), NOT traced around
-      // her — the six standby clips are swappable and she stands differently in
-      // each, so a silhouette would miss on most of them.
-      const hit = document.createElement('div')
-      hit.id = 'horo-scene-hit'
-      hit.setAttribute('aria-hidden', 'true')
-      hit.style.display = 'none'
-      document.body.appendChild(hit)
+      // her -- the six standby clips are swappable and she stands differently
+      // in each, so a silhouette would miss on most of them.
+      const band = { left: 0, top: 0, width: 0, height: 0, live: false }
+      const INTERACTIVE = 'button, a[href], input, textarea, select, label, summary, '
+        + '[role="button"], [role="tab"], [role="menuitem"], [role="option"], [role="link"], '
+        + '[contenteditable=""], [contenteditable="true"], [data-sidebar-right-guide-entry], '
+        + '[data-horo-planner], [data-horo-voice-bubble], #horo-peek'
+      const inBand = (x, y) => band.live
+        && x >= band.left && x <= band.left + band.width
+        && y >= band.top && y <= band.top + band.height
+      const plainTarget = (target) => {
+        if (!(target instanceof Element)) return true
+        return target.closest(INTERACTIVE) === null
+      }
+      // A stand-in for the old band element, so the sync / enter / leave code
+      // below keeps one switch to flip.
+      const hit = {
+        style: {},
+        show(on) {
+          band.live = on
+          if (!on) setHover(false)
+        },
+      }
+      let hovering = false
+      const setHover = (on) => {
+        if (on === hovering) return
+        hovering = on
+        if (on) document.documentElement.setAttribute('data-horo-scene-hover', 'on')
+        else document.documentElement.removeAttribute('data-horo-scene-hover')
+      }
 
       /** Her line for this plate. One element, rewound per tap. */
       let sceneVoice = null
 
-      const speak = () => {
+      const speak = (at) => {
         try {
           if (sceneVoice === null) {
             sceneVoice = new Audio(SCENE_VOICE_SRC)
@@ -5286,7 +5524,7 @@ function render(t) {
           const started = sceneVoice.play()
           if (started !== undefined && started.catch === 'function') started.catch(() => {})
         } catch (error) { /* audio unavailable: the caption still shows */ }
-        if (typeof announce === 'function') announce('scene')
+        if (typeof announce === 'function') announce('scene', at)
       }
 
       /**
@@ -5311,8 +5549,16 @@ function render(t) {
         }
       }
 
-      const onHit = () => {
-        // Belt and braces: sync() already hides the band while a modal is up, but
+      const onHit = (event) => {
+        if (event.button !== undefined && event.button !== 0) return
+        if (!inBand(event.clientX, event.clientY)) return
+        if (!plainTarget(event.target)) return
+        // A click that ends a text selection is not a tap on her.
+        try {
+          const sel = typeof window.getSelection === 'function' ? window.getSelection() : null
+          if (sel !== null && !sel.isCollapsed && String(sel).trim() !== '') return
+        } catch (error) { /* ignore */ }
+        // Belt and braces: sync() already drops the band while a modal is up, but
         // a click landing in the same frame would otherwise still get through.
         if (modalOpen()) return
         let stillOpen = false
@@ -5321,9 +5567,13 @@ function render(t) {
         } catch (error) {
           stillOpen = false
         }
-        if (stillOpen) speak()
+        if (stillOpen) speak({ left: event.clientX - 1, top: event.clientY - 1, width: 2, height: 2 })
       }
-      hit.addEventListener('click', onHit)
+      document.addEventListener('click', onHit)
+      const onHover = (event) => {
+        setHover(inBand(event.clientX, event.clientY) && plainTarget(event.target))
+      }
+      document.addEventListener('pointermove', onHover, { passive: true })
 
       let video = null
       let on = false
@@ -5476,17 +5726,34 @@ function render(t) {
         return best
       }
 
+      // Bottom edge of the column's header: the dock's tab strip with 开始 on
+      // the left and the split / fullscreen / close buttons on the right. Taken
+      // from the lowest tab or button that sits in the column's top 72px;
+      // without one, a 44px allowance.
+      const stripBottom = (col, box) => {
+        let bottom = Math.round(box.top) + 44
+        try {
+          const all = col.querySelectorAll('[role="tab"], [role="tablist"], [data-sidebar-right-tab], button')
+          for (let i = 0; i < all.length; i += 1) {
+            const r = all[i].getBoundingClientRect()
+            if (r.height <= 0 || r.top > box.top + 72) continue
+            if (r.bottom + 4 > bottom) bottom = Math.round(r.bottom + 4)
+          }
+        } catch (error) { /* keep the allowance */ }
+        return bottom
+      }
+
       const place = () => {
         const col = findColumn()
         if (col === null) {
           clip.style.width = '0px'
-          hit.style.display = 'none'
+          band.height = 0
           return false
         }
         const box = col.getBoundingClientRect()
         if (box.width <= 0) {
           clip.style.width = '0px'
-          hit.style.display = 'none'
+          band.height = 0
           return false
         }
         // Cap the slice at the plate's own width and re-centre it inside the
@@ -5498,34 +5765,27 @@ function render(t) {
         const plate = Math.min(Math.round(box.width), SCENE_PLATE_WIDTH)
         clip.style.left = Math.round(box.left + (box.width - plate) / 2) + 'px'
         clip.style.width = plate + 'px'
-        // Mirror the same rectangle onto the hit band. The band keeps the
-        // plate's own 608x1080 proportion, so it covers the same part of the
-        // artwork whatever the column width is.
-        hit.style.left = Math.round(box.left + (box.width - plate) / 2) + 'px'
-        hit.style.width = plate + 'px'
-        const top = Math.round(box.top)
-        hit.style.top = top + 'px'
-        let height = Math.round(plate * (1080 / 608) * 0.62)
+        // The same rectangle is the hit band. It keeps the plate's own
+        // 608x1080 proportion, so it covers the same part of the artwork
+        // whatever the column width is -- but it starts below the column's tab
+        // strip, so a click on the strip's empty space is never taken as a tap
+        // on her.
+        band.left = Math.round(box.left + (box.width - plate) / 2)
+        band.width = plate
+        const top = stripBottom(col, box)
+        band.top = top
+        let height = Math.round(plate * (1080 / 608) * 0.62) - (top - Math.round(box.top))
         // Never reach into the quick-action cards. Their top edge is measured
         // live (see guideEntryTop) because the shell centres them vertically and
         // they shuffle as the window resizes. A 6px gap keeps the band off the
-        // button's own rounded corner, where a stray click would otherwise land
-        // on whichever of the two sits on top.
+        // button's own rounded corner.
         const entryTop = guideEntryTop()
         if (entryTop !== null) {
-          const room = Math.round(entryTop - box.top) - 6
+          const room = Math.round(entryTop - top) - 6
           if (room < height) height = room
         }
-        // A column too short to leave any room collapses the band to zero
-        // instead of going negative. The height is always written, even when it
-        // is 0: place() must not leave a stale taller value behind, because the
-        // caller (sync) is what decides whether the band is shown at all.
         if (height < 0) height = 0
-        hit.style.height = height + 'px'
-        // Tell the caller whether there is any clickable band left, so sync can
-        // keep it out of the tree entirely rather than displaying a 0-height
-        // box. A zero-height element eats no clicks either way; hiding it just
-        // keeps the DOM honest.
+        band.height = height
         return height > 0
       }
 
@@ -5586,19 +5846,17 @@ function render(t) {
         clip.insertBefore(video, scrim)
         place()
         clearFills()
-        // place() runs again once the band is displayable: the cards' own
-        // positions are only final after the plate is in the tree, and the band
-        // is measured against them (see guideEntryTop).
-        hit.style.display = 'block'
-        const hasBand = place()
-        if (hasBand === false) hit.style.display = 'none'
+        // place() runs again once the plate is in the tree: the cards' own
+        // positions are only final then, and the band is measured against them
+        // (see guideEntryTop).
+        hit.show(place() !== false && !modalOpen())
         play()
       }
 
       const leave = () => {
         if (!on) return
         on = false
-        hit.style.display = 'none'
+        hit.show(false)
         document.documentElement.removeAttribute('data-horo-scene')
         restoreFills()
         if (video !== null) {
@@ -5624,6 +5882,11 @@ function render(t) {
         const panel = findColumn()
         if (panel === null) return false
         if (!panel.hasAttribute('data-sidebar-right-open')) return false
+        // Fullscreen: the panel is laid over the whole conversation instead of
+        // beside it. Clearing its fills there let the conversation show through
+        // the start page and the 608px plate sat as a cropped strip in the
+        // middle, so the plate stays down while the column is fullscreen.
+        if (panel.getAttribute('data-sidebar-right-panel') === 'fullscreen') return false
         return findGate() !== null
       }
 
@@ -5641,14 +5904,8 @@ function render(t) {
         // right column's start page, so `show` stays true and the band kept
         // covering the lightbox -- its top-right ✕ swallowed the click and her
         // line played instead of closing the image.
-        if (hit !== null) {
-          if (show && !modalOpen()) {
-            const hasBand = place()
-            hit.style.display = hasBand === false ? 'none' : 'block'
-          } else {
-            hit.style.display = 'none'
-          }
-        }
+        if (show && !modalOpen()) hit.show(place() !== false)
+        else hit.show(false)
         if (show && !on) enter()
         else if (!show && on) leave()
         else if (on) { place(); clearFills() }
@@ -5719,12 +5976,13 @@ function render(t) {
           if (raf !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf)
           if (observer !== null) observer.disconnect()
           leave()
-          hit.removeEventListener('click', onHit)
+          document.removeEventListener('click', onHit)
+          document.removeEventListener('pointermove', onHover)
+          setHover(false)
           if (sceneVoice !== null) {
             try { sceneVoice.pause() } catch (error) { /* ignore */ }
             sceneVoice = null
           }
-          if (hit.parentNode !== null) hit.parentNode.removeChild(hit)
           if (root.parentNode !== null) root.parentNode.removeChild(root)
         },
       }
@@ -5844,6 +6102,43 @@ function render(t) {
             window.dispatchEvent(new CustomEvent(SCENE_CHANGE_EVENT, { detail: next }))
           } catch (err) { /* ignore */ }
         }, [])
+
+        // The clip picker is a themed listbox, not a native <select>: the
+        // native popup is drawn by the OS (blue highlight, square system
+        // menu) and ignores the palette. Closed by an outside press or Escape.
+        const [sceneOpen, setSceneOpen] = useState(false)
+        const sceneBoxRef = React.useRef(null)
+        useEffect(() => {
+          if (!sceneOpen) return undefined
+          const onDown = (event) => {
+            const box = sceneBoxRef.current
+            if (box !== null && event.target instanceof Node && box.contains(event.target)) return
+            setSceneOpen(false)
+          }
+          const onKey = (event) => {
+            if (event.key === 'Escape') setSceneOpen(false)
+          }
+          document.addEventListener('pointerdown', onDown, true)
+          document.addEventListener('keydown', onKey, true)
+          return () => {
+            document.removeEventListener('pointerdown', onDown, true)
+            document.removeEventListener('keydown', onKey, true)
+          }
+        }, [sceneOpen])
+        const pickScene = useCallback((one) => {
+          changeScene(one)
+          setSceneOpen(false)
+        }, [changeScene])
+        const onSceneKey = useCallback((event) => {
+          const at = SCENE_OPTIONS.indexOf(readSceneName())
+          let next = -1
+          if (event.key === 'ArrowDown') next = Math.min(SCENE_OPTIONS.length - 1, at + 1)
+          else if (event.key === 'ArrowUp') next = Math.max(0, at - 1)
+          if (next >= 0) {
+            event.preventDefault()
+            changeScene(SCENE_OPTIONS[next])
+          }
+        }, [changeScene])
 
         // The wordmark's placement lives in module state rather than here: the
         // card writes it, the floating layer reads it, and the two never share a
@@ -6092,22 +6387,31 @@ function render(t) {
             : '当前：' + sceneName +
               (sceneName === SCENE_NAME_DEFAULT ? '（默认）' : '') +
               '。只在右侧栏的开始页显示；左右边缘渐变到 50% 不透明度。'))
-        children.push(h('div', { key: 'sceneRow', style: rowStyle }, h('select', {
+        const chevron = h('svg', { viewBox: '0 0 16 16', width: 14, height: 14, 'aria-hidden': 'true' },
+          h('path', { d: 'M4 6l4 4 4-4', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' }))
+        children.push(h('div', { key: 'sceneRow', style: rowStyle }, h('div', {
           key: 'sceneSelect',
-          value: sceneName,
-          onChange: changeScene,
+          ref: sceneBoxRef,
+          'data-horo-select': '',
+          'data-horo-select-open': sceneOpen ? 'on' : 'off',
+        },
+        h('button', {
+          type: 'button',
+          'data-horo-select-btn': '',
+          'aria-haspopup': 'listbox',
+          'aria-expanded': sceneOpen ? 'true' : 'false',
           'aria-label': '右侧待机动画',
-          style: {
-            cursor: 'pointer',
-            borderRadius: '9px',
-            padding: '7px 11px',
-            font: '500 13px/1.2 "Microsoft YaHei",system-ui,sans-serif',
-            border: '1px solid var(--dsw-alias-border-l3)',
-            background: 'transparent',
-            color: 'var(--dsw-alias-label-primary)',
-            minWidth: '180px',
-          },
-        }, SCENE_OPTIONS.map((one) => h('option', { key: one, value: one }, one)))))
+          onClick: () => setSceneOpen((v) => !v),
+          onKeyDown: onSceneKey,
+        }, h('span', { 'data-horo-select-value': '' }, sceneName), chevron),
+        sceneOpen ? h('div', { role: 'listbox', 'aria-label': '右侧待机动画', 'data-horo-select-list': '' },
+          SCENE_OPTIONS.map((one) => h('div', {
+            key: one,
+            role: 'option',
+            'aria-selected': one === sceneName ? 'true' : 'false',
+            'data-horo-select-opt': one === SCENE_OFF ? 'off' : '',
+            onClick: () => pickScene(one),
+          }, one))) : null)))
 
         children.push(h('div', {
           key: 'plannerTitle',
@@ -6523,29 +6827,84 @@ function render(t) {
           if (typeof document === 'undefined') return () => {}
           const card = createProfileCard()
           document.body.appendChild(card.root)
+          // Distance between the account row and the menu it opens. The menu
+          // primitive owns that offset, so it is read off the first real menu
+          // (see tagMenu) and reused, keeping the card and the menu at one gap.
+          let gap = 6
           let hideTimer = 0
           const hideSoon = () => {
             clearTimeout(hideTimer)
             hideTimer = setTimeout(() => card.leave(), 180)
           }
+          const rowOf = (target) => {
+            if (!(target instanceof Element)) return null
+            return target.closest(ACCOUNT_ROW)
+          }
+          const menuOpen = (row) => row !== null && row.getAttribute('aria-expanded') === 'true'
           const onOver = (event) => {
             const target = event.target
             if (!(target instanceof Element)) return
-            const account = target.closest(ACCOUNT_ROW)
+            const account = rowOf(target)
             if (account !== null) {
               clearTimeout(hideTimer)
-              card.enter((account.textContent || '').trim())
+              // The menu is up: the card would sit on top of it.
+              if (menuOpen(account)) { card.leave(); return }
+              card.enter((account.textContent || '').trim(), account, gap)
               return
             }
             if (card.root.contains(target)) clearTimeout(hideTimer)
             else hideSoon()
           }
-          const onDown = (event) => {
-            const target = event.target
-            if (target instanceof Element && target.closest(ACCOUNT_ROW) !== null) {
-              clearTimeout(hideTimer)
-              card.leave()
+
+          // Tag the account menu the moment it is portalled in. A mutation
+          // callback runs before the next paint, so the entrance animation
+          // starts from its first frame instead of popping in and then moving.
+          let pendingRow = null
+          let watchUntil = 0
+          const tagMenu = (menu) => {
+            if (pendingRow === null || menu.hasAttribute('data-horo-account-menu')) return
+            const at = pendingRow.getBoundingClientRect()
+            const mr = menu.getBoundingClientRect()
+            if (mr.height <= 0) return
+            // Only a menu that opened above this row and overlaps it sideways.
+            if (mr.bottom > at.top + 2 || mr.right < at.left || mr.left > at.right) return
+            menu.setAttribute('data-horo-account-menu', '')
+            const measured = Math.round(at.top - mr.bottom)
+            if (measured >= 0 && measured <= 24) gap = measured
+          }
+          // The observer is connected only for the short window after a press
+          // on the row: the message list mutates constantly while a turn
+          // streams, and a body-wide observer left running would pay for that.
+          let menuObserver = null
+          const stopWatch = () => {
+            pendingRow = null
+            if (menuObserver !== null) { menuObserver.disconnect(); menuObserver = null }
+          }
+          const scanMenus = () => {
+            if (pendingRow === null) return
+            if (Date.now() > watchUntil) { stopWatch(); return }
+            const all = document.querySelectorAll('[role="menu"]')
+            for (let i = 0; i < all.length; i += 1) tagMenu(all[i])
+          }
+          const startWatch = (row) => {
+            pendingRow = row
+            watchUntil = Date.now() + 800
+            if (menuObserver === null && typeof MutationObserver === 'function') {
+              menuObserver = new MutationObserver(scanMenus)
+              try { menuObserver.observe(document.body, { childList: true, subtree: true }) } catch (error) { menuObserver = null }
             }
+            // The menu may stay mounted between openings: catch it on the next
+            // frames as well as through the observer.
+            requestAnimationFrame(() => { scanMenus(); requestAnimationFrame(scanMenus) })
+            setTimeout(scanMenus, 820)
+          }
+
+          const onDown = (event) => {
+            const account = rowOf(event.target)
+            if (account === null) return
+            clearTimeout(hideTimer)
+            card.handoff()
+            if (!menuOpen(account)) startWatch(account)
           }
           document.addEventListener('pointerover', onOver, true)
           document.addEventListener('pointerdown', onDown, true)
@@ -6559,6 +6918,7 @@ function render(t) {
           document.addEventListener('scroll', onScroll, true)
           return () => {
             clearTimeout(hideTimer)
+            stopWatch()
             document.removeEventListener('pointerover', onOver, true)
             document.removeEventListener('pointerdown', onDown, true)
             document.removeEventListener('scroll', onScroll, true)
@@ -6583,8 +6943,8 @@ function render(t) {
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
           let pad = null
-          const announce = (trigger) => {
-            if (typeof horoVoiceAnnounce === 'function') horoVoiceAnnounce(trigger)
+          const announce = (trigger, from) => {
+            if (typeof horoVoiceAnnounce === 'function') horoVoiceAnnounce(trigger, from)
           }
           try { pad = createPlanner(announce) } catch (error) { pad = null }
           if (pad === null) return () => {}
@@ -6659,8 +7019,8 @@ function render(t) {
           // registers BEFORE the voice-cue effect below, so at registration
           // time horoVoiceAnnounce is still null. The closure reads it at
           // click time, by which point it is wired.
-          const announce = (trigger) => {
-            if (typeof horoVoiceAnnounce === 'function') horoVoiceAnnounce(trigger)
+          const announce = (trigger, from) => {
+            if (typeof horoVoiceAnnounce === 'function') horoVoiceAnnounce(trigger, from)
           }
           try { scene = createScene(announce) } catch (error) { scene = null }
           if (scene === null) return () => {}
@@ -6704,7 +7064,7 @@ function render(t) {
           try { document.body.appendChild(bubble.root) } catch (error) { return () => {} }
           try { cues = createVoiceCues(bubble) } catch (error) { cues = null }
           horoVoiceAnnounce = (cues !== null && typeof cues.announce === 'function')
-            ? (trigger) => { try { cues.announce(trigger) } catch (error) { /* ignore */ } }
+            ? (trigger, from) => { try { cues.announce(trigger, from) } catch (error) { /* ignore */ } }
             : null
           return () => {
             horoVoiceAnnounce = null
