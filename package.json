@@ -1,5 +1,5 @@
 {
-  "name": "dsh-theme-holo",
+  "name": "dsh-theme-horo",
   "version": "1.0.7",
   "type": "module",
   "description": "《狼与香辛料》赫萝主题：浅色「麦秋晨光」与深色「星夜麦田」两套暖色皮肤，附带开场动画、动态档案卡、日志标签分类、右栏待机动画与可拖动探头。",
@@ -11,11 +11,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/1015677515/dsh-theme-holo.git"
+    "url": "git+https://github.com/WILSONowo/dsh-theme-horo.git"
   },
-  "homepage": "https://github.com/1015677515/dsh-theme-holo#readme",
+  "homepage": "https://github.com/WILSONowo/dsh-theme-horo#readme",
   "bugs": {
-    "url": "https://github.com/1015677515/dsh-theme-holo/issues"
+    "url": "https://github.com/WILSONowo/dsh-theme-horo/issues"
   },
   "keywords": [
     "deepseek-harness",
@@ -23,7 +23,7 @@
     "dsh-plugin",
     "theme",
     "spice-and-wolf",
-    "holo"
+    "horo"
   ],
   "main": "./index.js",
   "exports": {

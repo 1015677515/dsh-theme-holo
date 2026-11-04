@@ -32,11 +32,11 @@ original creators could not be traced individually, and no rights over them are
 claimed or granted here.
 
 若你是权利人，认为某件素材不应出现在本仓库，请开
-[issue](https://github.com/1015677515/dsh-theme-holo/issues) 告知，提出后即予移除。
+[issue](https://github.com/WILSONowo/dsh-theme-horo/issues) 告知，提出后即予移除。
 
 If you are a rights holder and object to any asset appearing in this
 repository, please open an
-[issue](https://github.com/1015677515/dsh-theme-holo/issues) and it will be
+[issue](https://github.com/WILSONowo/dsh-theme-horo/issues) and it will be
 removed on request.
 
 ---

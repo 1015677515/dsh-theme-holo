@@ -1,4 +1,4 @@
-// Host half of the Holo (Spice and Wolf) theme.
+// Host half of the Horo (Spice and Wolf) theme.
 //
 // The theme itself is a browser-side capability: one stylesheet plus a handful
 // of decorations, all shipped through exports["./client"]. What the host adds
@@ -6,7 +6,7 @@
 // browser half can reference real files instead of carrying ~1.5 MB of base64
 // inside the bundle.
 //
-// Routes: GET/HEAD /holo-theme/{assets,link,anime}/<file>
+// Routes: GET/HEAD /horo-theme/{assets,link,anime}/<file>
 //   - prefix routes, registered before any fallback the Web composition owns
 //   - strong ETag + Last-Modified, byte ranges (video/audio seeking), HEAD
 //   - path traversal is rejected after normalisation, never merely stripped
@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url'
 import { untar, safeRel } from './tavern-kit/tar.mjs'
 
 /** Stable Cordis plugin name. */
-export const name = 'themeHolo'
+export const name = 'themeHoro'
 
 /**
  * Hard dependency on the HTTP carrier: a `ctx.get('webServer')` at mount time is
@@ -34,7 +34,7 @@ export const name = 'themeHolo'
 export const inject = ['webServer']
 
 /** Public route prefix the browser half hard-codes (`client.js: ASSET_BASE`). */
-const BASE = '/holo-theme/assets'
+const BASE = '/horo-theme/assets'
 
 /**
  * Second prefix, for the whale-widget integration payload: the two role images
@@ -42,7 +42,7 @@ const BASE = '/holo-theme/assets'
  * and are served from there rather than copied into `./assets` — one copy on
  * disk, and the browser half can still `fetch()` real bytes.
  */
-const LINK_BASE = '/holo-theme/link'
+const LINK_BASE = '/horo-theme/link'
 
 /**
  * Third prefix, for the standby clips: the six webm files staged in
@@ -50,7 +50,7 @@ const LINK_BASE = '/holo-theme/link'
  * the user and served in place, so swapping one on disk re-skins the plate
  * without touching `./assets` or the bundle.
  */
-const ANIME_BASE = '/holo-theme/anime'
+const ANIME_BASE = '/horo-theme/anime'
 
 /** Directory the artwork lives in, next to this file. */
 const ASSET_DIR = join(dirname(fileURLToPath(import.meta.url)), 'assets')
@@ -65,7 +65,7 @@ const ANIME_DIR = join(dirname(fileURLToPath(import.meta.url)), '素材', '动�
  * Exact relative paths each route is allowed to serve.
  *
  * These folders are staging areas: `素材/` in particular also holds the
- * un-cleaned originals (`holo.png`, `holo-Q.png`), the wordmark source, the
+ * un-cleaned originals (`horo.png`, `horo-Q.png`), the wordmark source, the
  * cover drafts, and two folders of lettering. None of that is referenced by the
  * browser half, and none of it should be reachable from a page. A whitelist also
  * keeps a stray file dropped into a staging folder from silently becoming
@@ -85,15 +85,15 @@ const ANIME_DIR = join(dirname(fileURLToPath(import.meta.url)), '素材', '动�
  * extra `TAVERN_DENY` check keeps a stray copy of it unreachable even if
  * someone moves it into `assets/`.
  */
-const TAVERN_BASE = '/holo-tavern'
+const TAVERN_BASE = '/horo-tavern'
 
 /**
  * 内部端点：返回宿主的真实 HTTP 根地址（webApp.getAdvertisedUrl()）。
  *
- * 单独一条前缀，不放在 TAVERN_BASE 下 —— /holo-tavern/* 整段由静态路由
+ * 单独一条前缀，不放在 TAVERN_BASE 下 —— /horo-tavern/* 整段由静态路由
  * 接管，它的目录白名单会把这个端点判成 404。
  */
-const BASE_URL_PATH = '/holo-base-url'
+const BASE_URL_PATH = '/horo-base-url'
 
 /** Directory the tavern lives in, next to this file. */
 const TAVERN_DIR = join(dirname(fileURLToPath(import.meta.url)), 'tavern')
@@ -137,8 +137,8 @@ const ALLOW = new Map([
     'wheat.png',
   ])],
   [LINK_BASE, new Set([
-    'holo-clean.png',
-    'holo-Q-clean.png',
+    'horo-clean.png',
+    'horo-Q-clean.png',
     '赫萝语音.WAV',
   ])],
   [ANIME_BASE, new Set([
@@ -320,15 +320,15 @@ export function apply(ctx) {
 
   ctx.effect(
     () => claim(BASE, ASSET_DIR, ALLOW.get(BASE), 'artwork'),
-    'theme-holo: artwork route',
+    'theme-horo: artwork route',
   )
   ctx.effect(
     () => claim(LINK_BASE, LINK_DIR, ALLOW.get(LINK_BASE), 'whale link payload'),
-    'theme-holo: whale link route',
+    'theme-horo: whale link route',
   )
   ctx.effect(
     () => claim(ANIME_BASE, ANIME_DIR, ALLOW.get(ANIME_BASE), 'standby clips'),
-    'theme-holo: anime route',
+    'theme-horo: anime route',
   )
 
   /* 真实 HTTP 地址，供「前往黄昏酒馆」拼绝对 URL。
@@ -343,7 +343,7 @@ export function apply(ctx) {
    * 会退回 location.origin，不至于让插件启动失败。 */
   const baseUrlRoute = webServer.register({
     kind: 'prefix',
-    // 独立前缀，不挂在 TAVERN_BASE 下面：/holo-tavern/* 由下面的静态路由
+    // 独立前缀，不挂在 TAVERN_BASE 下面：/horo-tavern/* 由下面的静态路由
     // 整段接管，它的白名单会把这个内部端点判成 404。两者互不重叠最省心。
     path: BASE_URL_PATH,
     handler: (req, res) => {
@@ -362,11 +362,11 @@ export function apply(ctx) {
       res.end(JSON.stringify({ url }))
     },
   })
-  ctx.effect(() => baseUrlRoute, 'theme-holo: tavern base url route')
+  ctx.effect(() => baseUrlRoute, 'theme-horo: tavern base url route')
 
   /* The tavern: a directory-scoped static route rather than a file whitelist
      (see TAVERN_ALLOW_DIRS). It has to answer the bare directory too, because a
-     browser opening /holo-tavern/ should land on the scene instead of a 404. */
+     browser opening /horo-tavern/ should land on the scene instead of a 404. */
   const tavernRoute = webServer.register({
     kind: 'prefix',
     path: TAVERN_BASE,
@@ -378,7 +378,7 @@ export function apply(ctx) {
         return
       }
       let urlPath = (req.url ?? '').split('?')[0]
-      // `/holo-tavern` and `/holo-tavern/` both mean "the scene's entry page".
+      // `/horo-tavern` and `/horo-tavern/` both mean "the scene's entry page".
       let rel = urlPath.slice(TAVERN_BASE.length).replace(/^\/+/, '')
       if (rel === '') rel = 'lesson/index.html'
 
@@ -399,11 +399,11 @@ export function apply(ctx) {
       return serveFile(req, res, file)
     },
   })
-  ctx.effect(() => tavernRoute, 'theme-holo: tavern route')
+  ctx.effect(() => tavernRoute, 'theme-horo: tavern route')
 
   /* ───────────────── 酒馆安装端点 ─────────────────
    *
-   * POST /holo-tavern-install
+   * POST /horo-tavern-install
    *   从素材仓库的 Release 下载 tar.gz，解压写进 <插件目录>/tavern/。
    *
    * 为什么让 host 下载、而不是浏览器下载：
@@ -419,7 +419,7 @@ export function apply(ctx) {
    *   · 只往 TAVERN_DIR 里面写
    *   · 拒绝 SymbolicLink / 设备文件等非常规条目
    */
-  const INSTALL_PATH = '/holo-tavern-install'
+  const INSTALL_PATH = '/horo-tavern-install'
   const ASSET_URL =
     'https://github.com/1015677515/holo-tavern-assets/releases/download/v1.0.0/tavern-assets.tar.gz'
 
@@ -492,5 +492,5 @@ export function apply(ctx) {
       }
     },
   })
-  ctx.effect(() => installRoute, 'theme-holo: tavern install route')
+  ctx.effect(() => installRoute, 'theme-horo: tavern install route')
 }

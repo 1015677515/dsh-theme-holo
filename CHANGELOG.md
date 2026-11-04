@@ -2,6 +2,35 @@
 
 ## 未发布
 
+### 改名：holo → horo（WILSONowo/dsh-theme-horo 分支）
+
+- **包名 `dsh-theme-holo` → `dsh-theme-horo`**，随之改名的还有：路由前缀
+  `/horo-theme/*`、`/horo-tavern*`、`/horo-base-url`，所有 `holo-` / `data-holo-*`
+  的 id、类名与属性，`localStorage` 键前缀 `dsh-theme-horo.`，记录板的 IndexedDB
+  库名，以及 `素材/horo-clean.png`、`素材/horo-Q-clean.png`。仓库链接指向
+  [`WILSONowo/dsh-theme-horo`](https://github.com/WILSONowo/dsh-theme-horo)。
+- **旧数据自动迁移**：首次启动时把 `dsh-theme-holo.*` 的设置复制到新键，
+  并把旧 IndexedDB 里粘贴的图片拷进新库；旧数据原样保留，不删除。
+- **刻意保留旧名的**：联合创始人的 GitHub 账号 `holoiallo`；素材仓库
+  `1015677515/holo-tavern-assets`；`tavern/` 目录内的文件（`holo.glb`、
+  `holo.js`、`holo2d/` 等）——它们由该仓库 Release 的压缩包整体覆盖，
+  名字必须与压缩包一致；以及本文件中已有的历史条目。
+- **升级注意**：profile 里的依赖名与 `dsh.profile.bundles` 需同步改成
+  `dsh-theme-horo`。
+
+### 修复（界面）
+
+- **`素材/` 下 9 个文件的路径被转义成乱码**（`"\347\264\240..."`），导致
+  `/horo-theme/link` 与 `/horo-theme/anime` 两条路由在所有系统上取不到文件，
+  Windows 上还无法检出。已按正确的 UTF-8 路径重新入库。
+- **英文界面下账号行找不到**：只认中文 `aria-label="账号菜单"`，英文界面是
+  `Account menu`。麦田因此退回占侧栏 18% 的高度盖住用户名，档案卡也不出现。
+- **设置里手机号等内联文字变成浮动气泡**：吐司样式原本挂在
+  `[role="status"]` / `[role="alert"]` 上，宿主大量内联元素也带这两个角色。
+  改为只作用于宿主吐司自身的类名。
+- **羊皮纸便笺重做样式**：做旧纸面、金色细线、蜡封标题点、图标按钮；
+  修掉输入框宽度溢出导致的横向滚动条，以及全局焦点框套在输入框上的金框。
+
 ### 新增
 
 - **赫萝的黄昏酒馆：改成了「插件完全不带、点了才下」。**
