@@ -517,24 +517,28 @@ html body:not([data-ds-dark-theme]) [data-horo-account-menu] {
 html body [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]) {
   position: relative;
   z-index: 2;
-  background: rgba(251, 247, 239, .62);
-  -webkit-backdrop-filter: blur(5px) saturate(1.05);
-  backdrop-filter: blur(5px) saturate(1.05);
-  box-shadow: inset 0 0 0 .5px rgba(184, 130, 43, .30), 0 2px 10px rgba(58, 38, 18, .08);
+  background: rgba(251, 247, 239, .34);
+  -webkit-backdrop-filter: blur(2.5px) saturate(1.05);
+  backdrop-filter: blur(2.5px) saturate(1.05);
+  box-shadow: inset 0 0 0 .5px rgba(184, 130, 43, .26), 0 2px 10px rgba(58, 38, 18, .06);
+  /* a thinner plate lets more wheat through; a soft parchment halo behind
+     the letters keeps the name readable over the stalks */
+  text-shadow: 0 0 2px rgba(251, 247, 239, .95), 0 0 7px rgba(251, 247, 239, .85);
   transition: background .16s ease, box-shadow .16s ease;
 }
 html body [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]):hover,
 html body [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"])[aria-expanded="true"] {
-  background: rgba(251, 247, 239, .84);
-  box-shadow: inset 0 0 0 .5px rgba(184, 130, 43, .48), 0 4px 14px rgba(58, 38, 18, .12);
+  background: rgba(251, 247, 239, .66);
+  box-shadow: inset 0 0 0 .5px rgba(184, 130, 43, .44), 0 4px 14px rgba(58, 38, 18, .10);
 }
 html body[data-ds-dark-theme] [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]) {
-  background: rgba(27, 21, 16, .58);
-  box-shadow: inset 0 0 0 .5px rgba(224, 174, 92, .26);
+  background: rgba(27, 21, 16, .34);
+  box-shadow: inset 0 0 0 .5px rgba(224, 174, 92, .22);
+  text-shadow: 0 0 2px rgba(20, 15, 10, .95), 0 0 7px rgba(20, 15, 10, .8);
 }
 html body[data-ds-dark-theme] [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]):hover,
 html body[data-ds-dark-theme] [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"])[aria-expanded="true"] {
-  background: rgba(27, 21, 16, .80);
+  background: rgba(27, 21, 16, .62);
 }
 
 
@@ -1783,15 +1787,15 @@ html body[data-ds-dark-theme] [data-horo-select-list] [data-horo-select-opt="off
    warm paper gradient, gold hairline, serif text. It is a data- attribute
    rather than an id, so the dark-palette [id^="horo-"] rule leaves it alone. */
 /* ---- the voice bubble: the same parchment plate the promo film uses -----
-   Fill, shadow, 14px radius, hairline deckled edge, and a wheat sprig at each
-   end. No tail and no double ring: those made it read as a chat popup, while
-   the film's captions are flat torn paper. */
+   Fill, shadow, 14px radius, hairline deckled edge, and one ear of wheat
+   tucked over the top-left corner. No tail and no double ring: those made it
+   read as a chat popup, while the film's captions are flat torn paper. */
 [data-horo-voice-bubble] {
   position: fixed;
   z-index: 2147482999;
   display: none;
   max-width: 320px;
-  padding: 11px 26px 12px;
+  padding: 11px 20px 12px 24px;
   border-radius: 14px;
   pointer-events: auto;
   cursor: pointer;
@@ -1813,31 +1817,20 @@ html body[data-ds-dark-theme] [data-horo-select-list] [data-horo-select-opt="off
   transition: opacity 260ms ease, transform 260ms ease;
 }
 
-/* a wheat sprig at each end, three short strokes each */
-[data-horo-voice-bubble]::before,
-[data-horo-voice-bubble]::after {
+/* One ear of wheat (grains, awns, a curved stalk) tucked into the top-left
+   corner: the stalk rests on the paper, the head rises 15px above the plate.
+   place() keeps the bubble at least 16px from the top of the window, so the
+   head never gets cut off. The grains carry a paper-coloured
+   rim so they read as separate kernels at this size. */
+[data-horo-voice-bubble]::before {
   content: '';
   position: absolute;
-  top: 50%;
-  width: 9px;
-  height: 26px;
-  margin-top: -13px;
-  background-image:
-    linear-gradient(24deg, transparent 44%, rgba(162, 112, 31, 0.52) 44%, rgba(162, 112, 31, 0.52) 52%, transparent 52%),
-    linear-gradient(24deg, transparent 44%, rgba(162, 112, 31, 0.52) 44%, rgba(162, 112, 31, 0.52) 52%, transparent 52%),
-    linear-gradient(24deg, transparent 44%, rgba(162, 112, 31, 0.52) 44%, rgba(162, 112, 31, 0.52) 52%, transparent 52%);
-  background-size: 100% 7px, 100% 7px, 100% 7px;
-  background-position: 0 0, 0 10px, 0 20px;
-  background-repeat: no-repeat;
-}
-
-[data-horo-voice-bubble]::before {
-  left: 9px;
-  transform: scaleX(-1);
-}
-
-[data-horo-voice-bubble]::after {
-  right: 9px;
+  left: 3px;
+  top: -15px;
+  width: 17px;
+  height: 30px;
+  pointer-events: none;
+  background: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 -3 20 35"%3E%3Cg transform="rotate(16 10 18)"%3E%3Cg fill="none" stroke="%239A6A1D" stroke-width=".5" stroke-linecap="round"%3E%3Cpath d="M7.23 13.97l-1.99 -3.46"/%3E%3Cpath d="M12.77 12.57l1.99 -3.46"/%3E%3Cpath d="M7.43 11.02l-1.85 -3.20"/%3E%3Cpath d="M12.57 9.62l1.85 -3.20"/%3E%3Cpath d="M7.66 8.18l-1.68 -2.91"/%3E%3Cpath d="M12.34 6.78l1.68 -2.91"/%3E%3Cpath d="M10 4V-0.5"/%3E%3C/g%3E%3Cpath d="M10 19.5C10.2 24 9.4 27.6 7.2 31" fill="none" stroke="%239A6A1D" stroke-width="1" stroke-linecap="round"/%3E%3Cpath d="M10 20V6" stroke="%239A6A1D" stroke-width=".7"/%3E%3Cellipse cx="8.25" cy="19.00" rx="1.30" ry="2.60" transform="rotate(-30 8.25 19.00)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="11.75" cy="17.60" rx="1.30" ry="2.60" transform="rotate(30 11.75 17.60)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="8.34" cy="15.90" rx="1.23" ry="2.47" transform="rotate(-30 8.34 15.90)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="11.66" cy="14.50" rx="1.23" ry="2.47" transform="rotate(30 11.66 14.50)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="8.46" cy="12.80" rx="1.14" ry="2.29" transform="rotate(-30 8.46 12.80)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="11.54" cy="11.40" rx="1.14" ry="2.29" transform="rotate(30 11.54 11.40)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="8.60" cy="9.80" rx="1.04" ry="2.08" transform="rotate(-30 8.60 9.80)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="11.40" cy="8.40" rx="1.04" ry="2.08" transform="rotate(30 11.40 8.40)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="10" cy="6.2" rx="1.1" ry="2.3" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3C/g%3E%3C/svg%3E') no-repeat center / contain;
 }
 
 [data-horo-voice-bubble][data-horo-voice-state="shown"] {
@@ -1864,12 +1857,8 @@ html body[data-ds-dark-theme] [data-horo-voice-bubble] {
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 
-html body[data-ds-dark-theme] [data-horo-voice-bubble]::before,
-html body[data-ds-dark-theme] [data-horo-voice-bubble]::after {
-  background-image:
-    linear-gradient(24deg, transparent 44%, rgba(224, 174, 92, 0.55) 44%, rgba(224, 174, 92, 0.55) 52%, transparent 52%),
-    linear-gradient(24deg, transparent 44%, rgba(224, 174, 92, 0.55) 44%, rgba(224, 174, 92, 0.55) 52%, transparent 52%),
-    linear-gradient(24deg, transparent 44%, rgba(224, 174, 92, 0.55) 44%, rgba(224, 174, 92, 0.55) 52%, transparent 52%);
+html body[data-ds-dark-theme] [data-horo-voice-bubble]::before {
+  background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 -3 20 35"%3E%3Cg transform="rotate(16 10 18)"%3E%3Cg fill="none" stroke="%23D9A853" stroke-width=".5" stroke-linecap="round"%3E%3Cpath d="M7.23 13.97l-1.99 -3.46"/%3E%3Cpath d="M12.77 12.57l1.99 -3.46"/%3E%3Cpath d="M7.43 11.02l-1.85 -3.20"/%3E%3Cpath d="M12.57 9.62l1.85 -3.20"/%3E%3Cpath d="M7.66 8.18l-1.68 -2.91"/%3E%3Cpath d="M12.34 6.78l1.68 -2.91"/%3E%3Cpath d="M10 4V-0.5"/%3E%3C/g%3E%3Cpath d="M10 19.5C10.2 24 9.4 27.6 7.2 31" fill="none" stroke="%23D9A853" stroke-width="1" stroke-linecap="round"/%3E%3Cpath d="M10 20V6" stroke="%23D9A853" stroke-width=".7"/%3E%3Cellipse cx="8.25" cy="19.00" rx="1.30" ry="2.60" transform="rotate(-30 8.25 19.00)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="11.75" cy="17.60" rx="1.30" ry="2.60" transform="rotate(30 11.75 17.60)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="8.34" cy="15.90" rx="1.23" ry="2.47" transform="rotate(-30 8.34 15.90)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="11.66" cy="14.50" rx="1.23" ry="2.47" transform="rotate(30 11.66 14.50)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="8.46" cy="12.80" rx="1.14" ry="2.29" transform="rotate(-30 8.46 12.80)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="11.54" cy="11.40" rx="1.14" ry="2.29" transform="rotate(30 11.54 11.40)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="8.60" cy="9.80" rx="1.04" ry="2.08" transform="rotate(-30 8.60 9.80)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="11.40" cy="8.40" rx="1.04" ry="2.08" transform="rotate(30 11.40 8.40)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="10" cy="6.2" rx="1.1" ry="2.3" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3C/g%3E%3C/svg%3E');
 }
 
 
@@ -2561,6 +2550,12 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
         done = true
         cancelAnimationFrame(raf)
         audio.pause()
+        // Hand the palette back before the fade, not after it: while the
+        // override lives, the sidebar fill and label colour are the reel's
+        // dark ones, and the 620ms fade reveals the page in them -- the dark
+        // flash on entry. Removing it now also tells the titlebar preload
+        // (it watches <head>) to resample at once.
+        windowAppearance.dispose()
         root.classList.add('is-leaving')
         // Stop swallowing clicks the moment the reel is over: the fade takes
         // 620ms, and a pointer-events-free overlay cannot eat a real click.
@@ -2568,7 +2563,6 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
         window.setTimeout(() => {
           detach()
           root.remove()
-          windowAppearance.dispose()
         }, 620)
         // Hand the screen back first, then let the caller offer something on top
         // of it — a dialog raised while the reel still covers the viewport is a
@@ -4244,7 +4238,7 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
           const h = root.offsetHeight || 48
           const w = root.offsetWidth || maxW
           if (at.left < vw / 2 && at.right + 12 + w <= vw - 12) {
-            const top = Math.min(Math.max(12, at.top + at.height / 2 - h / 2), vh - h - 12)
+            const top = Math.min(Math.max(16, at.top + at.height / 2 - h / 2), vh - h - 12)
             put({ left: px(at.right + 12), right: 'auto', top: px(top), bottom: 'auto' })
             return
           }
