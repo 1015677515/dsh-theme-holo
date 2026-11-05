@@ -694,7 +694,12 @@ html body:not([data-ds-dark-theme]) #horo-peek {
   position: fixed;
   z-index: 2147482997;
   display: none;
-  overflow: hidden;
+  /* Not hidden: her lean toward the pointer (up to 4px up), the 2.4deg tilt
+     and the 9px sideways sway all carry the artwork past this box, and an
+     overflow clip sliced the top of her head and her ears whenever she rose.
+     The only edge that must cut is the composer's, and place() writes that
+     as a clip-path with room left on the other three sides. */
+  overflow: visible;
   cursor: grab;
   touch-action: none;
   height: var(--peek-h, 0px);
@@ -869,6 +874,9 @@ html body[data-ds-dark-theme] .horo-apple { display: none !important; }
    latch lives on <html> so it applies to both palettes. */
 html[data-horo-peek="off"] #horo-peek,
 html[data-horo-peek="off"] #horo-peek-fx { display: none !important; }
+/* A fullscreen right column covers the composer; her grains, apple and thread
+   go with her (place() already stands her down). */
+html[data-horo-right-full="on"] #horo-peek-fx { display: none !important; }
 
 /* ---- the floating wordmark -------------------------------------------- */
 /* A free-floating picture: one fixed layer on <body>, nothing appended to a
@@ -931,6 +939,15 @@ html[data-horo-peek="off"] #horo-peek-fx { display: none !important; }
   border-radius: 3px;
 }
 [data-horo-logo][data-horo-logo-edit="on"]:active { cursor: grabbing; }
+
+/* A fullscreen right column climbs over the shell's frame and so over this
+   layer's lower half too: parked at the default spot the mark came out sliced
+   by the column's top edge. It belongs to the conversation's header, which the
+   column now covers, so it steps out until the column leaves fullscreen --
+   except while being dragged, when it has to stay where the pointer is. */
+html[data-horo-right-full="on"] [data-horo-logo]:not([data-horo-logo-edit="on"]) {
+  visibility: hidden;
+}
 
 /* The grip and the readout exist in the DOM at all times but are painted only
    while editing, so entering the mode never rebuilds the layer. */
@@ -2756,6 +2773,8 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
     function createPeeker(announce) {
       const reduced = typeof matchMedia === 'function'
         && matchMedia('(prefers-reduced-motion: reduce)').matches
+      /** True while the right column is fullscreen over the conversation. */
+      const rightFull = () => document.documentElement.getAttribute('data-horo-right-full') === 'on'
 
       const root = document.createElement('div')
       root.id = 'horo-peek'
@@ -2898,7 +2917,10 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
       }
 
       const place = () => {
-        const box = findComposer()
+        // A fullscreen right column covers the composer while it stays laid
+        // out underneath; she goes with the composer she can no longer be seen
+        // on (see the right column fullscreen flag effect).
+        const box = rightFull() ? null : findComposer()
         if (box !== card) {
           card = box
         }
@@ -2937,7 +2959,9 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
         root.style.width = `${width.toFixed(1)}px`
         root.style.left = `${herLeft.toFixed(1)}px`
         root.style.bottom = `${(window.innerHeight - rect.top - SINK).toFixed(1)}px`
-        root.style.clipPath = `inset(0 0 ${SINK}px 0)`
+        // Cut only at the composer's edge; the negative insets leave headroom
+        // for the lean / tilt / sway (see the #horo-peek rule).
+        root.style.clipPath = `inset(-24px -24px ${SINK}px -24px)`
         // Publish the box so the voice bubble can sit above her right shoulder.
         syncPeekBox()
       }
@@ -3103,7 +3127,17 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
         // Leaving a chat unmounts the composer. Waiting for the 900ms poll
         // left her hanging over the next page for up to a second, so a
         // detached (or hidden) composer re-runs place() on the very next frame.
-        if (card !== null && (!card.isConnected || card.offsetWidth === 0)) place()
+        if (card !== null && (!card.isConnected || card.offsetWidth === 0 || rightFull())) place()
+        // Dragging a sidebar's edge moves and resizes the composer without a
+        // window resize, so the 900ms poll was all that caught it and she
+        // trailed the composer by up to a second. The rect is read here once
+        // a frame, before this frame's writes, and she is re-placed the
+        // moment it differs from the one she was placed against.
+        else if (card !== null && cardRect !== null) {
+          const now = card.getBoundingClientRect()
+          if (Math.abs(now.left - cardRect.left) > 0.5 || Math.abs(now.top - cardRect.top) > 0.5
+            || Math.abs(now.width - cardRect.width) > 0.5) place()
+        }
         const t = clock()
         if (t - lastRead > 110) {
           lastRead = t
@@ -3255,7 +3289,11 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
           })
         })
         : null
-      if (seek !== null) seek.observe(document.body, { childList: true, subtree: true })
+      if (seek !== null) {
+        seek.observe(document.body, { childList: true, subtree: true })
+        // Leaving fullscreen changes no children of her own, only the flag.
+        seek.observe(document.documentElement, { attributes: true, attributeFilter: ['data-horo-right-full'] })
+      }
       window.addEventListener('resize', place)
       window.addEventListener('scroll', place, true)
       document.addEventListener('pointermove', onPointerMove, true)
@@ -4147,6 +4185,8 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
        *  note pad on a settings page -- the line is not captioned, and a
        *  caption still up when the page changes goes with it. */
       const onChatPage = () => {
+        // A fullscreen right column covers the chat, composer included.
+        if (document.documentElement.getAttribute('data-horo-right-full') === 'on') return false
         const box = typeof getPeekBox === 'function' ? getPeekBox() : null
         if (box !== null && box !== undefined && box.visible) return true
         const input = document.querySelector('[data-composer-input]') || document.querySelector('[role="textbox"]')
@@ -5605,7 +5645,7 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
           sceneVoice.pause()
           sceneVoice.currentTime = 0
           const started = sceneVoice.play()
-          if (started !== undefined && started.catch === 'function') started.catch(() => {})
+          if (started !== undefined && started !== null && typeof started.catch === 'function') started.catch(() => {})
         } catch (error) { /* audio unavailable: the caption still shows */ }
         if (typeof announce === 'function') announce('scene', at)
       }
@@ -5652,7 +5692,11 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
         }
         if (stillOpen) speak({ left: event.clientX - 1, top: event.clientY - 1, width: 2, height: 2 })
       }
-      document.addEventListener('click', onHit)
+      // Capture phase: the right column's own handlers may stop a click
+      // before it bubbles up to the document, and a bubbling listener then
+      // never hears the tap. Nothing is stopped or prevented here, so the
+      // host's controls still get every click.
+      document.addEventListener('click', onHit, true)
       const onHover = (event) => {
         setHover(inBand(event.clientX, event.clientY) && plainTarget(event.target))
       }
@@ -5663,6 +5707,30 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
       let watched = null
       let raf = 0
       const cleared = []
+
+      // Dragging the column's edge resizes it without a window resize and
+      // without any attribute write, so the plate and the hit band used to
+      // wait for the 1200ms re-check and visibly trailed the column. A
+      // ResizeObserver fires after layout and before paint in the same frame,
+      // so re-placing from it keeps the slice glued to the edge. Only place()
+      // runs here; the fill clearing is a whole-subtree walk and stays on the
+      // slow beat.
+      let sized = null
+      const sizer = typeof ResizeObserver === 'function'
+        ? new ResizeObserver(() => {
+          if (!on) return
+          const ok = place()
+          if (!modalOpen()) hit.show(ok !== false)
+        })
+        : null
+      const trackColumn = (col) => {
+        if (sizer === null || col === sized) return
+        try {
+          if (sized !== null) sizer.unobserve(sized)
+          sized = col
+          if (col !== null) sizer.observe(col)
+        } catch (error) { sized = null }
+      }
 
       // The right column's panel. It is the one stable handle this shell offers:
       // the class names are build hashes, the attributes are not.
@@ -5812,14 +5880,18 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
       // Bottom edge of the column's header: the dock's tab strip with 开始 on
       // the left and the split / fullscreen / close buttons on the right. Taken
       // from the lowest tab or button that sits in the column's top 72px;
-      // without one, a 44px allowance.
+      // without one, a 44px allowance. Only strip-sized boxes count: the shell
+      // also puts `data-sidebar-right-tab` on each tab's whole body (the start
+      // page included), which starts just under the strip and runs to the
+      // column's foot -- counted as a tab, it pushed the band's top to the
+      // bottom of the column and left her with no tappable area at all.
       const stripBottom = (col, box) => {
         let bottom = Math.round(box.top) + 44
         try {
           const all = col.querySelectorAll('[role="tab"], [role="tablist"], [data-sidebar-right-tab], button')
           for (let i = 0; i < all.length; i += 1) {
             const r = all[i].getBoundingClientRect()
-            if (r.height <= 0 || r.top > box.top + 72) continue
+            if (r.height <= 0 || r.height > 64 || r.top > box.top + 72) continue
             if (r.bottom + 4 > bottom) bottom = Math.round(r.bottom + 4)
           }
         } catch (error) { /* keep the allowance */ }
@@ -5929,6 +6001,7 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
         clip.insertBefore(video, scrim)
         place()
         clearFills()
+        trackColumn(findColumn())
         // place() runs again once the plate is in the tree: the cards' own
         // positions are only final then, and the band is measured against them
         // (see guideEntryTop).
@@ -5940,6 +6013,7 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
         if (!on) return
         on = false
         hit.show(false)
+        trackColumn(null)
         document.documentElement.removeAttribute('data-horo-scene')
         restoreFills()
         if (video !== null) {
@@ -5991,7 +6065,7 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
         else hit.show(false)
         if (show && !on) enter()
         else if (!show && on) leave()
-        else if (on) { place(); clearFills() }
+        else if (on) { place(); clearFills(); trackColumn(findColumn()) }
       }
 
       const schedule = () => {
@@ -6041,6 +6115,7 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
           if (!on) return
           const col = findColumn()
           if (col !== watched) { watched = col }
+          trackColumn(col)
           place()
           clearFills()
         }, 1200)
@@ -6059,7 +6134,8 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
           if (raf !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf)
           if (observer !== null) observer.disconnect()
           leave()
-          document.removeEventListener('click', onHit)
+          if (sizer !== null) sizer.disconnect()
+          document.removeEventListener('click', onHit, true)
           document.removeEventListener('pointermove', onHover)
           setHover(false)
           if (sceneVoice !== null) {
@@ -6885,6 +6961,57 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
           const tags = createLogTags()
           return () => tags.dispose()
         }, 'theme-horo: transcript labels')
+
+        // Marks <html data-horo-right-full="on"> while the right column is
+        // fullscreen. In that state the shell lays the column over the whole
+        // conversation, but the theme's own floating layers sit above the
+        // shell's frame: the wordmark (z-index 2) stuck out of the column's top
+        // edge cut in half, and the peeker stayed over the composer it can no
+        // longer be seen with, head clipped at the composer's edge. Both stand
+        // down while the flag is set (CSS for the wordmark, place() for her).
+        ctx.effect(() => {
+          if (typeof document === 'undefined') return () => {}
+          const html = document.documentElement
+          const shown = (el) => typeof el.getClientRects === 'function' && el.getClientRects().length > 0
+          const check = () => {
+            let full = false
+            try {
+              const all = document.querySelectorAll('[data-sidebar-right-panel="fullscreen"]')
+              for (let i = 0; i < all.length; i += 1) {
+                if (all[i].hasAttribute('data-sidebar-right-open') && shown(all[i])) { full = true; break }
+              }
+            } catch (error) { full = false }
+            if (full) {
+              if (html.getAttribute('data-horo-right-full') !== 'on') html.setAttribute('data-horo-right-full', 'on')
+            } else if (html.hasAttribute('data-horo-right-full')) {
+              html.removeAttribute('data-horo-right-full')
+            }
+          }
+          let raf = 0
+          const schedule = () => {
+            if (raf !== 0) return
+            if (typeof requestAnimationFrame !== 'function') { check(); return }
+            raf = requestAnimationFrame(() => { raf = 0; check() })
+          }
+          let observer = null
+          if (typeof MutationObserver === 'function') {
+            observer = new MutationObserver(schedule)
+            try {
+              observer.observe(html, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['data-sidebar-right-open', 'data-sidebar-right-panel'],
+              })
+            } catch (error) { observer = null }
+          }
+          check()
+          return () => {
+            if (observer !== null) observer.disconnect()
+            if (raf !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf)
+            html.removeAttribute('data-horo-right-full')
+          }
+        }, 'theme-horo: right column fullscreen flag')
 
         // The companion peeking over the composer's edge.
         ctx.effect(() => {
