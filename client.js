@@ -1887,7 +1887,7 @@ html body[data-ds-dark-theme] [data-horo-voice-bubble]::after {
     const LOGO_SRC = ASSET_BASE + 'logo.png'
     /** The folded note pad's badge: her, cut out, inside a wheat ring. */
     const PLANNER_SRC = ASSET_BASE + 'planner.png'
-    /** 点记录板徽章时的应答（H182「ぬしの頼みならば喜んで」/「你开口，咱乐意。」）。 */
+    /** 点记录板徽章时的应答（H182「ぬしの頼みならば喜んで」/「若是汝的请求，咱自然乐意。」）。 */
     const PLANNER_VOICE_SRC = ASSET_BASE + 'voice-H182.wav'
     /** 点右栏待机画面（Horo 立绘）时的应答：H013。 */
     const SCENE_VOICE_SRC = ASSET_BASE + 'voice-H013.wav'
@@ -2074,7 +2074,7 @@ const ec = eyeC.getContext('2d'), tc = tmp.getContext('2d'), t2 = tmp2.getContex
 const EYE_L = { cx: 1534, cy: 555, w: 30, hu: 24, hl: 22, rot: -0.10, ix: 10, iy: 1, rx: 18.5, ry: 23 };
 const EYE_R = { cx: 1655, cy: 536, w: 30, hu: 23, hl: 21, rot: -0.16, ix: 6, iy: 2, rx: 18, ry: 22 };
 const EYES_MID = { x: 1595, y: 546 };
-const WOLF_EYE = { cx: 862, cy: 352, w: 17, hu: 6, hl: 5, rot: -0.22, ix: 0, iy: 0, rx: 9, ry: 7, wolf: true };
+const WOLF_EYE = { cx: 1005, cy: 367, w: 28, hu: 10.5, hl: 11.5, rot: -0.22, ix: 0, iy: 0, rx: 12.5, ry: 10.5, wolf: true };
 const MUZZLE = { x: 628, y: 432, dir: -2.78 };
 const GLINT = { x: 1546, y: 546 };
 
@@ -2103,12 +2103,24 @@ function almond(c, e, o) {
   const uy = lerp(-e.hu * .35, -e.hu * 1.36, o), ly = lerp(-e.hu * .3, e.hl * 1.32, o);
   c.beginPath();
   c.moveTo(-e.w, 0);
+  if (e.wolf) {
+    // A flatter upper arch and fuller lower lid; keep the original slit and glow.
+    c.bezierCurveTo(-e.w * .58, uy * .70, e.w * .28, uy * .90, e.w, -e.hu * .08);
+    c.bezierCurveTo(e.w * .53, ly * 1.08, -e.w * .48, ly * 1.12, -e.w, 0);
+    c.closePath();
+    return;
+  }
   c.bezierCurveTo(-e.w * .5, uy, e.w * .45, uy, e.w, -e.hu * .08);
   c.bezierCurveTo(e.w * .45, ly, -e.w * .5, ly, -e.w, 0);
   c.closePath();
 }
 function upperLid(c, e, o) {
   const uy = lerp(-e.hu * .35, -e.hu * 1.36, o);
+  if (e.wolf) {
+    c.beginPath(); c.moveTo(-e.w, 0);
+    c.bezierCurveTo(-e.w * .58, uy * .70, e.w * .28, uy * .90, e.w, -e.hu * .08);
+    return;
+  }
   c.beginPath(); c.moveTo(-e.w * 1.05, .5); c.bezierCurveTo(-e.w * .5, uy, e.w * .45, uy, e.w * 1.05, -e.hu * .1);
 }
 function drawEye(c, e, o, I, gx, dil = 0) {
@@ -2455,6 +2467,26 @@ function render(t) {
 
     }
 
+    /** The Windows preload samples these palette tokens for native caption
+     *  buttons and observes head changes. A temporary stylesheet makes the
+     *  controls readable over the reel, then restores the current palette
+     *  without rewriting body styles or the user's light/dark preference. */
+    function createBootWindowAppearance() {
+      if (!document.documentElement.hasAttribute('data-windows-titlebar')) {
+        return { dispose() {} }
+      }
+      const style = document.createElement('style')
+      style.dataset.horoBootWindowAppearance = ''
+      style.textContent = `
+html[data-windows-titlebar] body:has(> #horo-boot) {
+  --dsw-specific-sidebar-fill: rgba(0, 0, 0, .6) !important;
+  --dsw-alias-label-primary: #EED4AC !important;
+}
+`
+      document.head.appendChild(style)
+      return { dispose() { style.remove() } }
+    }
+
     /**
      * The boot scene: the intro reel from the source package, drawn live on a
      * canvas (same code as scene.html, no pre-rendered video). Any click or key
@@ -2516,6 +2548,8 @@ function render(t) {
 
       document.body.appendChild(root)
 
+      const windowAppearance = createBootWindowAppearance()
+
       let scene = null
       let raf = 0
       let start = 0
@@ -2534,6 +2568,7 @@ function render(t) {
         window.setTimeout(() => {
           detach()
           root.remove()
+          windowAppearance.dispose()
         }, 620)
         // Hand the screen back first, then let the caller offer something on top
         // of it — a dialog raised while the reel still covers the viewport is a
@@ -2660,6 +2695,7 @@ function render(t) {
           audio.pause()
           detach()
           root.remove()
+          windowAppearance.dispose()
         },
       }
     }
@@ -3968,9 +4004,10 @@ function render(t) {
      * shell's classes are CSS-module hashed and not safe to match); `zh` is what
      * the bubble shows.
      *
-     * Every line here comes from 赫萝语音对照表 (231 clips, see
-     * 记录板与语音接入-开发规范.md). Do not re-verify the wording — the table is
-     * the source of truth, `zh` is copied from its `zh` field verbatim.
+     * The seven H-numbered cues come from 赫萝语音对照表 (231 clips, see
+     * 记录板与语音接入-开发规范.md). Their `jp` fields retain the source text;
+     * Chinese captions keep its meaning while using 咱/汝 consistently.
+     * PEEK and WHALE retain the user-confirmed captions noted below.
      */
     const VOICE_CUES = [
       /* ---- 按钮类：label 是按钮文本，我们自己播音频 ---- */
@@ -3987,22 +4024,22 @@ function render(t) {
          确认：与 8 条源音轨的最高相关仅 0.2，属噪声水平，也不是漏选的切片）。
 
          【台词已确认】这两句 zh 由用户给出：
-             点探头 -> 「汝怎么了」
-             挂件   -> 「怎么会」
+             点探头 -> 「汝有事找咱？」
+             挂件   -> 「怎么会...」
          （注：我无法听音频，此前的自动比对只能证明这两段不来自对照表与
          那 8 条源音轨，给不出原文，所以台词一律以用户口述为准。） */
       {
         trigger: 'peeker',
         id: 'PEEK',
         dur: 1.35,
-        zh: '汝怎么了',
+        zh: '汝有事找咱？',
         jp: '',
       },
       {
         trigger: 'whale',
         id: 'WHALE',
         dur: 0.84,
-        zh: '怎么会',
+        zh: '怎么会...',
         jp: '',
       },
       {
@@ -4010,7 +4047,7 @@ function render(t) {
         trigger: 'planner',
         id: 'H182',
         dur: 2.37,
-        zh: '你开口，咱乐意。',
+        zh: '若是汝的请求，咱自然乐意。',
         jp: 'ぬしの頼みならば喜んで',
       },
       {
@@ -4035,7 +4072,7 @@ function render(t) {
         label: '插件',
         ariaLabels: ['插件'],
         src: ASSET_BASE + 'voice-H193.wav',
-        zh: '你要是敢花心，咱就从脑袋开始嘎吱嘎吱把你嚼了。',
+        zh: '汝要是敢花心，咱就从脑袋开始，嘎吱嘎吱地把汝嚼了。',
         jp: '浮気などしたら頭からバリバリ食べてやるからのー',
         id: 'H193',
       },
@@ -4044,7 +4081,7 @@ function render(t) {
         trigger: 'scene',
         id: 'H013',
         dur: 5.51,
-        zh: '大概到你非抱着咱的尾巴就睡不着、还要撒娇耍赖那么长吧。',
+        zh: '大概到汝撒娇耍赖，说没有咱的尾巴便睡不着的时候吧。',
         jp: 'ぬしがわっちの尻尾がないと眠れぬとダダをこねるようになるあたりまでかなぁ',
       },
       {
