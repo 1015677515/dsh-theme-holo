@@ -1,4 +1,4 @@
-# 安装 dsh-theme-holo
+# 安装 dsh-theme-horo
 
 三种方式，按推荐顺序排列。装完都要**重启 DSH**。
 
@@ -27,7 +27,7 @@ DSH 的插件管理器接受 Git 地址。打开：
 填入：
 
 ```
-github:1015677515/dsh-theme-holo
+github:WILSONowo/dsh-theme-horo
 ```
 
 点安装，等它下载完，然后**立即启用**，再重启 DSH。
@@ -45,7 +45,7 @@ github:1015677515/dsh-theme-holo
 **第 1 步**，把仓库下载到本地任意目录（下称 `<插件目录>`）。
 
 ```cmd
-git clone https://github.com/1015677515/dsh-theme-holo.git "A:\你的路径\dsh-theme-holo"
+git clone https://github.com/WILSONowo/dsh-theme-horo.git "A:\你的路径\dsh-theme-horo"
 ```
 
 **第 2 步**，打开 profile 的 `package.json`：
@@ -59,12 +59,12 @@ git clone https://github.com/1015677515/dsh-theme-holo.git "A:\你的路径\dsh-
 ```jsonc
 {
   "dependencies": {
-    "dsh-theme-holo": "link:A:/你的路径/dsh-theme-holo"
+    "dsh-theme-horo": "link:A:/你的路径/dsh-theme-horo"
   },
   "dsh": {
     "profile": {
       "bundles": [
-        "dsh-theme-holo"
+        "dsh-theme-horo"
       ]
     }
   }
@@ -72,20 +72,20 @@ git clone https://github.com/1015677515/dsh-theme-holo.git "A:\你的路径\dsh-
 ```
 
 > `link:` 后面用**正斜杠**，路径里不要有空格；Windows 盘符写法是 `link:A:/...`。
-> Linux / macOS 写成 `link:/home/you/dsh-theme-holo`。
+> Linux / macOS 写成 `link:/home/you/dsh-theme-horo`。
 
 **第 3 步**，在 profile 的 `node_modules` 下建一个目录链接。
 
 Windows（管理员 PowerShell 或 cmd）：
 
 ```cmd
-mklink /J "%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-theme-holo" "<插件目录>"
+mklink /J "%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-theme-horo" "<插件目录>"
 ```
 
 Linux / macOS：
 
 ```bash
-ln -s "<插件目录>" ~/.dsh/profiles/desktop/node_modules/dsh-theme-holo
+ln -s "<插件目录>" ~/.dsh/profiles/desktop/node_modules/dsh-theme-horo
 ```
 
 **第 4 步**，重启 DSH。
@@ -114,7 +114,7 @@ ln -s "<插件目录>" ~/.dsh/profiles/desktop/node_modules/dsh-theme-holo
 
 ## 自检：确认装对了
 
-打开「设置 → 插件」，应能看到 `dsh-theme-holo`，版本号与
+打开「设置 → 插件」，应能看到 `dsh-theme-horo`，版本号与
 [`package.json`](package.json) 一致，描述是中文。
 
 再进插件详情页，应看到：
@@ -125,7 +125,7 @@ ln -s "<插件目录>" ~/.dsh/profiles/desktop/node_modules/dsh-theme-holo
 两处都在，说明宿主半与浏览器半都加载成功。
 
 如果只有版本号、没有设置区，通常是 `cordis.patch.yml` 没被读到——
-检查 profile 的 `dsh.profile.bundles` 里有没有 `dsh-theme-holo`。
+检查 profile 的 `dsh.profile.bundles` 里有没有 `dsh-theme-horo`。
 
 如果出现的是默认蓝色图标而不是赫萝图标，检查 `package.json` 的
 `icon` 字段是否指向 `assets/icon.jpg`。
@@ -146,7 +146,7 @@ ln -s "<插件目录>" ~/.dsh/profiles/desktop/node_modules/dsh-theme-holo
 
 ```js
 Object.keys(localStorage)
-  .filter(k => k.startsWith('dsh-theme-holo.'))
+  .filter(k => k.startsWith('dsh-theme-horo.'))
   .forEach(k => localStorage.removeItem(k))
 ```
 
@@ -170,7 +170,7 @@ Object.keys(localStorage)
 
 **装完没有任何变化？**
 
-按 F12 打开控制台，看有没有 `[dsh-theme-holo]` 开头的报错。没有报错但也没效果，
+按 F12 打开控制台，看有没有 `[dsh-theme-horo]` 开头的报错。没有报错但也没效果，
 多半是 `bundles` 没登记——重启一次通常解决。
 
 **开场动画每次都播，很烦？**
@@ -188,4 +188,4 @@ Object.keys(localStorage)
 
 ---
 
-[← 返回 README](README.md) · [更新记录](CHANGELOG.md) · [问题反馈](https://github.com/1015677515/dsh-theme-holo/issues)
+[← 返回 README](README.md) · [更新记录](CHANGELOG.md) · [问题反馈](https://github.com/WILSONowo/dsh-theme-horo/issues)

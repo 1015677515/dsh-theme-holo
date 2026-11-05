@@ -1,6 +1,6 @@
-![dsh-theme-holo — 赫萝主题](assets/cover.webp)
+![dsh-theme-horo — 赫萝主题](assets/cover.webp)
 
-# dsh-theme-holo
+# dsh-theme-horo
 
 > 《狼与香辛料》赫萝主题 —— 给 DeepSeek Harness Web GUI 的一层暖纸皮肤。
 
@@ -79,7 +79,7 @@
 装上之后，整个 Web GUI 长这样（为保护隐私，余额、今日消耗金额与账号名已遮去，其余为原始截图）：
 
 <p align="center">
-  <img src="docs/gui-overview.png" width="100%" alt="dsh-theme-holo 装到 DeepSeek Harness 后的界面全貌：左侧羊皮纸色侧栏、顶部「狼与香辛料」字标、右上角右栏待机画面、输入框边偷看的她、侧栏脚下麦田">
+  <img src="docs/gui-overview.png" width="100%" alt="dsh-theme-horo 装到 DeepSeek Harness 后的界面全貌：左侧羊皮纸色侧栏、顶部「狼与香辛料」字标、右上角右栏待机画面、输入框边偷看的她、侧栏脚下麦田">
 </p>
 
 一眼能认出的几处：
@@ -155,7 +155,7 @@
 最短的一条路——在 DSH 里打开 `设置 → 插件 → 添加插件`，填入：
 
 ```
-github:1015677515/dsh-theme-holo
+github:WILSONowo/dsh-theme-horo
 ```
 
 点安装，等它下载完，**立即启用**，然后重启 DSH。
@@ -192,7 +192,7 @@ github:1015677515/dsh-theme-holo
 
 **首次安装默认浅色**：DSH 的外观偏好出厂值是「跟随系统」，系统本身是深色的机器，一装好就落在
 深色 GUI 上，再叠上「星夜麦田」很容易被误读成「装了插件就被切成黑夜模式」。所以插件在**首次
-运行**（`localStorage['dsh-theme-holo.dark-defaulted']` 尚未落闩时）若发现宿主已解析为深色，
+运行**（`localStorage['dsh-theme-horo.dark-defaulted']` 尚未落闩时）若发现宿主已解析为深色，
 会通过主题服务把偏好改回 `light` 一次并落闩；此后只有设置卡片里的开关能再打开深色，插件不会
 跟你后来的选择对着干。本来就是浅色的机器不会被碰，只落闩。
 
@@ -339,8 +339,8 @@ github:1015677515/dsh-theme-holo
 没有 CSS 能直接区分它们。插件里加了一个很轻的观察器：
 
 - 监听 body 的 childList（防抖 180ms），只扫 `span[class*="_title_"]`
-- 文本以那几个词开头（长度 ≤ 8）时打上 `data-holo-kind="think|read|run|tool|write"`
-- 样式全部挂在 `[data-holo-kind]` 上，卸载时把属性一起清掉
+- 文本以那几个词开头（长度 ≤ 8）时打上 `data-horo-kind="think|read|run|tool|write"`
+- 样式全部挂在 `[data-horo-kind]` 上，卸载时把属性一起清掉
 
 对应关系：思考→think；读取 / 图片 / 搜索→read；运行命令→run；工具调用→tool；写入 / 编辑→write。
 开销可以忽略：一轮对话里这些 span 不过几十个，打过标记的不会重复处理。
@@ -354,9 +354,9 @@ github:1015677515/dsh-theme-holo
 
 | 项目 | 默认 | 说明 |
 |---|---|---|
-| 整体不透明度 | `.75` | `#holo-wheat` 的 `opacity` |
+| 整体不透明度 | `.75` | `#horo-wheat` 的 `opacity` |
 | 两侧淡出到 | `.4`（叠 75% 后为 30%） | 横向 `mask-image` |
-| 上边缘淡出到 | `.4`（同上，30%） | `#holo-wheat i` 的纵向 `mask-image` |
+| 上边缘淡出到 | `.4`（同上，30%） | `#horo-wheat i` 的纵向 `mask-image` |
 | 高度 | 侧栏底部 → 账号行垂直中线 | `createWheatLayer()` 的 `place()` |
 
 **边缘的 30% 不是一个独立的数**：两层是相乘关系，`0.75 × 0.4 = 0.30`。所以改整体浓度只动
@@ -387,7 +387,7 @@ github:1015677515/dsh-theme-holo
 | 层级 | 容器 `z-index: 2147482998`，压在探头（`…997`）之上、语音气泡（`…999`）之下 |
 | 两个入口 | 默认徽章入口；开启「简化写字板按钮」后徽章隐藏，改在顶部工具条「提示词」左边放一个「写字板」按钮 |
 
-**为什么用 `data-holo-planner*` 而不是 id**：深色模式那条隐藏规则按 `[id^="holo-"]` 匹配，
+**为什么用 `data-horo-planner*` 而不是 id**：深色模式那条隐藏规则按 `[id^="horo-"]` 匹配，
 便笺若用 id 会被一起收掉，所以它整棵子树走 `data-` 属性，绕开那条规则。
 
 **面板刻意不用 `[role=dialog]`**：探头的状态机把文档里任何 `[role=dialog]` 当作「弹窗打开」而让位，
@@ -435,7 +435,7 @@ github:1015677515/dsh-theme-holo
 
 它是**正常文档流里的一个块**，不是浮动层，用 `::before` 伪元素实现——那页不归本插件所有，
 伪元素不占位、不与标题图标打架、也不用往宿主的 DOM 里塞东西。
-选择器用的是插件管理器自己打的 `[data-plugin-detail="dsh-theme-holo"]` 属性，
+选择器用的是插件管理器自己打的 `[data-plugin-detail="dsh-theme-horo"]` 属性，
 名字里没有哈希，宿主重建样式表也不会失效。
 
 `cover.webp` 是**已经烘好浓度的版本**——75% 的整体场与 50% 的边缘淡出烤进了 WebP 的 alpha 通道。
@@ -450,7 +450,7 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 
 | 项 | 做法 |
 |---|---|
-| 容器 | `#holo-scene`（`position: fixed; inset: 0; z-index: -1; pointer-events: none`），由 `html[data-holo-scene="on"]` 打开 |
+| 容器 | `#horo-scene`（`position: fixed; inset: 0; z-index: -1; pointer-events: none`），由 `html[data-horo-scene="on"]` 打开 |
 | 切片 | 宽度取 `min(右栏宽, 608px)`，左边缘对齐画面，`overflow: hidden` 负责裁 |
 | 视频 | 固定 **608×1080** 的盒子，**1:1 不缩放**。素材本身就是 608×1080 的竖裁，所以画面里的她是真实尺寸 |
 | 渐隐 | 视频顶部 58% 不透明、78% 降到 55%、底部到全透明 |
@@ -493,7 +493,7 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 
 **点她会说一句**：热区取画面宽度的 608×1080 比例、**上部 62%**，是一块**固定位置**的矩形，
 不按角色轮廓描——六段动画里她站的位置各不相同，描轮廓在多数片子上都会判错。
-热区是挂在 `<body>` 上的独立节点（`#holo-scene-hit`），**不是** `#holo-scene` 的子节点：
+热区是挂在 `<body>` 上的独立节点（`#horo-scene-hit`），**不是** `#horo-scene` 的子节点：
 后者是 `z-index: -1`，负 z 会让子元素收不到点击。
 
 热区浮在内容之上，所以**必须给模态让路**：文档里出现 `[role="dialog"]` 或 `[aria-modal="true"]`
@@ -518,8 +518,8 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 
 | 装进挂件的名字 | 来源文件 | 类型 |
 |---|---|---|
-| 赫萝 | `素材/holo-clean.png` | 角色 |
-| 赫萝Q版 | `素材/holo-Q-clean.png` | 角色 |
+| 赫萝 | `素材/horo-clean.png` | 角色 |
+| 赫萝Q版 | `素材/horo-Q-clean.png` | 角色 |
 | 赫萝震惊 | `素材/赫萝语音.WAV` | 音效组（按下音） |
 
 **什么时候问**：片头播完、页面加载完之后，前端先探一次挂件的 `/dsh-whale/roles.json`：
@@ -545,12 +545,12 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 导入后要点「刷新页面」（或按 Ctrl+R）才会在它的「角色」里出现。不给这个按钮，
 导入看起来就像失败了。
 
-**装的时候做了什么**：对每个缺的角色，`fetch` 一次 `/holo-theme/link/<文件名>` 拿到字节 →
+**装的时候做了什么**：对每个缺的角色，`fetch` 一次 `/horo-theme/link/<文件名>` 拿到字节 →
 转成 `data:` URL → `POST /dsh-whale/roles.json`；语音同理，先上传片段拿回 `id`，
 再用 `save-group` 建音效组。**按名字比对，已有的不动**，所以重复点是安全的。
 
 > 挂件的路由受宿主鉴权保护，所以联动只在浏览器里跑得通，命令行侧没法代劳。
-> 这也意味着**必须重启一次 Harness**，新的 `/holo-theme/link/` 路由才会存在。
+> 这也意味着**必须重启一次 Harness**，新的 `/horo-theme/link/` 路由才会存在。
 
 ### 赫萝的黄昏酒馆
 
@@ -570,7 +570,7 @@ CSS `opacity` 会把整个元素（含边框）一起淡掉，而背景图自身
 按钮三个：**下载酒馆（约 4.9 MB）** / **前往黄昏酒馆** / 下过之后多一个 **清除记录**。
 未下载时「前往」是禁用的 —— 不会打开一个空白舞台。
 
-**下载往哪写**：由 **host 侧**完成（`POST /holo-tavern-install`），不是浏览器。
+**下载往哪写**：由 **host 侧**完成（`POST /horo-tavern-install`），不是浏览器。
 浏览器拿到的字节存不进插件目录（前端没有文件系统权限）；host 有 `node:fs`，
 能直接写进 `tavern/`，静态路由立刻就能服务这些文件。
 
@@ -616,23 +616,23 @@ Release 里的 `tavern-assets.tar.gz`（4.91 MB，62 个文件）。用 tar.gz �
 
 ## 插件设置项
 
-插件页（插件 → 已安装 → `dsh-theme-holo`）的包详情页里，卡片最上面是联动区块，
+插件页（插件 → 已安装 → `dsh-theme-horo`）的包详情页里，卡片最上面是联动区块，
 下面依次是七组开关。组件行页也有同一块。
 
 | 小节 | 控件 | 存哪 |
 |---|---|---|
-| 开场动画 | `关闭开场动画` / `开启开场动画` | `localStorage['dsh-theme-holo.skip-boot']` |
-| 探头的赫萝 | `不启用探头的赫萝` / `启用探头的赫萝` | `localStorage['dsh-theme-holo.peek-off']` |
-| 探头的她说话 | `关闭探头语音` / `开启探头语音` | `localStorage['dsh-theme-holo.peek-voice-off']` |
+| 开场动画 | `关闭开场动画` / `开启开场动画` | `localStorage['dsh-theme-horo.skip-boot']` |
+| 探头的赫萝 | `不启用探头的赫萝` / `启用探头的赫萝` | `localStorage['dsh-theme-horo.peek-off']` |
+| 探头的她说话 | `关闭探头语音` / `开启探头语音` | `localStorage['dsh-theme-horo.peek-voice-off']` |
 | 黑夜模式 | `开启黑夜模式` / `关闭黑夜模式` | 主题服务的 `preference` 字段（同「设置 → 外观」） |
-| 右侧待机动画 | 下拉框，前六个选项就是六个动画文件名，末尾另有一项 `关闭动画` | `localStorage['dsh-theme-holo.scene-name']` |
-| 羊皮纸便笺 | `关闭写字板` / `启用羊皮纸便笺` | `localStorage['dsh-theme-holo.planner-off']` |
-| 简化写字板按钮 | `简化写字板按钮` / `关闭简化写字板按钮`（写字板关闭时该项禁用） | `localStorage['dsh-theme-holo.planner-simple']` |
-| 更改 logo 位置 | `更改 logo 位置` / `完成调整`，另有 `关闭 logo` / `显示 logo`、`恢复默认位置`，以及一条 10%–100% 的不透明度滑块 | `localStorage['dsh-theme-holo.logo-place']` |
-| 赫萝的黄昏酒馆 | `下载酒馆（约 4.9 MB）` / `前往黄昏酒馆` / `清除记录` | `localStorage['dsh-theme-holo.tavern-installed']` 与 `…tavern-version` |
+| 右侧待机动画 | 下拉框，前六个选项就是六个动画文件名，末尾另有一项 `关闭动画` | `localStorage['dsh-theme-horo.scene-name']` |
+| 羊皮纸便笺 | `关闭写字板` / `启用羊皮纸便笺` | `localStorage['dsh-theme-horo.planner-off']` |
+| 简化写字板按钮 | `简化写字板按钮` / `关闭简化写字板按钮`（写字板关闭时该项禁用） | `localStorage['dsh-theme-horo.planner-simple']` |
+| 更改 logo 位置 | `更改 logo 位置` / `完成调整`，另有 `关闭 logo` / `显示 logo`、`恢复默认位置`，以及一条 10%–100% 的不透明度滑块 | `localStorage['dsh-theme-horo.logo-place']` |
+| 赫萝的黄昏酒馆 | `下载酒馆（约 4.9 MB）` / `前往黄昏酒馆` / `清除记录` | `localStorage['dsh-theme-horo.tavern-installed']` 与 `…tavern-version` |
 
 首次安装时，若宿主外观已解析为深色，插件会自动改回浅色一次并把
-`localStorage['dsh-theme-holo.dark-defaulted']` 置为 `1`，之后不再干预。想主动用深色，
+`localStorage['dsh-theme-horo.dark-defaulted']` 置为 `1`，之后不再干预。想主动用深色，
 点「开启黑夜模式」即可。
 
 > **黑夜模式未完全做好适配，请谨慎打开。** 深色下仍有若干细节按浅色调过，观感不如浅色完整。
@@ -653,7 +653,7 @@ Release 里的 `tavern-assets.tar.gz`（4.91 MB，62 个文件）。用 tar.gz �
 ## 目录结构与素材
 
 ```
-dsh-theme-holo/
+dsh-theme-horo/
 ├── index.js            宿主半：注册只读文件路由 + 酒馆安装端点
 ├── client.js           浏览器半：配色、组件与全部交互
 ├── tavern-kit/
@@ -741,11 +741,11 @@ Release 挂 `tavern-assets.tar.gz`（4.91 MB）。素材与插件版本**解耦*
 
 | 文件 | 字节 | 说明 | 进仓库 |
 |---|---:|:---|:---:|
-| `holo-clean.png` | 261,743 | **联动画材**：角色「赫萝」，474×391，去白边后的立绘 | 是 |
-| `holo-Q-clean.png` | 148,496 | **联动画材**：角色「赫萝Q版」，351×318 | 是 |
+| `horo-clean.png` | 261,743 | **联动画材**：角色「赫萝」，474×391，去白边后的立绘 | 是 |
+| `horo-Q-clean.png` | 148,496 | **联动画材**：角色「赫萝Q版」，351×318 | 是 |
 | `赫萝语音.WAV` | 147,534 | **联动画材**：音效组「赫萝震惊」的按下音 | 是 |
 | `动画/` | 6 个 | **待机动画**，各 608×1080 VP9，文件名就是设置页里的选项名 | 是 |
-| `holo.png` / `holo-Q.png` | 338,439 / 147,737 | 未修白边的原件，已被上面两张 `*-clean` 取代 | 否 |
+| `horo.png` / `horo-Q.png` | 338,439 / 147,737 | 未修白边的原件，已被上面两张 `*-clean` 取代 | 否 |
 | `赫萝疑惑.wav` | 130,090 | 探头语音源文件，成品是 `assets/peek-voice.wav` | 否 |
 | `logo.png` | 48,844 | 字标原件（640×360，含留白），成品是 `assets/logo.png` | 否 |
 | `图标.jpg` | 4,516 | 插件图标原件 | 否 |
@@ -764,9 +764,9 @@ Release 挂 `tavern-assets.tar.gz`（4.91 MB）。素材与插件版本**解耦*
 宿主半 `index.js` 在 `webServer` 上注册**三条前缀路由**：
 
 ```
-GET/HEAD  /holo-theme/assets/<file>   →  assets/
-GET/HEAD  /holo-theme/link/<file>     →  素材/
-GET/HEAD  /holo-theme/anime/<file>    →  素材/动画/
+GET/HEAD  /horo-theme/assets/<file>   →  assets/
+GET/HEAD  /horo-theme/link/<file>     →  素材/
+GET/HEAD  /horo-theme/anime/<file>    →  素材/动画/
 ```
 
 **每条路由都只送白名单里点名的文件**，不是「目录里有什么就送什么」：
@@ -826,7 +826,7 @@ Node 的 `readFileSync(..., 'utf8')` **不会**去掉 BOM，于是 `JSON.parse` 
 **Q：装好了但完全没变化？**
 
 检查三件事：① profile 的 `package.json` 里 `dependencies` 和 `bundles` 两处都加了吗；
-② `node_modules\dsh-theme-holo` 这个 junction 建了吗、指向对不对；
+② `node_modules\dsh-theme-horo` 这个 junction 建了吗、指向对不对；
 ③ 重启过 DSH 吗（浏览器半在启动时加载）。
 
 **Q：右栏待机画面很糊？**
@@ -869,7 +869,7 @@ Node 的 `readFileSync(..., 'utf8')` **不会**去掉 BOM，于是 `JSON.parse` 
 
 **Q：能从旧版本升级吗？**
 
-可以，但**新增了 `/holo-theme/link/` 路由的版本必须重启一次**，联动才能取到画材。
+可以，但**新增了 `/horo-theme/link/` 路由的版本必须重启一次**，联动才能取到画材。
 
 **Q：README 页面的底色和文字颜色，为什么不能也做成主题色？**
 
@@ -920,15 +920,15 @@ DSH 的插件加载是全有或全无的，为一条装饰性路由把整个客�
 
 | 触点 | 作用 |
 |---|---|
-| `#holo-boot` | 片头层 |
-| `#holo-peek` | 偷看层 |
-| `#holo-thread` | 金线层 |
-| `#holo-peek-fx` | 麦粒 / 苹果特效层 |
-| `#holo-profile-card` | 档案卡 |
-| `.holo-link-overlay` | 联动弹窗 |
-| `[data-holo-logo]` | 字标层 |
-| `#holo-wheat` | 侧栏脚下麦田 |
-| `#holo-scene` | 右栏待机画面 |
+| `#horo-boot` | 片头层 |
+| `#horo-peek` | 偷看层 |
+| `#horo-thread` | 金线层 |
+| `#horo-peek-fx` | 麦粒 / 苹果特效层 |
+| `#horo-profile-card` | 档案卡 |
+| `.horo-link-overlay` | 联动弹窗 |
+| `[data-horo-logo]` | 字标层 |
+| `#horo-wheat` | 侧栏脚下麦田 |
+| `#horo-scene` | 右栏待机画面 |
 | `<style>` | 样式表 |
 
 ### 调参入口
@@ -944,7 +944,7 @@ DSH 的插件加载是全有或全无的，为一条装饰性路由把整个客�
 | 字标出厂位置 / 大小 | `LOGO_DEFAULT` 的三个比例 |
 | 字标尺寸上下限 | `LOGO_W_RANGE` |
 | 字标不透明度上下限 | `LOGO_ALPHA_RANGE` |
-| 麦田浓度 / 边缘淡出 | `#holo-wheat` 与 `#holo-wheat i` 两条规则 |
+| 麦田浓度 / 边缘淡出 | `#horo-wheat` 与 `#horo-wheat i` 两条规则 |
 | 待机动画默认哪一片 | `SCENE_NAME_DEFAULT` |
 | 待机动画选项与顺序 | `SCENE_NAMES` 与 `素材/动画/` 里的同名文件 |
 | 联动画材 / 名字 | `LINK_ROLES`、`LINK_VOICE` |
@@ -1020,29 +1020,29 @@ DSH 的插件加载是全有或全无的，为一条装饰性路由把整个客�
 - [INSTALL.md](INSTALL.md) —— 三种安装方式、自检、卸载、故障排查
 - [CHANGELOG.md](CHANGELOG.md) —— 逐版本更新记录
 - [NOTICE.md](NOTICE.md) —— 素材适用范围说明
-- [Issues](https://github.com/1015677515/dsh-theme-holo/issues) —— 问题反馈
-- [Releases](https://github.com/1015677515/dsh-theme-holo/releases) —— 发行版下载
+- [Issues](https://github.com/WILSONowo/dsh-theme-horo/issues) —— 问题反馈
+- [Releases](https://github.com/WILSONowo/dsh-theme-horo/releases) —— 发行版下载
 
 
 ---
 
 ## English
 
-> **A Holo (Spice and Wolf) theme for the DeepSeek Harness Web GUI.**
+> **A Horo (Spice and Wolf) theme for the DeepSeek Harness Web GUI.**
 > Parchment background, wheat-gold accents, a 12-second real-time intro animation,
-> Holo peeking at the edge of the composer, a profile mini-card on hover, a draggable
+> Horo peeking at the edge of the composer, a profile mini-card on hover, a draggable
 > "Spice and Wolf" wordmark, and a standby animation that only lights up on the
 > right rail's start page.
 >
-> Ship with it an optional **3D tavern** — a separate interactive scene where Holo
+> Ship with it an optional **3D tavern** — a separate interactive scene where Horo
 > tells you about the first time you met, acted out as a string-puppet stage.
 
-[中文](#dsh-theme-holo) | English
+[中文](#dsh-theme-horo) | English
 
 ### Preview
 
 <p align="center">
-  <img src="docs/gui-overview.png" width="100%" alt="dsh-theme-holo applied to DeepSeek Harness">
+  <img src="docs/gui-overview.png" width="100%" alt="dsh-theme-horo applied to DeepSeek Harness">
 </p>
 
 Balance, daily spend and the account name are hidden in this screenshot; everything
@@ -1055,7 +1055,7 @@ else is untouched.
 | **Two palettes** | Light parchment «Harvest Dawn» and dark «Starry Field» (dark is a test feature) |
 | **Intro animation** | 12 seconds drawn live on canvas: red eyes in the dark → wolf outline traced in red → light burst → title decodes → ready |
 | **Draggable wordmark** | The "Spice and Wolf" mark; position, size and opacity adjustable, can be turned off entirely |
-| **Peeking Holo** | Only a hood and a pair of eyes at the composer edge; rises when the pointer approaches, draggable left and right |
+| **Peeking Horo** | Only a hood and a pair of eyes at the composer edge; rises when the pointer approaches, draggable left and right |
 | **Peek voice** | Clicking her plays a puzzled sound and floats the Chinese caption above her right shoulder (can be muted) |
 | **Profile mini-card** | Hover the bottom-left account row to raise a Steam-style card |
 | **Log tags** | Inline tags such as "Thinking / Reading / Running command" each get a warm tone |
@@ -1065,9 +1065,9 @@ else is untouched.
 | **Parchment note pad** | A wheat-ring badge in the corner opens a pad you can type into and paste images onto; the entry can be moved to a toolbar button |
 | **Voice & captions** | Nine lines wired to buttons, the peeker, the whale widget, the note-pad badge and the standby plate, each with a Chinese caption bubble |
 | **Whale widget link** | One click installs two roles plus one voice line into `dsh-whale-widget` |
-| **Holo's Tavern** | A separate 3D interactive scene, **not installed with the plugin** — grab it from the settings card (~4.9 MB). Inside: a 2D live portrait and a string-puppet stage retelling the first meeting |
+| **Horo's Tavern** | A separate 3D interactive scene, **not installed with the plugin** — grab it from the settings card (~4.9 MB). Inside: a 2D live portrait and a string-puppet stage retelling the first meeting |
 
-Seven groups have a switch in the plugin settings: intro animation, peeking Holo, peek
+Seven groups have a switch in the plugin settings: intro animation, peeking Horo, peek
 voice, dark mode, right-rail standby, the parchment note pad (two buttons: master switch
 plus entry mode), and wordmark visibility. Turn one off and it is removed completely,
 leaving no leftover nodes.
@@ -1076,7 +1076,7 @@ Three are always on and are labelled as such rather than claimed to be switchabl
 the **profile mini-card**, the **log tags**, and the **sidebar wheat**. They are plain
 styling or pure display layers — they capture no clicks and take no layout space.
 
-### Holo's Tavern
+### Horo's Tavern
 
 An **optional 3D scene**, shipped separately from the theme: a fresh install has
 nothing, you download it from the plugin settings card.
@@ -1085,12 +1085,12 @@ nothing, you download it from the plugin settings card.
 voice assets — 7.1 MB in total. Most people just want the theme and should not pay
 that cost.
 
-**How you get it.** The plugin settings card has a «Holo's Tavern» section with three
+**How you get it.** The plugin settings card has a «Horo's Tavern» section with three
 buttons: **Download (~4.9 MB)**, **Open the tavern** (disabled until downloaded), and
 **Clear record** once installed.
 
 **Where it writes.** The download runs on the **host side**
-(`POST /holo-tavern-install`), not in the browser: bytes fetched by the browser cannot
+(`POST /horo-tavern-install`), not in the browser: bytes fetched by the browser cannot
 be written into the plugin directory (the front end has no filesystem access), while
 the host has `node:fs` and can drop them straight into `tavern/`, where the static
 route serves them immediately.
@@ -1102,14 +1102,14 @@ parser — this keeps the plugin at zero third-party dependencies. Unpacking liv
 `tavern-kit/tar.mjs` with zip-slip protection (rejects `..`, absolute paths, NUL
 bytes, and anything outside `tavern/`).
 
-**Inside.** Holo sits across the table and asks what you want. Two paths: listen to
+**Inside.** Horo sits across the table and asks what you want. Two paths: listen to
 the travel stories (memory mode, below), or look at the travel collection — a shelf
 of eleven objects, each with its own anecdote.
 
 **Memory mode — chapter one, "the first meeting".** The left half is a puppeteer's
-stage; the right half is a 2D live portrait of Holo telling the story.
+stage; the right half is a 2D live portrait of Horo telling the story.
 
-- The portrait is the felt-doll Holo in 2D: swaying from the feet, breathing, a tail
+- The portrait is the felt-doll Horo in 2D: swaying from the feet, breathing, a tail
   that swings around its root with three poses to switch between.
 - The stage runs 12 shots. A rope hangs down from off-screen holding the moon, which
   drifts slowly across the sky to mark the passage of time; the cart rolls in from the
@@ -1135,7 +1135,7 @@ stage; the right half is a 2D live portrait of Holo telling the story.
 In DSH, open `Settings → Plugins → Add plugin` and enter:
 
 ```
-github:1015677515/dsh-theme-holo
+github:WILSONowo/dsh-theme-horo
 ```
 
 Install, click **Enable now**, then restart DSH.
@@ -1156,7 +1156,7 @@ second-hand fan-made works collected from the internet for personal use. This pr
 is for learning and exchange only and must not be used commercially. Character rights
 belong to the original rights holders; this is an unaffiliated, non-commercial fan
 work. If you are a rights holder and object to any asset appearing here, open an
-[issue](https://github.com/1015677515/dsh-theme-holo/issues) and it will be removed.
+[issue](https://github.com/WILSONowo/dsh-theme-horo/issues) and it will be removed.
 
 The source code is [MIT](LICENSE) licensed. The license covers source code only, not
 the assets — see [NOTICE.md](NOTICE.md) for details.
@@ -1165,5 +1165,5 @@ the assets — see [NOTICE.md](NOTICE.md) for details.
 
 - [INSTALL.md](INSTALL.md) — install methods, self-check, uninstall, troubleshooting
 - [CHANGELOG.md](CHANGELOG.md) — version history
-- [Issues](https://github.com/1015677515/dsh-theme-holo/issues) — bug reports
-- [Releases](https://github.com/1015677515/dsh-theme-holo/releases) — downloads
+- [Issues](https://github.com/WILSONowo/dsh-theme-horo/issues) — bug reports
+- [Releases](https://github.com/WILSONowo/dsh-theme-horo/releases) — downloads

@@ -1,4 +1,4 @@
-// Holo (Spice and Wolf) theme — browser half.
+// Horo (Spice and Wolf) theme — browser half.
 //
 // Two palettes: 「麦秋晨光」 parchment + wheat gold for the light GUI, and
 // 「星夜麦田」 warm ink + wheat gold for the dark one. Component rules below
@@ -11,7 +11,7 @@
 // of being inlined as base64.
 
 window.__ModuleLoader__.load({
-  id: 'dsh-theme-holo',
+  id: 'dsh-theme-horo',
   factory(require) {
     /** Alias tokens of the light palette, as CSS custom properties. */
     const PALETTE = {
@@ -251,9 +251,31 @@ window.__ModuleLoader__.load({
 
     const GRAIN = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E\")"
 
-    /** Artwork served by the host half from ./assets (route: /holo-theme/assets/).
+    /** Artwork served by the host half from ./assets (route: /horo-theme/assets/).
         Declared before STYLE because the stylesheet embeds one of these URLs. */
-    const ASSET_BASE = '/holo-theme/assets/'
+    const ASSET_BASE = '/horo-theme/assets/'
+
+    // ---- the holo -> horo rename -------------------------------------------
+    // The theme used to be spelled "holo", and every localStorage key carried
+    // that prefix. Copy the old values across once, so a person updating keeps
+    // their settings, note text and placements. The old keys are left in
+    // place: an older build run against the same profile still finds them.
+    // (The planner's IndexedDB is migrated in openPlannerDb.)
+    const LEGACY_PREFIX = 'dsh-theme-' + 'holo.'
+    const STORAGE_PREFIX = 'dsh-theme-horo.'
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const legacy = []
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = localStorage.key(i)
+          if (typeof key === 'string' && key.indexOf(LEGACY_PREFIX) === 0) legacy.push(key)
+        }
+        for (const key of legacy) {
+          const next = STORAGE_PREFIX + key.slice(LEGACY_PREFIX.length)
+          if (localStorage.getItem(next) === null) localStorage.setItem(next, localStorage.getItem(key))
+        }
+      }
+    } catch (error) { /* storage blocked: nothing to carry over */ }
 
     const STYLE = `
 
@@ -361,26 +383,26 @@ html body:not([data-ds-dark-theme]) hr {
 
 
 /* ---- transcript labels: a quiet colour code ---------------------- */
-html body:not([data-ds-dark-theme]) [data-holo-kind] {
+html body:not([data-ds-dark-theme]) [data-horo-kind] {
   transition: color .18s ease;
 }
-html body:not([data-ds-dark-theme]) [data-holo-kind="think"] {
+html body:not([data-ds-dark-theme]) [data-horo-kind="think"] {
   color: #7C6C4F !important;
 }
-html body:not([data-ds-dark-theme]) [data-holo-kind="read"] {
+html body:not([data-ds-dark-theme]) [data-horo-kind="read"] {
   color: #8A6428 !important;
 }
-html body:not([data-ds-dark-theme]) [data-holo-kind="run"] {
+html body:not([data-ds-dark-theme]) [data-horo-kind="run"] {
   color: #A9661F !important;
 }
-html body:not([data-ds-dark-theme]) [data-holo-kind="tool"] {
+html body:not([data-ds-dark-theme]) [data-horo-kind="tool"] {
   color: #8E4A40 !important;
 }
-html body:not([data-ds-dark-theme]) [data-holo-kind="write"] {
+html body:not([data-ds-dark-theme]) [data-horo-kind="write"] {
   color: #7C6248 !important;
 }
 /* the label gets a hairline that grows on hover, like the rein */
-html body:not([data-ds-dark-theme]) [data-holo-kind]::after {
+html body:not([data-ds-dark-theme]) [data-horo-kind]::after {
   content: "";
   display: block;
   height: 1px;
@@ -391,7 +413,7 @@ html body:not([data-ds-dark-theme]) [data-holo-kind]::after {
   opacity: .55;
   transition: width .22s ease;
 }
-html body:not([data-ds-dark-theme]) [data-holo-kind]:hover::after {
+html body:not([data-ds-dark-theme]) [data-horo-kind]:hover::after {
   width: 100%;
 }
 
@@ -437,32 +459,82 @@ html body:not([data-ds-dark-theme]) [role="dialog"] {
     radial-gradient(120% 80% at 8% 0%, rgba(224, 174, 92, .07) 0%, rgba(224, 174, 92, 0) 55%) !important;
 }
 
-/* ---- toasts, status strips --------------------------------------- */
-html body:not([data-ds-dark-theme]) [role="status"],
-html body:not([data-ds-dark-theme]) [role="alert"] {
-  background: rgba(255, 252, 245, .985) !important;
-  border: .5px solid rgba(58, 38, 18, .14);
-  border-radius: 12px !important;
-  box-shadow: 0 14px 34px rgba(58, 38, 18, .18);
-  color: #33291C;
-  backdrop-filter: blur(12px) saturate(1.04);
+/* ---- toasts ---------------------------------------------------------
+   Scoped to the host's toast class, NOT to [role="status"] / [role="alert"]:
+   the host stamps those roles on dozens of inline elements too -- the masked
+   phone number under the account name, plugin-manager results, rename errors,
+   empty-state notes -- and a role selector turned every one of them into a
+   floating card. The toast's own colours already come from the palette
+   (--dsw-alias-toast-bg / -label); this only adds the gold hairline. */
+html body:not([data-ds-dark-theme]) [class*="_toast_"] {
+  border: .5px solid rgba(224, 174, 92, .42);
+  box-shadow: 0 14px 34px rgba(58, 38, 18, .22);
 }
 
 /* the profile card is inline-styled for dark; give it a parchment twin */
-html body:not([data-ds-dark-theme]) #holo-profile-card {
+html body:not([data-ds-dark-theme]) #horo-profile-card {
   background: rgba(255, 252, 245, .97) !important;
   border: .5px solid rgba(58, 38, 18, .16) !important;
   box-shadow: 0 18px 44px rgba(58, 38, 18, .18) !important;
   color: #33291C !important;
 }
-html body:not([data-ds-dark-theme]) #holo-profile-card > div:last-of-type > div:first-child {
+html body:not([data-ds-dark-theme]) #horo-profile-card > div:last-of-type > div:first-child {
   color: #A2701F !important;
 }
-html body:not([data-ds-dark-theme]) #holo-profile-card > div:last-of-type > div:last-child {
+html body:not([data-ds-dark-theme]) #horo-profile-card > div:last-of-type > div:last-child {
   color: #7A6A52 !important;
 }
-html body:not([data-ds-dark-theme]) #holo-profile-card img {
+html body:not([data-ds-dark-theme]) #horo-profile-card img {
   border: 1px solid rgba(162, 112, 31, .35);
+}
+
+/* The account menu rises out of the row as the profile card sinks into it
+   (card.handoff), so hover-card and menu read as one surface turning over.
+   The individual translate / scale properties are used, not transform: the
+   menu primitive may position itself with a transform, and these compose with
+   it instead of overwriting it. Tagged by the profile-card effect. */
+@keyframes horo-account-menu-rise {
+  from { opacity: 0; translate: 0 10px; scale: .97; }
+  to { opacity: 1; translate: 0 0; scale: 1; }
+}
+[data-horo-account-menu] {
+  transform-origin: 50% 100%;
+  animation: horo-account-menu-rise .2s cubic-bezier(.2, .8, .2, 1) .04s both;
+}
+html body:not([data-ds-dark-theme]) [data-horo-account-menu] {
+  border: .5px solid rgba(184, 130, 43, .32);
+  box-shadow: 0 18px 44px rgba(58, 38, 18, .18);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-horo-account-menu] { animation: none; }
+}
+
+/* The account button sits on the wheat field (#horo-wheat). It is lifted
+   above the field and given a translucent parchment plate, so the field shows
+   through around and behind it while the name stays readable. The field is
+   z-index 1 in the root stacking context; nothing between the button and the
+   root forms a stacking context of its own, so z-index 2 is enough. */
+html body [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]) {
+  position: relative;
+  z-index: 2;
+  background: rgba(251, 247, 239, .34);
+  -webkit-backdrop-filter: blur(2.5px) saturate(1.05);
+  backdrop-filter: blur(2.5px) saturate(1.05);
+  box-shadow: inset 0 0 0 .5px rgba(184, 130, 43, .26), 0 2px 10px rgba(58, 38, 18, .06);
+  transition: background .16s ease, box-shadow .16s ease;
+}
+html body [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]):hover,
+html body [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"])[aria-expanded="true"] {
+  background: rgba(251, 247, 239, .66);
+  box-shadow: inset 0 0 0 .5px rgba(184, 130, 43, .44), 0 4px 14px rgba(58, 38, 18, .10);
+}
+html body[data-ds-dark-theme] [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]) {
+  background: rgba(27, 21, 16, .34);
+  box-shadow: inset 0 0 0 .5px rgba(224, 174, 92, .22);
+}
+html body[data-ds-dark-theme] [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]):hover,
+html body[data-ds-dark-theme] [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"])[aria-expanded="true"] {
+  background: rgba(27, 21, 16, .62);
 }
 
 
@@ -513,7 +585,7 @@ html body:not([data-ds-dark-theme]) :focus-visible {
 }
 
 /* ---- boot scene: the intro reel, drawn live on a canvas ---------------- */
-html body:not([data-ds-dark-theme]) #holo-boot {
+html body:not([data-ds-dark-theme]) #horo-boot {
   position: fixed;
   inset: 0;
   z-index: 2147483003;
@@ -523,10 +595,10 @@ html body:not([data-ds-dark-theme]) #holo-boot {
   opacity: 1;
   transition: opacity .55s ease;
 }
-html body:not([data-ds-dark-theme]) #holo-boot.is-leaving {
+html body:not([data-ds-dark-theme]) #horo-boot.is-leaving {
   opacity: 0;
 }
-html body:not([data-ds-dark-theme]) #holo-boot .boot-canvas {
+html body:not([data-ds-dark-theme]) #horo-boot .boot-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -534,7 +606,7 @@ html body:not([data-ds-dark-theme]) #holo-boot .boot-canvas {
   object-fit: cover;
   display: block;
 }
-html body:not([data-ds-dark-theme]) #holo-boot .boot-sound {
+html body:not([data-ds-dark-theme]) #horo-boot .boot-sound {
   position: absolute;
   right: 22px;
   bottom: 42px;
@@ -550,16 +622,16 @@ html body:not([data-ds-dark-theme]) #holo-boot .boot-sound {
   transition: color .2s ease, background .2s ease, border-color .2s ease;
   backdrop-filter: blur(3px);
 }
-html body:not([data-ds-dark-theme]) #holo-boot .boot-sound:hover {
+html body:not([data-ds-dark-theme]) #horo-boot .boot-sound:hover {
   color: rgba(255, 232, 196, .98);
   background: rgba(30, 21, 14, .55);
   border-color: rgba(224, 174, 92, .45);
 }
-html body:not([data-ds-dark-theme]) #holo-boot .boot-sound[data-on="1"] {
+html body:not([data-ds-dark-theme]) #horo-boot .boot-sound[data-on="1"] {
   color: rgba(240, 196, 122, .98);
   border-color: rgba(224, 174, 92, .5);
 }
-html body:not([data-ds-dark-theme]) #holo-boot .boot-skip {
+html body:not([data-ds-dark-theme]) #horo-boot .boot-skip {
   position: absolute;
   right: 22px;
   bottom: 14px;
@@ -577,7 +649,7 @@ html body:not([data-ds-dark-theme]) #holo-boot .boot-skip {
   opacity: 0;
   animation: bootHint .8s ease 1.2s forwards;
 }
-html body:not([data-ds-dark-theme]) #holo-boot .boot-skip:hover {
+html body:not([data-ds-dark-theme]) #horo-boot .boot-skip:hover {
   color: rgba(255, 232, 196, .98);
   background: rgba(30, 21, 14, .55);
   border-color: rgba(224, 174, 92, .45);
@@ -587,7 +659,7 @@ html body:not([data-ds-dark-theme]) #holo-boot .boot-skip:hover {
 /* Structure is not a light-mode nicety: the reel covers the whole viewport in
    either palette, and its two buttons have to sit above the canvas and stay
    clickable. These rules carry no colour, so they apply unscoped. */
-#holo-boot {
+#horo-boot {
   position: fixed;
   inset: 0;
   z-index: 2147483003;
@@ -597,8 +669,8 @@ html body:not([data-ds-dark-theme]) #holo-boot .boot-skip:hover {
   opacity: 1;
   transition: opacity .55s ease;
 }
-#holo-boot.is-leaving { opacity: 0; }
-#holo-boot .boot-canvas {
+#horo-boot.is-leaving { opacity: 0; }
+#horo-boot .boot-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -607,30 +679,35 @@ html body:not([data-ds-dark-theme]) #holo-boot .boot-skip:hover {
   display: block;
   z-index: 0;
 }
-#holo-boot .boot-sound,
-#holo-boot .boot-skip {
+#horo-boot .boot-sound,
+#horo-boot .boot-skip {
   position: absolute;
   z-index: 2;
   pointer-events: auto;
   cursor: pointer;
 }
-#holo-boot .boot-sound { right: 22px; bottom: 42px; }
-#holo-boot .boot-skip { right: 22px; bottom: 14px; }
+#horo-boot .boot-sound { right: 22px; bottom: 42px; }
+#horo-boot .boot-skip { right: 22px; bottom: 14px; }
 
 /* ---- the peeking companion ------------------------------------------- */
-html body:not([data-ds-dark-theme]) #holo-peek {
+html body:not([data-ds-dark-theme]) #horo-peek {
   position: fixed;
   z-index: 2147482997;
   display: none;
-  overflow: hidden;
+  /* Not hidden: her lean toward the pointer (up to 4px up), the 2.4deg tilt
+     and the 9px sideways sway all carry the artwork past this box, and an
+     overflow clip sliced the top of her head and her ears whenever she rose.
+     The only edge that must cut is the composer's, and place() writes that
+     as a clip-path with room left on the other three sides. */
+  overflow: visible;
   cursor: grab;
   touch-action: none;
   height: var(--peek-h, 0px);
   will-change: height;
   -webkit-tap-highlight-color: transparent;
 }
-html body:not([data-ds-dark-theme]) #holo-peek.is-dragging { cursor: grabbing; }
-html body:not([data-ds-dark-theme]) #holo-peek img {
+html body:not([data-ds-dark-theme]) #horo-peek.is-dragging { cursor: grabbing; }
+html body:not([data-ds-dark-theme]) #horo-peek img {
   position: absolute;
   top: 0;
   left: 50%;
@@ -644,7 +721,7 @@ html body:not([data-ds-dark-theme]) #holo-peek img {
 }
 
 /* the rein between her hand and the composer */
-html body:not([data-ds-dark-theme]) #holo-thread {
+html body:not([data-ds-dark-theme]) #horo-thread {
   position: fixed;
   inset: 0;
   z-index: 2147482996;
@@ -652,7 +729,7 @@ html body:not([data-ds-dark-theme]) #holo-thread {
   opacity: 0;
   transition: opacity .5s ease;
 }
-html body:not([data-ds-dark-theme]) #holo-thread path {
+html body:not([data-ds-dark-theme]) #horo-thread path {
   fill: none;
   stroke: rgba(224, 174, 92, .62);
   stroke-width: 1.1;
@@ -660,7 +737,7 @@ html body:not([data-ds-dark-theme]) #holo-thread path {
   stroke-dasharray: 5 7;
   animation: threadFlow 2.6s linear infinite;
 }
-html body:not([data-ds-dark-theme]) #holo-thread.is-on {
+html body:not([data-ds-dark-theme]) #horo-thread.is-on {
   opacity: 1;
 }
 @keyframes threadFlow {
@@ -668,14 +745,14 @@ html body:not([data-ds-dark-theme]) #holo-thread.is-on {
 }
 
 /* wheat grains and the apple */
-html body:not([data-ds-dark-theme]) #holo-peek-fx {
+html body:not([data-ds-dark-theme]) #horo-peek-fx {
   position: fixed;
   inset: 0;
   z-index: 2147482999;
   pointer-events: none;
   overflow: visible;
 }
-html body:not([data-ds-dark-theme]) .holo-grain {
+html body:not([data-ds-dark-theme]) .horo-grain {
   position: absolute;
   width: 3px;
   height: 7px;
@@ -689,7 +766,7 @@ html body:not([data-ds-dark-theme]) .holo-grain {
   18%  { opacity: .95; }
   100% { opacity: 0; transform: translate(var(--gx, 0px), -46px) rotate(var(--gr, 40deg)) scale(1); }
 }
-html body:not([data-ds-dark-theme]) .holo-apple {
+html body:not([data-ds-dark-theme]) .horo-apple {
   position: absolute;
   width: 13px;
   height: 13px;
@@ -699,7 +776,7 @@ html body:not([data-ds-dark-theme]) .holo-apple {
   opacity: 0;
   animation: appleRoll 3.4s cubic-bezier(.2,.8,.3,1) forwards;
 }
-html body:not([data-ds-dark-theme]) .holo-apple::after {
+html body:not([data-ds-dark-theme]) .horo-apple::after {
   content: "";
   position: absolute;
   left: 8px;
@@ -719,11 +796,11 @@ html body:not([data-ds-dark-theme]) .holo-apple::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html body:not([data-ds-dark-theme]) #holo-peek,
-html body:not([data-ds-dark-theme]) #holo-peek img { transition: none; }
-  html body:not([data-ds-dark-theme]) .holo-grain,
-html body:not([data-ds-dark-theme]) .holo-apple { animation: none; opacity: 0; }
-  html body:not([data-ds-dark-theme]) #holo-thread path { animation: none; }
+  html body:not([data-ds-dark-theme]) #horo-peek,
+html body:not([data-ds-dark-theme]) #horo-peek img { transition: none; }
+  html body:not([data-ds-dark-theme]) .horo-grain,
+html body:not([data-ds-dark-theme]) .horo-apple { animation: none; opacity: 0; }
+  html body:not([data-ds-dark-theme]) #horo-thread path { animation: none; }
 }
 
 /* ---- syntax colors: warm sepia code blocks --------------------------- */
@@ -789,14 +866,17 @@ html body:not([data-ds-dark-theme])::after {
 }
 
 /* ---- decorations retire with the skin -------------------------------- */
-html body[data-ds-dark-theme] [id^="holo-"],
-html body[data-ds-dark-theme] .holo-grain,
-html body[data-ds-dark-theme] .holo-apple { display: none !important; }
+html body[data-ds-dark-theme] [id^="horo-"],
+html body[data-ds-dark-theme] .horo-grain,
+html body[data-ds-dark-theme] .horo-apple { display: none !important; }
 
 /* The peeking companion is opt-out from the plugin's own settings row; the
    latch lives on <html> so it applies to both palettes. */
-html[data-holo-peek="off"] #holo-peek,
-html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
+html[data-horo-peek="off"] #horo-peek,
+html[data-horo-peek="off"] #horo-peek-fx { display: none !important; }
+/* A fullscreen right column covers the composer; her grains, apple and thread
+   go with her (place() already stands her down). */
+html[data-horo-right-full="on"] #horo-peek-fx { display: none !important; }
 
 /* ---- the floating wordmark -------------------------------------------- */
 /* A free-floating picture: one fixed layer on <body>, nothing appended to a
@@ -813,7 +893,7 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
    the way out of it is to drag the picture elsewhere (or turn it off in the
    settings row), not to sink it below a panel. */
 
-[data-holo-logo] {
+[data-horo-logo] {
   position: fixed;
   /* 2, which is the whole trick for a floating layer.
      The mark is a child of <body>, a sibling of the shell's own frame. That
@@ -833,7 +913,7 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
   user-select: none;
   line-height: 0;
 }
-[data-holo-logo] img {
+[data-horo-logo] img {
   display: block;
   width: 100%;
   height: auto;
@@ -850,7 +930,7 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
    The hairline ring is inset so it survives even if something else on the page
    clips its own overflow; it is painted on this element rather than the image,
    which keeps the mark findable while it is dragged. */
-[data-holo-logo][data-holo-logo-edit="on"] {
+[data-horo-logo][data-horo-logo-edit="on"] {
   z-index: 2147482800;
   pointer-events: auto;
   cursor: grab;
@@ -858,12 +938,21 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
   box-shadow: inset 0 0 0 1px rgba(190, 124, 52, .95);
   border-radius: 3px;
 }
-[data-holo-logo][data-holo-logo-edit="on"]:active { cursor: grabbing; }
+[data-horo-logo][data-horo-logo-edit="on"]:active { cursor: grabbing; }
+
+/* A fullscreen right column climbs over the shell's frame and so over this
+   layer's lower half too: parked at the default spot the mark came out sliced
+   by the column's top edge. It belongs to the conversation's header, which the
+   column now covers, so it steps out until the column leaves fullscreen --
+   except while being dragged, when it has to stay where the pointer is. */
+html[data-horo-right-full="on"] [data-horo-logo]:not([data-horo-logo-edit="on"]) {
+  visibility: hidden;
+}
 
 /* The grip and the readout exist in the DOM at all times but are painted only
    while editing, so entering the mode never rebuilds the layer. */
-[data-holo-logo-grip] { display: none; }
-[data-holo-logo][data-holo-logo-edit="on"] [data-holo-logo-grip] {
+[data-horo-logo-grip] { display: none; }
+[data-horo-logo][data-horo-logo-edit="on"] [data-horo-logo-grip] {
   display: block;
   position: absolute;
   right: -2px;
@@ -877,10 +966,10 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
   cursor: nwse-resize;
   pointer-events: auto;
 }
-[data-holo-logo-readout] { display: none; }
+[data-horo-logo-readout] { display: none; }
 /* The badge hangs under the mark and is nudged back inside the window by
    paint(); the left/top here are only its preferred corner. */
-[data-holo-logo][data-holo-logo-edit="on"] [data-holo-logo-readout] {
+[data-horo-logo][data-horo-logo-edit="on"] [data-horo-logo-readout] {
   display: block;
   position: absolute;
   left: 0;
@@ -927,7 +1016,7 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
    lower the field with opacity alone; the edges follow in proportion. The masks
    are split across two elements on purpose — one gradient each, so no
    mask-composite support is needed anywhere. */
-#holo-wheat {
+#horo-wheat {
   position: fixed;
   /* Zero until the first measure lands: a zero-width fixed box paints nothing,
      so a frame that arrives before the sidebar exists cannot flash a mislocated
@@ -942,7 +1031,7 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
   -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, .4) 0%, #000 16%, #000 84%, rgba(0, 0, 0, .4) 100%);
   mask-image: linear-gradient(to right, rgba(0, 0, 0, .4) 0%, #000 16%, #000 84%, rgba(0, 0, 0, .4) 100%);
 }
-#holo-wheat i {
+#horo-wheat i {
   display: block;
   width: 100%;
   height: 100%;
@@ -974,7 +1063,7 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
    failure happened). The 75% field and 50% edges are baked into the WebP's
    alpha channel: a CSS opacity fades the entire element, and a background
    image carries no opacity knob of its own. */
-[data-plugin-detail="dsh-theme-holo"]::before {
+[data-plugin-detail="dsh-theme-horo"]::before {
   content: "";
   display: block;
   flex: none;
@@ -1002,7 +1091,7 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
    in-flow background, so the only way through is to make those fills
    transparent while the plate is up -- html, body, the frame, the column and
    anything full-bleed inside it. That is exactly what the source package did,
-   and it is why every rule below is gated on html[data-holo-scene="on"]:
+   and it is why every rule below is gated on html[data-horo-scene="on"]:
    outside the start page nothing is cleared and the app keeps its own
    parchment. The frame and the column fills are cleared in JS (createScene),
    because they are the shell's elements and their inline values have to come
@@ -1022,21 +1111,19 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
    ever shows outside the column -- where the conversation's own opaque root
    covers it anyway. */
 
-/* Click band over the standby plate.
-   It is its OWN layer on <body>, not a child of #holo-scene: that plate is
-   z-index:-1, and a negative-z layer sits below its container's background, so
-   a child with pointer-events:auto in it never receives clicks. This band sits
-   above ordinary content but below every other piece of plugin chrome
-   (peeker 2147482997, planner 2147482998, bubble 2147482999). */
-#holo-scene-hit {
-  position: fixed;
-  z-index: 2147482995;
-  pointer-events: auto;
-  cursor: pointer;
-  background: transparent;
+/* Clicking her on the standby plate.
+   There is no overlay for this any more. A transparent band above the content
+   swallowed every click in its rectangle -- the column's own tab strip and its
+   split / fullscreen / close buttons sat under it and could not be pressed. The
+   plate is now hit-tested from a document click listener instead (createScene),
+   which ignores anything interactive, so the host's controls always win. The
+   attribute below only swaps the cursor while the pointer is over her. */
+html[data-horo-scene-hover="on"] [data-sidebar-right-panel],
+html[data-horo-scene-hover="on"] [data-sidebar-right-panel] * {
+  cursor: pointer !important;
 }
 
-#holo-scene {
+#horo-scene {
   position: fixed;
   inset: 0;
   z-index: -1;
@@ -1049,10 +1136,10 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
      start page instead of merely being covered up. */
   display: none;
 }
-html[data-holo-scene="on"] #holo-scene {
+html[data-horo-scene="on"] #horo-scene {
   display: block;
 }
-#holo-scene .holo-scene-clip {
+#horo-scene .horo-scene-clip {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -1081,7 +1168,7 @@ html[data-holo-scene="on"] #holo-scene {
    blur in, so the seam between blurred and sharp never shows as a step.
    It must sit directly above the video for the backdrop to be the plate and not
    the shell's own background. */
-#holo-scene .holo-scene-blur {
+#horo-scene .horo-scene-blur {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -1090,7 +1177,7 @@ html[data-holo-scene="on"] #holo-scene {
   -webkit-mask-image: linear-gradient(90deg, #000 0, #000 4%, transparent 10%, transparent 90%, #000 96%, #000 100%);
   mask-image: linear-gradient(90deg, #000 0, #000 4%, transparent 10%, transparent 90%, #000 96%, #000 100%);
 }
-#holo-scene .holo-scene-img {
+#horo-scene .horo-scene-img {
   position: absolute;
   /* The plate is a portrait crop (608x1080) shown at 1:1 -- no scaling, so the
      vertical edge really is 1080px. It is centred in the slice: the visible
@@ -1111,10 +1198,10 @@ html[data-holo-scene="on"] #holo-scene {
    mirror in need flipping here. The newer ones are already mirrored on disk
    (the split script runs hflip on the left crop), so flipping them again would
    put them back the way they started. The list lives in SCENE_CSS_MIRRORED. */
-#holo-scene .holo-scene-img.is-mirrored {
+#horo-scene .horo-scene-img.is-mirrored {
   transform: scaleX(-1);
 }
-#holo-scene .holo-scene-scrim {
+#horo-scene .horo-scene-scrim {
   position: absolute;
   inset: 0;
   /* The original ran 90deg behind the left column. Moved to the right one the
@@ -1126,7 +1213,7 @@ html[data-holo-scene="on"] #holo-scene {
     linear-gradient(180deg, rgba(16,12,8,.36) 0%, rgba(16,12,8,.10) 26%, rgba(16,12,8,.24) 74%, rgba(16,12,8,.66) 100%),
     rgba(12, 9, 6, .14);
 }
-#holo-scene .holo-scene-veil {
+#horo-scene .horo-scene-veil {
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg,
@@ -1139,28 +1226,28 @@ html[data-holo-scene="on"] #holo-scene {
 
 /* The shell turns to glass so the plate shows through. Scoped to the start
    page: the attribute is set and removed by createScene. */
-html[data-holo-scene="on"],
-html[data-holo-scene="on"] body {
+html[data-horo-scene="on"],
+html[data-horo-scene="on"] body {
   background: transparent !important;
 }
 
 /* ---- the same plate in the light palette 「麦秋晨光」 ------------------ */
 /* Not a tinted copy: the light plate is printed on paper. The video gets a
    warm duotone and multiplies into the parchment instead of covering it. */
-html body:not([data-ds-dark-theme]) #holo-scene {
+html body:not([data-ds-dark-theme]) #horo-scene {
   background: linear-gradient(180deg, #FBF7EF 0%, #F6EEDF 100%);
 }
-html body:not([data-ds-dark-theme]) #holo-scene .holo-scene-img {
+html body:not([data-ds-dark-theme]) #horo-scene .horo-scene-img {
   opacity: .82;
   filter: saturate(.78) sepia(.16) contrast(.96) brightness(1.02);
   mix-blend-mode: multiply;
 }
-html body:not([data-ds-dark-theme]) #holo-scene .holo-scene-scrim {
+html body:not([data-ds-dark-theme]) #horo-scene .horo-scene-scrim {
   background:
     linear-gradient(270deg, rgba(251,247,239,.20) 0%, rgba(251,247,239,.04) 55%, rgba(251,247,239,.42) 100%),
     linear-gradient(180deg, rgba(251,247,239,.22) 0%, rgba(251,247,239,.04) 30%, rgba(251,247,239,.26) 100%);
 }
-html body:not([data-ds-dark-theme]) #holo-scene .holo-scene-veil {
+html body:not([data-ds-dark-theme]) #horo-scene .horo-scene-veil {
   background: linear-gradient(180deg,
     rgba(251,247,239,.10) 0%,
     rgba(251,247,239,.02) 26%,
@@ -1181,10 +1268,10 @@ ${TOKEN_CSS_DARK}
 
 /* ---- planner: the parchment pad and its wheat-ringed badge ---------------
    Both carry data- attributes rather than ids: the dark-palette rule hides
-   every [id^="holo-"] decoration, and this is a tool, not decoration. */
-[data-holo-planner] { position: fixed; inset: 0; z-index: 2147482998; pointer-events: none; }
+   every [id^="horo-"] decoration, and this is a tool, not decoration. */
+[data-horo-planner] { position: fixed; inset: 0; z-index: 2147482998; pointer-events: none; }
 
-[data-holo-planner-badge] {
+[data-horo-planner-badge] {
   position: fixed;
   display: none;
   place-items: center;
@@ -1195,14 +1282,14 @@ ${TOKEN_CSS_DARK}
   transition: transform 0.16s ease, filter 0.16s ease;
 }
 
-[data-holo-planner][data-holo-planner-open="off"] [data-holo-planner-badge] { display: grid; }
+[data-horo-planner][data-horo-planner-open="off"] [data-horo-planner-badge] { display: grid; }
 
-[data-holo-planner-badge]:hover {
+[data-horo-planner-badge]:hover {
   transform: scale(1.04);
   filter: drop-shadow(0 7px 20px rgba(58, 38, 18, 0.3));
 }
 
-[data-holo-planner-badge]:active { transform: scale(0.985); }
+[data-horo-planner-badge]:active { transform: scale(0.985); }
 
 /* The badge is a stack of two layers, and their order matters: the ring sits
    behind, the photo on top of it. The artwork already carries its own breathing
@@ -1214,7 +1301,7 @@ ${TOKEN_CSS_DARK}
    at 70% x 76% her silhouette nearly touches the wheat while still leaving the
    spikes clear of her ears and tail. The offsets centre her inside that circle,
    not inside the square. */
-[data-holo-planner-photo] {
+[data-horo-planner-photo] {
   position: absolute;
   left: 15%;
   top: 12%;
@@ -1230,7 +1317,7 @@ ${TOKEN_CSS_DARK}
    build time (assets/planner-ring.png) instead of being redrawn per badge: the
    source is a real strand of wheat, and no amount of CSS bends a horizontal
    strip into a believable ring. */
-[data-holo-planner-ring] {
+[data-horo-planner-ring] {
   position: absolute;
   left: -6%;
   top: -6%;
@@ -1246,12 +1333,16 @@ ${TOKEN_CSS_DARK}
   z-index: 0;
 }
 
-html body[data-ds-dark-theme] [data-holo-planner-ring] {
+html body[data-ds-dark-theme] [data-horo-planner-ring] {
   filter: brightness(1.34) saturate(1.08);
   opacity: 0.9;
 }
 
-[data-holo-planner-panel] {
+/* The pad is a sheet of aged paper: a warm gradient, a faint burn toward the
+   edges, and a printed hairline frame inset 5px from the trim -- one frame on
+   the page instead of a stack of outlines around it. Head and foot are kept
+   transparent so that inner frame runs unbroken all the way round. */
+[data-horo-planner-panel] {
   position: fixed;
   display: none;
   flex-direction: column;
@@ -1259,84 +1350,150 @@ html body[data-ds-dark-theme] [data-holo-planner-ring] {
   max-width: calc(100vw - 20px);
   min-height: 292px;
   max-height: min(640px, calc(100vh - 20px));
-  border-radius: 9px;
+  border-radius: 14px;
   pointer-events: auto;
   color: #33291B;
   background:
-    radial-gradient(circle at 16% 10%, rgba(255, 255, 255, 0.62), transparent 44%),
-    radial-gradient(circle at 84% 92%, rgba(233, 212, 178, 0.42), transparent 52%),
-    linear-gradient(158deg, #FFFCF5 0%, #FBF3E2 48%, #F7EBD6 100%);
-  border: 1px solid rgba(184, 130, 43, 0.52);
+    radial-gradient(130% 90% at 0% 0%, rgba(255, 255, 255, 0.72), transparent 52%),
+    radial-gradient(110% 80% at 100% 100%, rgba(226, 196, 148, 0.36), transparent 62%),
+    linear-gradient(170deg, #FFFBF2 0%, #FAF1DE 55%, #F4E6CB 100%);
+  border: 1px solid rgba(184, 130, 43, 0.42);
   box-shadow:
-    0 0 0 3px rgba(251, 247, 239, 0.92),
-    0 0 0 4px rgba(184, 130, 43, 0.26),
-    0 20px 48px rgba(58, 38, 18, 0.28);
+    inset 0 0 0 5px rgba(255, 251, 242, 0.55),
+    inset 0 0 0 6px rgba(184, 130, 43, 0.16),
+    inset 0 0 42px rgba(184, 130, 43, 0.12),
+    0 24px 60px rgba(58, 38, 18, 0.22),
+    0 2px 6px rgba(58, 38, 18, 0.08);
   overflow: hidden;
 }
 
-[data-holo-planner][data-holo-planner-open="on"] [data-holo-planner-panel] { display: flex; }
+/* Paper tooth: the shared grain, multiplied in at a whisper. It sits above the
+   content (a ::before would need every child lifted over it) and is far too
+   faint to tint the text. */
+[data-horo-planner-panel]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: ${GRAIN};
+  background-size: 160px 160px;
+  mix-blend-mode: multiply;
+  opacity: 0.05;
+  pointer-events: none;
+}
 
-[data-holo-planner-head] {
+[data-horo-planner][data-horo-planner-open="on"] [data-horo-planner-panel] { display: flex; }
+
+[data-horo-planner-head] {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 11px 13px 10px;
+  gap: 6px;
+  padding: 13px 12px 11px 18px;
   cursor: grab;
   user-select: none;
-  border-bottom: 1px solid rgba(184, 130, 43, 0.24);
-  background: linear-gradient(180deg, rgba(255, 252, 245, 0.7), rgba(246, 233, 208, 0.34));
 }
 
-[data-holo-planner-head]:active { cursor: grabbing; }
+/* The theme's rein: a gold hairline that fades out toward both ends. */
+[data-horo-planner-head]::after,
+[data-horo-planner-foot]::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(184, 130, 43, 0.38) 18%, rgba(184, 130, 43, 0.38) 82%, transparent);
+  pointer-events: none;
+}
+[data-horo-planner-head]::after { bottom: 0; }
+[data-horo-planner-foot]::before { top: 0; }
 
-[data-holo-planner-title] {
+[data-horo-planner-head]:active { cursor: grabbing; }
+
+[data-horo-planner-title] {
   flex: 1 1 auto;
-  font: 600 13.5px/1.3 Georgia, "Songti SC", "Microsoft YaHei", serif;
-  letter-spacing: 0.06em;
-  color: #7A5B22;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: 600 14px/1.3 Georgia, "Songti SC", "STSong", "Microsoft YaHei", serif;
+  letter-spacing: 0.12em;
+  color: #6B4A16;
 }
 
-[data-holo-planner-count] {
-  font: 500 11.5px/1 "Microsoft YaHei", system-ui, sans-serif;
-  color: #8C7A61;
+/* A little wax seal in front of the title. */
+[data-horo-planner-title]::before {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #D9654F 0%, #A8402F 58%, #7E2C20 100%);
+  box-shadow: 0 0 0 2px rgba(168, 64, 47, 0.14), 0 1px 2px rgba(58, 38, 18, 0.25);
+}
+
+[data-horo-planner-count] {
+  margin-right: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(184, 130, 43, 0.10);
+  font: 500 11px/1 "Microsoft YaHei", system-ui, sans-serif;
+  color: #8C6A2F;
   font-variant-numeric: tabular-nums;
 }
 
-[data-holo-planner-btn] {
+[data-horo-planner-btn] {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border: 1px solid rgba(184, 130, 43, 0.4);
-  border-radius: 6px;
-  background: rgba(255, 252, 245, 0.72);
-  color: #7A5B22;
-  font: 500 13px/1 "Microsoft YaHei", system-ui, sans-serif;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #9A7A45;
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease;
+  transition: background 0.14s ease, color 0.14s ease, transform 0.14s ease;
 }
+[data-horo-planner-btn] svg { display: block; }
 
-[data-holo-planner-btn]:hover {
-  background: rgba(240, 224, 190, 0.9);
-  border-color: rgba(162, 112, 31, 0.62);
+[data-horo-planner-btn]:hover {
+  background: rgba(184, 130, 43, 0.14);
+  color: #6B4A16;
 }
+[data-horo-planner-btn="close"]:hover {
+  background: rgba(168, 64, 47, 0.12);
+  color: #A8402F;
+}
+[data-horo-planner-btn]:active { transform: scale(0.92); }
+/* "html body" lifts these to the same weight as the theme-wide :focus-visible
+   outline earlier in this sheet, and being later they win. A text field always
+   matches :focus-visible, so without this the whole writing area was boxed in
+   a gold outline the moment it was clicked; the caret is focus enough. */
+html body [data-horo-planner-btn]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(184, 130, 43, 0.5);
+}
+html body [data-horo-planner-input]:focus-visible { outline: none; }
 
-[data-holo-planner-body] {
+[data-horo-planner-body] {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 10px 13px 12px;
-  gap: 9px;
+  padding: 8px 18px 12px;
+  gap: 10px;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
-[data-holo-planner-input] {
+/* Ruled like a ledger: 28px lines whose rule falls just under the baseline,
+   so the writing sits on them rather than floating between them. */
+[data-horo-planner-input] {
   flex: 1 1 auto;
+  box-sizing: border-box;
   width: 100%;
-  min-height: 146px;
+  min-height: 168px;
   resize: none;
   padding: 0 2px;
   border: 0;
@@ -1345,54 +1502,62 @@ html body[data-ds-dark-theme] [data-holo-planner-ring] {
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
-    transparent 26px,
-    rgba(184, 130, 43, 0.15) 26px,
-    rgba(184, 130, 43, 0.15) 27px
+    transparent 27px,
+    rgba(184, 130, 43, 0.17) 27px,
+    rgba(184, 130, 43, 0.17) 28px
   );
+  background-attachment: local;
   color: #33291B;
-  font: 400 13.5px/27px Georgia, "Songti SC", "Microsoft YaHei", serif;
+  font: 400 14px/28px Georgia, "Songti SC", "STSong", "Microsoft YaHei", serif;
   caret-color: #A2701F;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(184, 130, 43, 0.35) transparent;
 }
 
-[data-holo-planner-input]::placeholder {
-  color: #A9967A;
-  font-style: italic;
+/* Not italic: CJK faces carry no italic, and the synthetic slant reads as a
+   rendering fault rather than as a placeholder. */
+[data-horo-planner-input]::placeholder {
+  color: #B3A07F;
 }
 
-[data-holo-planner-gallery] {
+[data-horo-planner-input]::selection {
+  background: rgba(224, 174, 92, 0.32);
+}
+
+[data-horo-planner-gallery] {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
-  gap: 7px;
+  gap: 8px;
 }
 
-[data-holo-planner-gallery]:empty { display: none; }
+[data-horo-planner-gallery]:empty { display: none; }
 
-[data-holo-planner-shot] {
+[data-horo-planner-shot] {
   position: relative;
   aspect-ratio: 1 / 1;
-  border-radius: 5px;
+  border-radius: 6px;
   overflow: hidden;
-  border: 1px solid rgba(184, 130, 43, 0.4);
+  border: 1px solid rgba(184, 130, 43, 0.34);
   background: rgba(255, 253, 247, 0.8);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+  box-shadow: 0 2px 6px rgba(58, 38, 18, 0.10);
 }
 
-[data-holo-planner-shot] img {
+[data-horo-planner-shot] img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-[data-holo-planner-del] {
+[data-horo-planner-del] {
   position: absolute;
-  right: 2px;
-  top: 2px;
+  right: 3px;
+  top: 3px;
   display: grid;
   place-items: center;
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -1401,91 +1566,109 @@ html body[data-ds-dark-theme] [data-holo-planner-ring] {
   font: 600 11px/1 "Microsoft YaHei", system-ui, sans-serif;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.14s ease;
+  transition: opacity 0.14s ease, background 0.14s ease;
 }
+[data-horo-planner-del]:hover { background: #A8402F; }
 
-[data-holo-planner-shot]:hover [data-holo-planner-del] { opacity: 1; }
+[data-horo-planner-shot]:hover [data-horo-planner-del] { opacity: 1; }
 
-[data-holo-planner-foot] {
+[data-horo-planner-foot] {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 13px 10px;
-  border-top: 1px solid rgba(184, 130, 43, 0.22);
-  background: linear-gradient(0deg, rgba(246, 233, 208, 0.34), rgba(255, 252, 245, 0.6));
+  padding: 9px 18px 12px;
 }
 
-[data-holo-planner-hint] {
+/* The hint reads as a small status line, led by a gold dot that turns red
+   together with the text when something could not be saved. */
+[data-horo-planner-hint] {
   flex: 1 1 auto;
-  font: 400 11px/1.4 "Microsoft YaHei", system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 400 11.5px/1.4 "Microsoft YaHei", system-ui, sans-serif;
   color: #8C7A61;
 }
+[data-horo-planner-hint]::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(184, 130, 43, 0.7);
+}
 
-[data-holo-planner-hint][data-holo-planner-warn="on"] { color: #B4432F; }
+[data-horo-planner-hint][data-horo-planner-warn="on"] { color: #B4432F; }
+[data-horo-planner-hint][data-horo-planner-warn="on"]::before { background: #B4432F; }
 
-html body[data-ds-dark-theme] [data-holo-planner-panel] {
+html body[data-ds-dark-theme] [data-horo-planner-panel] {
   color: #F1E5D0;
   background:
-    radial-gradient(circle at 16% 10%, rgba(104, 84, 56, 0.42), transparent 46%),
-    radial-gradient(circle at 84% 92%, rgba(58, 44, 26, 0.5), transparent 54%),
-    linear-gradient(158deg, #262019 0%, #1E1813 52%, #17120D 100%);
-  border-color: rgba(224, 174, 92, 0.46);
+    radial-gradient(130% 90% at 0% 0%, rgba(104, 84, 56, 0.40), transparent 52%),
+    radial-gradient(110% 80% at 100% 100%, rgba(58, 44, 26, 0.5), transparent 62%),
+    linear-gradient(170deg, #282118 0%, #1F1913 55%, #18130E 100%);
+  border-color: rgba(224, 174, 92, 0.38);
   box-shadow:
-    0 0 0 3px rgba(22, 18, 13, 0.9),
-    0 0 0 4px rgba(224, 174, 92, 0.22),
-    0 20px 48px rgba(0, 0, 0, 0.55);
+    inset 0 0 0 5px rgba(22, 18, 13, 0.5),
+    inset 0 0 0 6px rgba(224, 174, 92, 0.14),
+    inset 0 0 42px rgba(0, 0, 0, 0.28),
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.3);
+}
+html body[data-ds-dark-theme] [data-horo-planner-panel]::after {
+  mix-blend-mode: screen;
+  opacity: 0.03;
 }
 
-html body[data-ds-dark-theme] [data-holo-planner-head] {
-  border-bottom-color: rgba(224, 174, 92, 0.24);
-  background: linear-gradient(180deg, rgba(44, 36, 26, 0.66), rgba(30, 24, 18, 0.4));
+html body[data-ds-dark-theme] [data-horo-planner-head]::after,
+html body[data-ds-dark-theme] [data-horo-planner-foot]::before {
+  background: linear-gradient(90deg, transparent, rgba(224, 174, 92, 0.32) 18%, rgba(224, 174, 92, 0.32) 82%, transparent);
 }
 
-html body[data-ds-dark-theme] [data-holo-planner-title] { color: #E0AE5C; }
-html body[data-ds-dark-theme] [data-holo-planner-count] { color: #A2917A; }
+html body[data-ds-dark-theme] [data-horo-planner-title] { color: #E0AE5C; }
+html body[data-ds-dark-theme] [data-horo-planner-count] {
+  background: rgba(224, 174, 92, 0.12);
+  color: #C9A66B;
+}
 
-html body[data-ds-dark-theme] [data-holo-planner-input] {
+html body[data-ds-dark-theme] [data-horo-planner-input] {
   color: #F1E5D0;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
-    transparent 26px,
-    rgba(224, 174, 92, 0.13) 26px,
-    rgba(224, 174, 92, 0.13) 27px
+    transparent 27px,
+    rgba(224, 174, 92, 0.13) 27px,
+    rgba(224, 174, 92, 0.13) 28px
   );
   caret-color: #E0AE5C;
+  scrollbar-color: rgba(224, 174, 92, 0.3) transparent;
 }
 
-html body[data-ds-dark-theme] [data-holo-planner-input]::placeholder { color: #8A7A64; }
+html body[data-ds-dark-theme] [data-horo-planner-input]::placeholder { color: #8A7A64; }
 
-html body[data-ds-dark-theme] [data-holo-planner-btn] {
-  border-color: rgba(224, 174, 92, 0.36);
-  background: rgba(44, 36, 26, 0.7);
-  color: #E0AE5C;
+html body[data-ds-dark-theme] [data-horo-planner-btn] { color: #C9A66B; }
+html body[data-ds-dark-theme] [data-horo-planner-btn]:hover {
+  background: rgba(224, 174, 92, 0.14);
+  color: #F1D9A8;
+}
+html body[data-ds-dark-theme] [data-horo-planner-btn="close"]:hover {
+  background: rgba(214, 64, 44, 0.18);
+  color: #F0907C;
 }
 
-html body[data-ds-dark-theme] [data-holo-planner-btn]:hover {
-  background: rgba(72, 58, 38, 0.9);
-  border-color: rgba(224, 174, 92, 0.6);
-}
-
-html body[data-ds-dark-theme] [data-holo-planner-shot] {
-  border-color: rgba(224, 174, 92, 0.34);
+html body[data-ds-dark-theme] [data-horo-planner-shot] {
+  border-color: rgba(224, 174, 92, 0.3);
   background: rgba(30, 24, 18, 0.8);
 }
 
-html body[data-ds-dark-theme] [data-holo-planner-foot] {
-  border-top-color: rgba(224, 174, 92, 0.2);
-  background: linear-gradient(0deg, rgba(30, 24, 18, 0.44), rgba(44, 36, 26, 0.6));
-}
+html body[data-ds-dark-theme] [data-horo-planner-hint] { color: #A2917A; }
 
-html body[data-ds-dark-theme] [data-holo-planner-hint] { color: #A2917A; }
-
-html[data-holo-planner-off="on"] [data-holo-planner] { display: none !important; }
+html[data-horo-planner-off="on"] [data-horo-planner] { display: none !important; }
 /* ---- the planner's header button (simplified mode) --------------------
    Matches the neighbouring header utilities button: 24px tall, 6px radius,
    hairline border. Themed with alias tokens so both palettes follow. */
-.holo-planner-btn {
+.horo-planner-btn {
   height: 24px;
   padding: 0 10px;
   border-radius: 6px;
@@ -1497,40 +1680,144 @@ html[data-holo-planner-off="on"] [data-holo-planner] { display: none !important;
   transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
 }
 
-.holo-planner-btn:hover {
+.horo-planner-btn:hover {
   border-color: var(--dsw-alias-border-l1, rgba(128, 128, 128, 0.4));
   color: var(--dsw-alias-label-primary, #33291B);
 }
 
-html body:not([data-ds-dark-theme]) .holo-planner-btn:hover {
+html body:not([data-ds-dark-theme]) .horo-planner-btn:hover {
   background: rgba(184, 130, 43, 0.08);
   border-color: rgba(184, 130, 43, 0.52);
   color: #7A5B22;
 }
 
+/* ---- the themed listbox on the settings card (右侧待机动画) ------------
+   Replaces a native <select>, whose popup is drawn by the OS and ignores the
+   palette. Trigger: the same 9px-radius outline as the card's other ghost
+   buttons. Popup: the note pad's parchment, a gold hairline, the selected
+   row marked with the wax-seal dot. */
+[data-horo-select] { position: relative; display: inline-block; }
+[data-horo-select-btn] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 184px;
+  padding: 7px 10px 7px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--dsw-alias-border-l3);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: 500 13px/1.2 "Microsoft YaHei", system-ui, sans-serif;
+  cursor: pointer;
+  transition: border-color .14s ease, background .14s ease, box-shadow .14s ease;
+}
+[data-horo-select-btn] svg { flex: none; color: #A2701F; transition: transform .16s ease; }
+[data-horo-select][data-horo-select-open="on"] [data-horo-select-btn] svg { transform: rotate(180deg); }
+[data-horo-select-btn]:hover,
+[data-horo-select][data-horo-select-open="on"] [data-horo-select-btn] {
+  border-color: rgba(184, 130, 43, .55);
+  background: rgba(184, 130, 43, .07);
+}
+html body [data-horo-select-btn]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(184, 130, 43, .45);
+}
+@keyframes horo-select-drop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+[data-horo-select-list] {
+  position: absolute;
+  z-index: 50;
+  left: 0;
+  top: calc(100% + 6px);
+  min-width: 100%;
+  box-sizing: border-box;
+  padding: 5px;
+  border-radius: 12px;
+  border: .5px solid rgba(184, 130, 43, .42);
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(255, 255, 255, .55), transparent 60%),
+    linear-gradient(180deg, #FCF8EE 0%, #F5EBD6 100%);
+  box-shadow: 0 14px 34px rgba(58, 38, 18, .18), inset 0 0 0 1px rgba(255, 255, 255, .5);
+  animation: horo-select-drop .14s ease-out both;
+}
+[data-horo-select-list] [role="option"] {
+  position: relative;
+  padding: 7px 12px 7px 26px;
+  border-radius: 8px;
+  color: #4A3A26;
+  font: 500 13px/1.3 "Microsoft YaHei", system-ui, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+[data-horo-select-list] [role="option"]:hover { background: rgba(184, 130, 43, .12); }
+[data-horo-select-list] [role="option"][aria-selected="true"] {
+  color: #7A4E14;
+  background: rgba(184, 130, 43, .16);
+}
+[data-horo-select-list] [role="option"][aria-selected="true"]::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #C9604A, #A8402F 70%);
+}
+[data-horo-select-list] [data-horo-select-opt="off"] {
+  margin-top: 4px;
+  color: #8A7A64;
+}
+[data-horo-select-list] [data-horo-select-opt="off"]::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: -3px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(184, 130, 43, .35), transparent);
+}
+html body[data-ds-dark-theme] [data-horo-select-btn] svg { color: #E0AE5C; }
+html body[data-ds-dark-theme] [data-horo-select-list] {
+  border-color: rgba(224, 174, 92, .35);
+  background: linear-gradient(180deg, #2A2017 0%, #211912 100%);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .5);
+}
+html body[data-ds-dark-theme] [data-horo-select-list] [role="option"] { color: #E8DCC6; }
+html body[data-ds-dark-theme] [data-horo-select-list] [role="option"]:hover { background: rgba(224, 174, 92, .12); }
+html body[data-ds-dark-theme] [data-horo-select-list] [role="option"][aria-selected="true"] {
+  color: #F1D9A8;
+  background: rgba(224, 174, 92, .16);
+}
+html body[data-ds-dark-theme] [data-horo-select-list] [data-horo-select-opt="off"] { color: #A2917A; }
+
 /* ---- voice bubble: the translation above her right shoulder -------------
-   Same parchment recipe as the note pad (see [data-holo-planner-panel]):
+   Same parchment recipe as the note pad (see [data-horo-planner-panel]):
    warm paper gradient, gold hairline, serif text. It is a data- attribute
-   rather than an id, so the dark-palette [id^="holo-"] rule leaves it alone. */
+   rather than an id, so the dark-palette [id^="horo-"] rule leaves it alone. */
 /* ---- the voice bubble: the same parchment plate the promo film uses -----
-   Fill, shadow, 6px radius, hairline deckled edge, and a wheat sprig at each
-   end. No tail and no double ring: those made it read as a chat popup, while
-   the film's captions are flat torn paper. */
-[data-holo-voice-bubble] {
+   Fill, shadow, 14px radius, hairline deckled edge, and one ear of wheat
+   tucked over the top-left corner. No tail and no double ring: those made it
+   read as a chat popup, while the film's captions are flat torn paper. */
+[data-horo-voice-bubble] {
   position: fixed;
   z-index: 2147482999;
   display: none;
   max-width: 320px;
-  padding: 11px 26px 12px;
-  border-radius: 6px;
+  padding: 11px 20px 12px 24px;
+  border-radius: 14px;
   pointer-events: auto;
   cursor: pointer;
   color: #6E5D46;
   background-color: rgba(251, 247, 239, 0.95);
   /* the deckled edges, drawn as two thin torn lines instead of a clean stroke */
   background-image:
-    linear-gradient(90deg, transparent 0, rgba(220, 201, 168, 0.9) 3%, rgba(220, 201, 168, 0.9) 97%, transparent 100%),
-    linear-gradient(90deg, transparent 0, rgba(220, 201, 168, 0.9) 3%, rgba(220, 201, 168, 0.9) 97%, transparent 100%);
+    linear-gradient(90deg, transparent 0, transparent 14px, rgba(220, 201, 168, 0.9) 22px, rgba(220, 201, 168, 0.9) calc(100% - 22px), transparent calc(100% - 14px)),
+    linear-gradient(90deg, transparent 0, transparent 14px, rgba(220, 201, 168, 0.9) 22px, rgba(220, 201, 168, 0.9) calc(100% - 22px), transparent calc(100% - 14px));
   background-size: 100% 1px, 100% 1px;
   background-position: 0 0, 0 100%;
   background-repeat: no-repeat;
@@ -1543,63 +1830,48 @@ html body:not([data-ds-dark-theme]) .holo-planner-btn:hover {
   transition: opacity 260ms ease, transform 260ms ease;
 }
 
-/* a wheat sprig at each end, three short strokes each */
-[data-holo-voice-bubble]::before,
-[data-holo-voice-bubble]::after {
+/* One ear of wheat (grains, awns, a curved stalk) tucked into the top-left
+   corner: the stalk rests on the paper, the head rises 15px above the plate.
+   place() keeps the bubble at least 16px from the top of the window, so the
+   head never gets cut off. The grains carry a paper-coloured
+   rim so they read as separate kernels at this size. */
+[data-horo-voice-bubble]::before {
   content: '';
   position: absolute;
-  top: 50%;
-  width: 9px;
-  height: 26px;
-  margin-top: -13px;
-  background-image:
-    linear-gradient(24deg, transparent 44%, rgba(162, 112, 31, 0.52) 44%, rgba(162, 112, 31, 0.52) 52%, transparent 52%),
-    linear-gradient(24deg, transparent 44%, rgba(162, 112, 31, 0.52) 44%, rgba(162, 112, 31, 0.52) 52%, transparent 52%),
-    linear-gradient(24deg, transparent 44%, rgba(162, 112, 31, 0.52) 44%, rgba(162, 112, 31, 0.52) 52%, transparent 52%);
-  background-size: 100% 7px, 100% 7px, 100% 7px;
-  background-position: 0 0, 0 10px, 0 20px;
-  background-repeat: no-repeat;
+  left: 3px;
+  top: -15px;
+  width: 17px;
+  height: 30px;
+  pointer-events: none;
+  background: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 -3 20 35"%3E%3Cg transform="rotate(16 10 18)"%3E%3Cg fill="none" stroke="%239A6A1D" stroke-width=".5" stroke-linecap="round"%3E%3Cpath d="M7.23 13.97l-1.99 -3.46"/%3E%3Cpath d="M12.77 12.57l1.99 -3.46"/%3E%3Cpath d="M7.43 11.02l-1.85 -3.20"/%3E%3Cpath d="M12.57 9.62l1.85 -3.20"/%3E%3Cpath d="M7.66 8.18l-1.68 -2.91"/%3E%3Cpath d="M12.34 6.78l1.68 -2.91"/%3E%3Cpath d="M10 4V-0.5"/%3E%3C/g%3E%3Cpath d="M10 19.5C10.2 24 9.4 27.6 7.2 31" fill="none" stroke="%239A6A1D" stroke-width="1" stroke-linecap="round"/%3E%3Cpath d="M10 20V6" stroke="%239A6A1D" stroke-width=".7"/%3E%3Cellipse cx="8.25" cy="19.00" rx="1.30" ry="2.60" transform="rotate(-30 8.25 19.00)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="11.75" cy="17.60" rx="1.30" ry="2.60" transform="rotate(30 11.75 17.60)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="8.34" cy="15.90" rx="1.23" ry="2.47" transform="rotate(-30 8.34 15.90)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="11.66" cy="14.50" rx="1.23" ry="2.47" transform="rotate(30 11.66 14.50)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="8.46" cy="12.80" rx="1.14" ry="2.29" transform="rotate(-30 8.46 12.80)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="11.54" cy="11.40" rx="1.14" ry="2.29" transform="rotate(30 11.54 11.40)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="8.60" cy="9.80" rx="1.04" ry="2.08" transform="rotate(-30 8.60 9.80)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="11.40" cy="8.40" rx="1.04" ry="2.08" transform="rotate(30 11.40 8.40)" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3Cellipse cx="10" cy="6.2" rx="1.1" ry="2.3" fill="%23B9883A" stroke="%23FBF7EF" stroke-width=".55"/%3E%3C/g%3E%3C/svg%3E') no-repeat center / contain;
 }
 
-[data-holo-voice-bubble]::before {
-  left: 9px;
-  transform: scaleX(-1);
-}
-
-[data-holo-voice-bubble]::after {
-  right: 9px;
-}
-
-[data-holo-voice-bubble][data-holo-voice-state="shown"] {
+[data-horo-voice-bubble][data-horo-voice-state="shown"] {
   display: block;
   opacity: 1;
   transform: translateY(0);
 }
 
-[data-holo-voice-bubble][data-holo-voice-state="fading"] {
+[data-horo-voice-bubble][data-horo-voice-state="fading"] {
   display: block;
   opacity: 0;
   transform: translateY(6px);
 }
 
-[data-holo-voice-text] { display: block; }
+[data-horo-voice-text] { display: block; }
 
 /* dark mode keeps the same geometry, only the paper turns to warm ink */
-html body[data-ds-dark-theme] [data-holo-voice-bubble] {
+html body[data-ds-dark-theme] [data-horo-voice-bubble] {
   color: #F1E5D0;
   background-color: rgba(30, 24, 19, 0.96);
   background-image:
-    linear-gradient(90deg, transparent 0, rgba(224, 174, 92, 0.55) 3%, rgba(224, 174, 92, 0.55) 97%, transparent 100%),
-    linear-gradient(90deg, transparent 0, rgba(224, 174, 92, 0.55) 3%, rgba(224, 174, 92, 0.55) 97%, transparent 100%);
+    linear-gradient(90deg, transparent 0, transparent 14px, rgba(224, 174, 92, 0.55) 22px, rgba(224, 174, 92, 0.55) calc(100% - 22px), transparent calc(100% - 14px)),
+    linear-gradient(90deg, transparent 0, transparent 14px, rgba(224, 174, 92, 0.55) 22px, rgba(224, 174, 92, 0.55) calc(100% - 22px), transparent calc(100% - 14px));
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 
-html body[data-ds-dark-theme] [data-holo-voice-bubble]::before,
-html body[data-ds-dark-theme] [data-holo-voice-bubble]::after {
-  background-image:
-    linear-gradient(24deg, transparent 44%, rgba(224, 174, 92, 0.55) 44%, rgba(224, 174, 92, 0.55) 52%, transparent 52%),
-    linear-gradient(24deg, transparent 44%, rgba(224, 174, 92, 0.55) 44%, rgba(224, 174, 92, 0.55) 52%, transparent 52%),
-    linear-gradient(24deg, transparent 44%, rgba(224, 174, 92, 0.55) 44%, rgba(224, 174, 92, 0.55) 52%, transparent 52%);
+html body[data-ds-dark-theme] [data-horo-voice-bubble]::before {
+  background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 -3 20 35"%3E%3Cg transform="rotate(16 10 18)"%3E%3Cg fill="none" stroke="%23D9A853" stroke-width=".5" stroke-linecap="round"%3E%3Cpath d="M7.23 13.97l-1.99 -3.46"/%3E%3Cpath d="M12.77 12.57l1.99 -3.46"/%3E%3Cpath d="M7.43 11.02l-1.85 -3.20"/%3E%3Cpath d="M12.57 9.62l1.85 -3.20"/%3E%3Cpath d="M7.66 8.18l-1.68 -2.91"/%3E%3Cpath d="M12.34 6.78l1.68 -2.91"/%3E%3Cpath d="M10 4V-0.5"/%3E%3C/g%3E%3Cpath d="M10 19.5C10.2 24 9.4 27.6 7.2 31" fill="none" stroke="%23D9A853" stroke-width="1" stroke-linecap="round"/%3E%3Cpath d="M10 20V6" stroke="%23D9A853" stroke-width=".7"/%3E%3Cellipse cx="8.25" cy="19.00" rx="1.30" ry="2.60" transform="rotate(-30 8.25 19.00)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="11.75" cy="17.60" rx="1.30" ry="2.60" transform="rotate(30 11.75 17.60)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="8.34" cy="15.90" rx="1.23" ry="2.47" transform="rotate(-30 8.34 15.90)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="11.66" cy="14.50" rx="1.23" ry="2.47" transform="rotate(30 11.66 14.50)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="8.46" cy="12.80" rx="1.14" ry="2.29" transform="rotate(-30 8.46 12.80)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="11.54" cy="11.40" rx="1.14" ry="2.29" transform="rotate(30 11.54 11.40)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="8.60" cy="9.80" rx="1.04" ry="2.08" transform="rotate(-30 8.60 9.80)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="11.40" cy="8.40" rx="1.04" ry="2.08" transform="rotate(30 11.40 8.40)" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3Cellipse cx="10" cy="6.2" rx="1.1" ry="2.3" fill="%23E8BE74" stroke="%231E1813" stroke-width=".55"/%3E%3C/g%3E%3C/svg%3E');
 }
 
 
@@ -1607,7 +1879,7 @@ html body[data-ds-dark-theme] [data-holo-voice-bubble]::after {
 
 
 
-    /** Artwork served by the host half from ./assets (route: /holo-theme/assets/).
+    /** Artwork served by the host half from ./assets (route: /horo-theme/assets/).
         ASSET_BASE itself is declared above STYLE, which embeds one of its URLs. */
     const AVATAR_SRC = ASSET_BASE + 'avatar.jpg'
     const INTRO_SRC = ASSET_BASE + 'intro.jpg'
@@ -1617,20 +1889,20 @@ html body[data-ds-dark-theme] [data-holo-voice-bubble]::after {
     const LOGO_SRC = ASSET_BASE + 'logo.png'
     /** The folded note pad's badge: her, cut out, inside a wheat ring. */
     const PLANNER_SRC = ASSET_BASE + 'planner.png'
-    /** 点记录板徽章时的应答（H182「ぬしの頼みならば喜んで」/「你开口，咱乐意。」）。 */
+    /** 点记录板徽章时的应答（H182「ぬしの頼みならば喜んで」/「若是汝的请求，咱自然乐意。」）。 */
     const PLANNER_VOICE_SRC = ASSET_BASE + 'voice-H182.wav'
-    /** 点右栏待机画面（Holo 立绘）时的应答：H013。 */
+    /** 点右栏待机画面（Horo 立绘）时的应答：H013。 */
     const SCENE_VOICE_SRC = ASSET_BASE + 'voice-H013.wav'
     /** Click cue for the account page's 「查询用量」 button. H015 from the
      *  voice table: 「人の世では何事にも金がかかるからな」. */
     const USAGE_VOICE_SRC = ASSET_BASE + 'voice-H015.wav'
     /** The idle plate behind the right column. Six clips are staged in
         ./素材/动画 and served from there by the host half (route:
-        /holo-theme/anime/), so replacing a file on disk is enough -- nothing is
+        /horo-theme/anime/), so replacing a file on disk is enough -- nothing is
         copied into ./assets. The settings page picks which one shows. */
-    const ANIME_BASE = '/holo-theme/anime/'
+    const ANIME_BASE = '/horo-theme/anime/'
     /** localStorage: the chosen clip's file name, extension dropped. */
-    const SCENE_NAME_KEY = 'dsh-theme-holo.scene-name'
+    const SCENE_NAME_KEY = 'dsh-theme-horo.scene-name'
     /** Selector order. Each entry is exactly a file name in ./素材/动画. */
     const SCENE_NAMES = ['赫萝抱臂', '赫萝开心', '缪莉开心1', '缪莉开心2', '赫萝叉腰', '缪莉挥手']
     /** Shipped default: the clip the plate's geometry was tuned against. */
@@ -1645,7 +1917,7 @@ html body[data-ds-dark-theme] [data-holo-voice-bubble]::after {
     /** What the <select> renders: the six clips, then the off switch. */
     const SCENE_OPTIONS = SCENE_NAMES.concat([SCENE_OFF])
     /** Fired on `window` when the settings page switches the clip. */
-    const SCENE_CHANGE_EVENT = 'dsh-theme-holo:scene-change'
+    const SCENE_CHANGE_EVENT = 'dsh-theme-horo:scene-change'
     /* Two clips predate the split script that bakes the mirror into the file:
        they are stored facing the wrong way, so the CSS has to flip them. The
        four newer ones already carry the mirror (the cutter runs hflip on the
@@ -1678,7 +1950,7 @@ html body[data-ds-dark-theme] [data-holo-voice-bubble]::after {
     const WHEAT_TILE = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='200' viewBox='0 0 160 200'%3E%3Cdefs%3E%3Cg id='s'%3E%3Cpath d='M0 0c-2-30-3-54-5-76' stroke='%23000' stroke-width='3.2' fill='none'/%3E%3Cg transform='translate(0 -78)'%3E%3Cg transform='rotate(-17)'%3E%3Cellipse rx='5' ry='11.5' cy='-10'/%3E%3Cellipse rx='5' ry='11.5' cy='-26'/%3E%3Cellipse rx='5' ry='11.5' cy='-42'/%3E%3C/g%3E%3Cg transform='rotate(17)'%3E%3Cellipse rx='5' ry='11.5' cy='-10'/%3E%3Cellipse rx='5' ry='11.5' cy='-26'/%3E%3Cellipse rx='5' ry='11.5' cy='-42'/%3E%3C/g%3E%3Cellipse rx='4.8' ry='11' cy='-58'/%3E%3C/g%3E%3C/g%3E%3C/defs%3E%3Cg fill='%23000'%3E%3Cg transform='translate(28 200) scale(1.05)'%3E%3Cuse href='%23s'/%3E%3C/g%3E%3Cg transform='translate(76 200) scale(.82)'%3E%3Cuse href='%23s'/%3E%3C/g%3E%3Cg transform='translate(122 200) scale(.95)'%3E%3Cuse href='%23s'/%3E%3C/g%3E%3Cg transform='translate(154 200) scale(.7)'%3E%3Cuse href='%23s'/%3E%3C/g%3E%3Cg transform='translate(2 200) scale(.74)'%3E%3Cuse href='%23s'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")"
 
 
-    async function createIntroScene(canvas, HOLO_SRC) {
+    async function createIntroScene(canvas, HORO_SRC) {
 
 // 画面与声音共用的时间点（秒）。改这里，两边同步变化。
 const FPS = 30;
@@ -1744,7 +2016,7 @@ const vnoise = (x, s = 0) => { const i = Math.floor(x), f = x - i, u = f * f * (
 
 // ───────── 素材 ─────────
 const img = new Image();
-img.src = HOLO_SRC;
+img.src = HORO_SRC;
 await img.decode();
 
 // 狼影遮罩：原图中暗红色（与狼影同色）的像素
@@ -1804,7 +2076,7 @@ const ec = eyeC.getContext('2d'), tc = tmp.getContext('2d'), t2 = tmp2.getContex
 const EYE_L = { cx: 1534, cy: 555, w: 30, hu: 24, hl: 22, rot: -0.10, ix: 10, iy: 1, rx: 18.5, ry: 23 };
 const EYE_R = { cx: 1655, cy: 536, w: 30, hu: 23, hl: 21, rot: -0.16, ix: 6, iy: 2, rx: 18, ry: 22 };
 const EYES_MID = { x: 1595, y: 546 };
-const WOLF_EYE = { cx: 862, cy: 352, w: 17, hu: 6, hl: 5, rot: -0.22, ix: 0, iy: 0, rx: 9, ry: 7, wolf: true };
+const WOLF_EYE = { cx: 1005, cy: 367, w: 28, hu: 10.5, hl: 11.5, rot: -0.22, ix: 0, iy: 0, rx: 12.5, ry: 10.5, wolf: true };
 const MUZZLE = { x: 628, y: 432, dir: -2.78 };
 const GLINT = { x: 1546, y: 546 };
 
@@ -1833,12 +2105,24 @@ function almond(c, e, o) {
   const uy = lerp(-e.hu * .35, -e.hu * 1.36, o), ly = lerp(-e.hu * .3, e.hl * 1.32, o);
   c.beginPath();
   c.moveTo(-e.w, 0);
+  if (e.wolf) {
+    // A flatter upper arch and fuller lower lid; keep the original slit and glow.
+    c.bezierCurveTo(-e.w * .58, uy * .70, e.w * .28, uy * .90, e.w, -e.hu * .08);
+    c.bezierCurveTo(e.w * .53, ly * 1.08, -e.w * .48, ly * 1.12, -e.w, 0);
+    c.closePath();
+    return;
+  }
   c.bezierCurveTo(-e.w * .5, uy, e.w * .45, uy, e.w, -e.hu * .08);
   c.bezierCurveTo(e.w * .45, ly, -e.w * .5, ly, -e.w, 0);
   c.closePath();
 }
 function upperLid(c, e, o) {
   const uy = lerp(-e.hu * .35, -e.hu * 1.36, o);
+  if (e.wolf) {
+    c.beginPath(); c.moveTo(-e.w, 0);
+    c.bezierCurveTo(-e.w * .58, uy * .70, e.w * .28, uy * .90, e.w, -e.hu * .08);
+    return;
+  }
   c.beginPath(); c.moveTo(-e.w * 1.05, .5); c.bezierCurveTo(-e.w * .5, uy, e.w * .45, uy, e.w * 1.05, -e.hu * .1);
 }
 function drawEye(c, e, o, I, gx, dil = 0) {
@@ -2179,10 +2463,30 @@ function render(t) {
       await document.fonts.load('300 22px "Microsoft YaHei"');
       render(0);
       if (typeof window !== 'undefined' && location.hash.indexOf('videocap') !== -1) {
-        window.__holoCapture = { seek: (t) => render(t), duration: DURATION };
+        window.__horoCapture = { seek: (t) => render(t), duration: DURATION };
       }
       return { seek: render, duration: DURATION };
 
+    }
+
+    /** The Windows preload samples these palette tokens for native caption
+     *  buttons and observes head changes. A temporary stylesheet makes the
+     *  controls readable over the reel, then restores the current palette
+     *  without rewriting body styles or the user's light/dark preference. */
+    function createBootWindowAppearance() {
+      if (!document.documentElement.hasAttribute('data-windows-titlebar')) {
+        return { dispose() {} }
+      }
+      const style = document.createElement('style')
+      style.dataset.horoBootWindowAppearance = ''
+      style.textContent = `
+html[data-windows-titlebar] body:has(> #horo-boot) {
+  --dsw-specific-sidebar-fill: rgba(0, 0, 0, .6) !important;
+  --dsw-alias-label-primary: #EED4AC !important;
+}
+`
+      document.head.appendChild(style)
+      return { dispose() { style.remove() } }
     }
 
     /**
@@ -2197,7 +2501,7 @@ function render(t) {
       // Turned off from the plugin's own row page: no canvas, no audio, no
       // listener. Hand the screen straight back on the next frame so whatever
       // the caller offers on top of it still has somewhere to land.
-      const SKIP_KEY = 'dsh-theme-holo.skip-boot'
+      const SKIP_KEY = 'dsh-theme-horo.skip-boot'
       let skipBoot = false
       try { skipBoot = localStorage.getItem(SKIP_KEY) === '1' } catch (error) { skipBoot = false }
       if (skipBoot && !captureMode && !holdMode) {
@@ -2218,7 +2522,7 @@ function render(t) {
         && matchMedia('(prefers-reduced-motion: reduce)').matches
 
       const root = document.createElement('div')
-      root.id = 'holo-boot'
+      root.id = 'horo-boot'
       root.setAttribute('aria-hidden', 'true')
       root.innerHTML = `
         <canvas class="boot-canvas" width="1920" height="1080"></canvas>
@@ -2227,10 +2531,9 @@ function render(t) {
       `
       const canvas = root.querySelector('.boot-canvas')
       const soundBtn = root.querySelector('.boot-sound')
-      const skipBtn = root.querySelector('.boot-skip')
 
       // Optional score: default off, remembered per machine.
-      const SOUND_KEY = 'dsh-theme-holo.intro-sound'
+      const SOUND_KEY = 'dsh-theme-horo.intro-sound'
       let soundOn = false
       try { soundOn = localStorage.getItem(SOUND_KEY) === '1' } catch (error) { soundOn = false }
 
@@ -2247,6 +2550,8 @@ function render(t) {
 
       document.body.appendChild(root)
 
+      const windowAppearance = createBootWindowAppearance()
+
       let scene = null
       let raf = 0
       let start = 0
@@ -2258,11 +2563,20 @@ function render(t) {
         done = true
         cancelAnimationFrame(raf)
         audio.pause()
+        // Hand the palette back before the fade, not after it: while the
+        // override lives, the sidebar fill and label colour are the reel's
+        // dark ones, and the 620ms fade reveals the page in them -- the dark
+        // flash on entry. Removing it now also tells the titlebar preload
+        // (it watches <head>) to resample at once.
+        windowAppearance.dispose()
         root.classList.add('is-leaving')
         // Stop swallowing clicks the moment the reel is over: the fade takes
         // 620ms, and a pointer-events-free overlay cannot eat a real click.
         root.style.pointerEvents = 'none'
-        window.setTimeout(() => root.remove(), 620)
+        window.setTimeout(() => {
+          detach()
+          root.remove()
+        }, 620)
         // Hand the screen back first, then let the caller offer something on top
         // of it — a dialog raised while the reel still covers the viewport is a
         // dialog nobody sees.
@@ -2278,7 +2592,7 @@ function render(t) {
         try {
           scene.seek(Math.min(t, scene.duration - 0.001))
         } catch (error) {
-          if (typeof window !== 'undefined') window.__holoIntroTickError = String(error && error.stack || error)
+          if (typeof window !== 'undefined') window.__horoIntroTickError = String(error && error.stack || error)
           finish()
           return
         }
@@ -2324,38 +2638,46 @@ function render(t) {
         }
       }).catch((error) => {
         // if the canvas path fails for any reason, hand the screen back at once
-        if (typeof window !== 'undefined') window.__holoIntroError = String(error && error.stack || error)
+        if (typeof window !== 'undefined') window.__horoIntroError = String(error && error.stack || error)
         finish()
       })
 
+      // Presses are taken on `window` in the capture phase, the first stop of
+      // any event. Widgets that hit-test by coordinates from document capture
+      // (dsh-whale-widget parked in the bottom-right corner, for one) swallow
+      // the press and the click there even though the reel is drawn on top,
+      // which killed both corner buttons. Handling the press here, and
+      // stopping it, keeps it from them -- and from the page under the reel.
+      const onSoundTarget = (target) => target instanceof Element && target.closest('.boot-sound') !== null
       const skip = (event) => {
-        const target = event.target
+        if (done) return
         // The score switch is the only control that must not end the reel.
-        // The skip button used to be exempted here as well, which left it
-        // depending on its own `click` listener alone: a shell that stops
-        // propagation during the capture phase never delivers that click, so
-        // the button looked dead while clicking anywhere else still skipped.
-        // Routing the button through this same listener makes both paths end
-        // the reel, and `finish` is idempotent.
-        if (target instanceof Element && target.closest('.boot-sound') !== null) return
+        if (event.type === 'pointerdown') event.stopPropagation()
+        if (onSoundTarget(event.target)) return
         finish()
       }
+      const onTap = (event) => {
+        if (done) return
+        const target = event.target
+        if (!(target instanceof Element) || target.closest('#horo-boot') === null) return
+        event.preventDefault()
+        event.stopPropagation()
+        if (onSoundTarget(target)) toggleSound()
+        else if (target.closest('.boot-skip') !== null) finish()
+      }
       if (!captureMode) {
-        document.addEventListener('pointerdown', skip, true)
+        window.addEventListener('pointerdown', skip, true)
+        window.addEventListener('click', onTap, true)
         document.addEventListener('keydown', skip, true)
       }
 
-      skipBtn.addEventListener('pointerdown', (event) => event.stopPropagation())
-      skipBtn.addEventListener('click', (event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        finish()
-      })
+      const detach = () => {
+        window.removeEventListener('pointerdown', skip, true)
+        window.removeEventListener('click', onTap, true)
+        document.removeEventListener('keydown', skip, true)
+      }
 
-      soundBtn.addEventListener('pointerdown', (event) => event.stopPropagation())
-      soundBtn.addEventListener('click', (event) => {
-        event.preventDefault()
-        event.stopPropagation()
+      const toggleSound = () => {
         soundOn = !soundOn
         paintSound()
         try { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0') } catch (error) { /* ignore */ }
@@ -2370,7 +2692,7 @@ function render(t) {
           soundOn = false
           paintSound()
         })
-      })
+      }
 
       return {
         dispose() {
@@ -2378,9 +2700,9 @@ function render(t) {
           cancelAnimationFrame(raf)
           window.clearTimeout(timer)
           audio.pause()
-          document.removeEventListener('pointerdown', skip, true)
-          document.removeEventListener('keydown', skip, true)
+          detach()
           root.remove()
+          windowAppearance.dispose()
         },
       }
     }
@@ -2411,11 +2733,11 @@ function render(t) {
 
       const scan = (root) => {
         for (const el of root.querySelectorAll('span[class*="_title_"]')) {
-          if (el.dataset.holoKind) continue
+          if (el.dataset.horoKind) continue
           const text = (el.textContent || '').trim()
           if (text.length === 0 || text.length > 8) continue
           const kind = classify(text)
-          if (kind !== null) el.dataset.holoKind = kind
+          if (kind !== null) el.dataset.horoKind = kind
         }
       }
 
@@ -2435,7 +2757,7 @@ function render(t) {
         dispose() {
           observer.disconnect()
           window.clearTimeout(timer)
-          for (const el of document.querySelectorAll('[data-holo-kind]')) delete el.dataset.holoKind
+          for (const el of document.querySelectorAll('[data-horo-kind]')) delete el.dataset.horoKind
         },
       }
     }
@@ -2451,9 +2773,11 @@ function render(t) {
     function createPeeker(announce) {
       const reduced = typeof matchMedia === 'function'
         && matchMedia('(prefers-reduced-motion: reduce)').matches
+      /** True while the right column is fullscreen over the conversation. */
+      const rightFull = () => document.documentElement.getAttribute('data-horo-right-full') === 'on'
 
       const root = document.createElement('div')
-      root.id = 'holo-peek'
+      root.id = 'horo-peek'
       root.setAttribute('role', 'presentation')
 
       const pic = document.createElement('img')
@@ -2463,13 +2787,13 @@ function render(t) {
       root.appendChild(pic)
 
       const thread = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-      thread.id = 'holo-thread'
+      thread.id = 'horo-thread'
       const threadPath = document.createElementNS('http://www.w3.org/2000/svg', 'path')
       thread.appendChild(threadPath)
       document.body.appendChild(thread)
 
       const fx = document.createElement('div')
-      fx.id = 'holo-peek-fx'
+      fx.id = 'horo-peek-fx'
       document.body.appendChild(fx)
 
       // fractions of the artwork height, i.e. how much of her shows
@@ -2484,7 +2808,7 @@ function render(t) {
       // places her identically whatever size the artwork resolves to. She is
       // draggable left and right, but the fraction is clamped so the artwork
       // can never leave the composer's horizontal span.
-      const PEEK_X_KEY = 'dsh-theme-holo.peek-x'
+      const PEEK_X_KEY = 'dsh-theme-horo.peek-x'
       const PEEK_X_DEFAULT = 0.72
       let peekXFrac = PEEK_X_DEFAULT
       try {
@@ -2593,18 +2917,26 @@ function render(t) {
       }
 
       const place = () => {
-        const box = findComposer()
+        // A fullscreen right column covers the composer while it stays laid
+        // out underneath; she goes with the composer she can no longer be seen
+        // on (see the right column fullscreen flag effect).
+        const box = rightFull() ? null : findComposer()
         if (box !== card) {
           card = box
         }
+        // Off screen: cardRect goes too, or the next paint() would republish
+        // her stale box as visible and the caption would think she is still
+        // here.
         if (card === null) {
           root.style.display = 'none'
+          cardRect = null
           peekBox.visible = false
           return
         }
         const rect = card.getBoundingClientRect()
         if (rect.width < 200) {
           root.style.display = 'none'
+          cardRect = null
           peekBox.visible = false
           return
         }
@@ -2627,7 +2959,9 @@ function render(t) {
         root.style.width = `${width.toFixed(1)}px`
         root.style.left = `${herLeft.toFixed(1)}px`
         root.style.bottom = `${(window.innerHeight - rect.top - SINK).toFixed(1)}px`
-        root.style.clipPath = `inset(0 0 ${SINK}px 0)`
+        // Cut only at the composer's edge; the negative insets leave headroom
+        // for the lean / tilt / sway (see the #horo-peek rule).
+        root.style.clipPath = `inset(-24px -24px ${SINK}px -24px)`
         // Publish the box so the voice bubble can sit above her right shoulder.
         syncPeekBox()
       }
@@ -2678,7 +3012,7 @@ function render(t) {
         const y = window.innerHeight - Number.parseFloat(root.style.bottom || '0')
         for (let i = 0; i < 6; i += 1) {
           const grain = document.createElement('div')
-          grain.className = 'holo-grain'
+          grain.className = 'horo-grain'
           grain.style.left = `${(x + (Math.random() - 0.5) * 34).toFixed(0)}px`
           grain.style.top = `${(y - 6).toFixed(0)}px`
           grain.style.setProperty('--gx', `${((Math.random() - 0.5) * 28).toFixed(0)}px`)
@@ -2694,7 +3028,7 @@ function render(t) {
         appleDone = true
         const top = window.innerHeight - Number.parseFloat(root.style.bottom || '0') - artH * reveal
         const apple = document.createElement('div')
-        apple.className = 'holo-apple'
+        apple.className = 'horo-apple'
         apple.style.left = `${(geo.left + geo.width * 0.62).toFixed(0)}px`
         apple.style.top = `${(top + 10).toFixed(0)}px`
         fx.appendChild(apple)
@@ -2790,6 +3124,20 @@ function render(t) {
 
       const loop = () => {
         if (disposed) return
+        // Leaving a chat unmounts the composer. Waiting for the 900ms poll
+        // left her hanging over the next page for up to a second, so a
+        // detached (or hidden) composer re-runs place() on the very next frame.
+        if (card !== null && (!card.isConnected || card.offsetWidth === 0 || rightFull())) place()
+        // Dragging a sidebar's edge moves and resizes the composer without a
+        // window resize, so the 900ms poll was all that caught it and she
+        // trailed the composer by up to a second. The rect is read here once
+        // a frame, before this frame's writes, and she is re-placed the
+        // moment it differs from the one she was placed against.
+        else if (card !== null && cardRect !== null) {
+          const now = card.getBoundingClientRect()
+          if (Math.abs(now.left - cardRect.left) > 0.5 || Math.abs(now.top - cardRect.top) > 0.5
+            || Math.abs(now.width - cardRect.width) > 0.5) place()
+        }
         const t = clock()
         if (t - lastRead > 110) {
           lastRead = t
@@ -2928,6 +3276,24 @@ function render(t) {
 
       place()
       const timer = window.setInterval(place, 900)
+      // The other direction: entering a chat mounts a composer, and she should
+      // come up with it rather than on the next poll. Only does work while she
+      // has no composer, and at most once a frame.
+      let seekRaf = 0
+      const seek = typeof MutationObserver === 'function'
+        ? new MutationObserver(() => {
+          if (card !== null || seekRaf !== 0 || disposed) return
+          seekRaf = requestAnimationFrame(() => {
+            seekRaf = 0
+            if (card === null && !disposed) place()
+          })
+        })
+        : null
+      if (seek !== null) {
+        seek.observe(document.body, { childList: true, subtree: true })
+        // Leaving fullscreen changes no children of her own, only the flag.
+        seek.observe(document.documentElement, { attributes: true, attributeFilter: ['data-horo-right-full'] })
+      }
       window.addEventListener('resize', place)
       window.addEventListener('scroll', place, true)
       document.addEventListener('pointermove', onPointerMove, true)
@@ -2949,6 +3315,8 @@ function render(t) {
           peekBox.visible = false
           disposed = true
           cancelAnimationFrame(raf)
+          if (seekRaf !== 0) cancelAnimationFrame(seekRaf)
+          if (seek !== null) seek.disconnect()
           window.clearInterval(timer)
           window.removeEventListener('resize', place)
           window.removeEventListener('scroll', place, true)
@@ -2971,6 +3339,15 @@ function render(t) {
     }
 
     /**
+     * The sidebar's account row. Its aria-label is the only stable hook on it,
+     * and the host localises that label, so every locale the host ships has to
+     * be listed here. Matching only the Chinese one broke the English GUI: the
+     * wheat lost its anchor and fell back to a tall field drawn straight over
+     * the name, and the profile card never appeared.
+     */
+    const ACCOUNT_ROW = '[aria-label="账号菜单"], [aria-label="Account menu"]'
+
+    /**
      * The living profile card: her banner still, an avatar ring straddling the
      * edge, and the account label read off the row that summoned it.
      *
@@ -2980,13 +3357,18 @@ function render(t) {
      */
     function createProfileCard() {
       const root = document.createElement('div')
-      root.id = 'holo-profile-card'
+      root.id = 'horo-profile-card'
       root.setAttribute('aria-hidden', 'true')
+      // left / bottom / width are written by layout() from the account row
+      // itself, so the card is exactly as wide as the button and floats the
+      // same distance above it as the account menu does.
       Object.assign(root.style, {
         position: 'fixed',
         left: '10px',
         bottom: '74px',
         width: '272px',
+        boxSizing: 'border-box',
+        transformOrigin: '50% 100%',
         zIndex: '2147482998',
         borderRadius: '16px',
         overflow: 'hidden',
@@ -2995,7 +3377,7 @@ function render(t) {
         boxShadow: '0 0 0 .5px rgba(243,227,199,.18), 0 22px 50px rgba(0,0,0,.6)',
         opacity: '0',
         transform: 'translateY(8px)',
-        transition: 'opacity .18s ease, transform .18s ease',
+        transition: 'opacity .18s ease, transform .2s cubic-bezier(.2,.8,.2,1)',
       })
 
       const banner = document.createElement('div')
@@ -3052,7 +3434,9 @@ function render(t) {
       })
 
       const body = document.createElement('div')
-      body.style.cssText = 'padding:28px 14px 12px'
+      // The ring hangs 24px below the banner (62 - 38) plus its 3.5px halo;
+      // 36px leaves the name a clear gap under it instead of touching.
+      body.style.cssText = 'padding:36px 14px 11px'
       const name = document.createElement('div')
       name.style.cssText = 'font:600 13.5px/1.35 var(--dsw-font-family, "Microsoft YaHei", sans-serif);color:#F1E5D0'
       const sub = document.createElement('div')
@@ -3065,20 +3449,51 @@ function render(t) {
       root.appendChild(body)
       root.appendChild(avatar)
 
+      /** Match the account row: same left edge, same width, and `gap` px
+       *  above it. The banner keeps its 16:9 frame at any width, and the
+       *  avatar ring stays straddling its lower edge. */
+      const layout = (row, gap) => {
+        if (row === null || row === undefined) return
+        const at = row.getBoundingClientRect()
+        if (at.width <= 0 || at.height <= 0) return
+        const width = Math.max(208, Math.round(at.width))
+        const bannerH = Math.round(width * 0.5625)
+        const vh = window.innerHeight > 0 ? window.innerHeight : at.bottom
+        root.style.left = Math.round(at.left) + 'px'
+        root.style.width = width + 'px'
+        root.style.bottom = Math.max(4, Math.round(vh - at.top + gap)) + 'px'
+        banner.style.height = bannerH + 'px'
+        avatar.style.top = (bannerH - 38) + 'px'
+      }
+
       let visible = false
       return {
-        enter(label) {
+        enter(label, row, gap) {
           if (label) name.textContent = label
+          layout(row, gap)
           if (visible) return
           visible = true
+          root.style.transition = 'opacity .18s ease, transform .2s cubic-bezier(.2,.8,.2,1)'
           root.style.opacity = '1'
-          root.style.transform = 'translateY(0)'
+          root.style.transform = 'translateY(0) scale(1)'
         },
         leave() {
           if (!visible) return
           visible = false
+          root.style.transition = 'opacity .18s ease, transform .2s cubic-bezier(.2,.8,.2,1)'
           root.style.opacity = '0'
           root.style.transform = 'translateY(8px)'
+        },
+        /** The click hand-off: the card sinks into the button and fades fast,
+         *  while the account menu rises out of the same spot (see the
+         *  [data-horo-account-menu] keyframes), so the two read as one surface
+         *  turning over rather than one popup vanishing and another appearing. */
+        handoff() {
+          if (!visible) return
+          visible = false
+          root.style.transition = 'opacity .12s ease-in, transform .16s ease-in'
+          root.style.opacity = '0'
+          root.style.transform = 'translateY(14px) scale(.94)'
         },
         dispose() {
           root.remove()
@@ -3100,15 +3515,15 @@ function render(t) {
     //   - a button on the plugin's own row page (插件 → 已安装 → 赫萝主题), for
     //     anyone who dismissed the offer or installed the theme before the
     //     widget.
-    const LINK_BASE = '/holo-theme/link/'
+    const LINK_BASE = '/horo-theme/link/'
     const WHALE_ROLES_API = '/dsh-whale/roles.json'
     const WHALE_AUDIO_API = '/dsh-whale/audio.json'
     const LINK_ROLES = [
-      { file: 'holo-clean.png', name: '赫萝' },
-      { file: 'holo-Q-clean.png', name: '赫萝Q版' },
+      { file: 'horo-clean.png', name: '赫萝' },
+      { file: 'horo-Q-clean.png', name: '赫萝Q版' },
     ]
     const LINK_VOICE = { file: '赫萝语音.WAV', name: '赫萝震惊' }
-    const LINK_PROMPT_KEY = 'dsh-theme-holo.whale-link-prompted'
+    const LINK_PROMPT_KEY = 'dsh-theme-horo.whale-link-prompted'
 
     /** One JSON round-trip that treats a non-`{ok:true}` body as a failure. */
     async function linkJson(url, init) {
@@ -3125,7 +3540,7 @@ function render(t) {
       return body
     }
 
-    /** Read one file from the host's `/holo-theme/link/` route as a data URL. */
+    /** Read one file from the host's `/horo-theme/link/` route as a data URL. */
     async function linkDataUrl(file, mime) {
       const res = await fetch(LINK_BASE + encodeURIComponent(file), { cache: 'no-store' })
       if (!res.ok) throw new Error('取不到 ' + file + '（HTTP ' + res.status + '）')
@@ -3231,7 +3646,7 @@ function render(t) {
     function createLinkDialog() {
       const FONT = '"Microsoft YaHei",system-ui,sans-serif'
       const overlay = document.createElement('div')
-      overlay.className = 'holo-link-overlay'
+      overlay.className = 'horo-link-overlay'
       overlay.setAttribute('role', 'dialog')
       overlay.setAttribute('aria-modal', 'true')
       overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:flex;'
@@ -3342,9 +3757,9 @@ function render(t) {
     let themeService = null
 
     /** localStorage latch: `1` switches the peeking companion off. */
-    const PEEK_OFF_KEY = 'dsh-theme-holo.peek-off'
+    const PEEK_OFF_KEY = 'dsh-theme-horo.peek-off'
     /** localStorage latch: `1` mutes her voice. Absent means sound is on. */
-    const PEEK_VOICE_OFF_KEY = 'dsh-theme-holo.peek-voice-off'
+    const PEEK_VOICE_OFF_KEY = 'dsh-theme-horo.peek-voice-off'
 
     /**
      * localStorage latch: `1` once the first-run light default has run.
@@ -3357,7 +3772,7 @@ function render(t) {
      * dark back on, and this latch keeps that first run from ever fighting a
      * choice made later.
      */
-    const DARK_DEFAULTED_KEY = 'dsh-theme-holo.dark-defaulted'
+    const DARK_DEFAULTED_KEY = 'dsh-theme-horo.dark-defaulted'
 
     /**
      * First run only: put the host back on its light appearance when it
@@ -3406,7 +3821,7 @@ function render(t) {
     // (pointer-events: none), so it can never swallow a click meant for the GUI
     // underneath; it accepts input only while the settings page has the edit
     // mode on.
-    const LOGO_PLACE_KEY = 'dsh-theme-holo.logo-place'
+    const LOGO_PLACE_KEY = 'dsh-theme-horo.logo-place'
     /** Source artwork aspect ratio: assets/logo.png is 591 x 125. */
     const LOGO_ASPECT = 591 / 125
     /** The shipped default below was measured on this viewport: 2560 x 1440
@@ -3598,15 +4013,15 @@ function render(t) {
     /** The voice-cues handle, or null. Set by the voice-cues effect so the
      *  peeker effect (which mounts earlier) can captions its line at click time
      *  without the two effects depending on each other's lifetime. */
-    let holoVoiceAnnounce = null
+    let horoVoiceAnnounce = null
 
     /** 当前挂着的记录板实例，供头部按钮调用其 toggle/open。 */
-    let holoPlannerHandle = null
+    let horoPlannerHandle = null
 
     /** The live peeker instance, or null. Registered by the peeking-companion
      *  effect so the voice bubble can anchor above her shoulder without the
      *  two effects depending on each other's lifetime. */
-    let holoPeekerHandle = null
+    let horoPeekerHandle = null
 
     /**
      * Spoken cues attached to shell buttons, plus the bubble that shows the
@@ -3617,9 +4032,10 @@ function render(t) {
      * shell's classes are CSS-module hashed and not safe to match); `zh` is what
      * the bubble shows.
      *
-     * Every line here comes from 赫萝语音对照表 (231 clips, see
-     * 记录板与语音接入-开发规范.md). Do not re-verify the wording — the table is
-     * the source of truth, `zh` is copied from its `zh` field verbatim.
+     * The seven H-numbered cues come from 赫萝语音对照表 (231 clips, see
+     * 记录板与语音接入-开发规范.md). Their `jp` fields retain the source text;
+     * Chinese captions keep its meaning while using 咱/汝 consistently.
+     * PEEK and WHALE retain the user-confirmed captions noted below.
      */
     const VOICE_CUES = [
       /* ---- 按钮类：label 是按钮文本，我们自己播音频 ---- */
@@ -3636,22 +4052,22 @@ function render(t) {
          确认：与 8 条源音轨的最高相关仅 0.2，属噪声水平，也不是漏选的切片）。
 
          【台词已确认】这两句 zh 由用户给出：
-             点探头 -> 「汝怎么了」
-             挂件   -> 「怎么会」
+             点探头 -> 「汝有事找咱？」
+             挂件   -> 「怎么会...」
          （注：我无法听音频，此前的自动比对只能证明这两段不来自对照表与
          那 8 条源音轨，给不出原文，所以台词一律以用户口述为准。） */
       {
         trigger: 'peeker',
         id: 'PEEK',
         dur: 1.35,
-        zh: '汝怎么了',
+        zh: '汝有事找咱？',
         jp: '',
       },
       {
         trigger: 'whale',
         id: 'WHALE',
         dur: 0.84,
-        zh: '怎么会',
+        zh: '怎么会...',
         jp: '',
       },
       {
@@ -3659,7 +4075,7 @@ function render(t) {
         trigger: 'planner',
         id: 'H182',
         dur: 2.37,
-        zh: '你开口，咱乐意。',
+        zh: '若是汝的请求，咱自然乐意。',
         jp: 'ぬしの頼みならば喜んで',
       },
       {
@@ -3684,16 +4100,16 @@ function render(t) {
         label: '插件',
         ariaLabels: ['插件'],
         src: ASSET_BASE + 'voice-H193.wav',
-        zh: '你要是敢花心，咱就从脑袋开始嘎吱嘎吱把你嚼了。',
+        zh: '汝要是敢花心，咱就从脑袋开始，嘎吱嘎吱地把汝嚼了。',
         jp: '浮気などしたら頭からバリバリ食べてやるからのー',
         id: 'H193',
       },
       {
-        // 点右栏待机画面里的 Holo 立绘。音频由 createScene 自己播。
+        // 点右栏待机画面里的 Horo 立绘。音频由 createScene 自己播。
         trigger: 'scene',
         id: 'H013',
         dur: 5.51,
-        zh: '大概到你非抱着咱的尾巴就睡不着、还要撒娇耍赖那么长吧。',
+        zh: '大概到汝撒娇耍赖，说没有咱的尾巴便睡不着的时候吧。',
         jp: 'ぬしがわっちの尻尾がないと眠れぬとダダをこねるようになるあたりまでかなぁ',
       },
       {
@@ -3727,13 +4143,13 @@ function render(t) {
      */
     function createVoiceBubble(getPeekBox) {
       const root = document.createElement('div')
-      root.setAttribute('data-holo-voice-bubble', '')
-      root.setAttribute('data-holo-voice-state', 'hidden')
+      root.setAttribute('data-horo-voice-bubble', '')
+      root.setAttribute('data-horo-voice-state', 'hidden')
       root.setAttribute('role', 'status')
       root.setAttribute('aria-live', 'polite')
 
       const line = document.createElement('div')
-      line.setAttribute('data-holo-voice-text', '')
+      line.setAttribute('data-horo-voice-text', '')
       root.appendChild(line)
 
       let hideTimer = 0
@@ -3744,8 +4160,6 @@ function render(t) {
        *  the composer itself can shift). A one-shot placement would leave the
        *  bubble behind her. */
       let followRaf = 0
-      let lastRight = null
-      let lastBottom = null
 
       const clearTimers = () => {
         if (hideTimer !== 0) { clearTimeout(hideTimer); hideTimer = 0 }
@@ -3754,7 +4168,7 @@ function render(t) {
 
       /** True while the bubble is on screen (shown or fading out). */
       const isUp = () => {
-        const state = root.getAttribute('data-holo-voice-state')
+        const state = root.getAttribute('data-horo-voice-state')
         return state === 'shown' || state === 'fading'
       }
 
@@ -3765,9 +4179,28 @@ function render(t) {
         }
       }
 
+      /** Captions are her lines, so they belong where she is: a chat page,
+       *  i.e. one with a composer (she may be switched off, so her own box is
+       *  not the only test). Elsewhere -- plugin settings, the whale or the
+       *  note pad on a settings page -- the line is not captioned, and a
+       *  caption still up when the page changes goes with it. */
+      const onChatPage = () => {
+        // A fullscreen right column covers the chat, composer included.
+        if (document.documentElement.getAttribute('data-horo-right-full') === 'on') return false
+        const box = typeof getPeekBox === 'function' ? getPeekBox() : null
+        if (box !== null && box !== undefined && box.visible) return true
+        const input = document.querySelector('[data-composer-input]') || document.querySelector('[role="textbox"]')
+        if (input === null || !input.isConnected) return false
+        return input.offsetWidth > 0 && input.offsetHeight > 0
+      }
+
       const follow = () => {
         followRaf = 0
         if (disposed || !isUp()) return
+        if (!onChatPage()) {
+          hideNow()
+          return
+        }
         place()
         followRaf = requestAnimationFrame(follow)
       }
@@ -3778,60 +4211,118 @@ function render(t) {
         followRaf = requestAnimationFrame(follow)
       }
 
+      /** What the current line was triggered from: an element (the button
+       *  that was clicked) or a viewport point. Used only when she is not on
+       *  screen -- see place(). */
+      let anchor = null
+
+      const anchorRect = () => {
+        if (anchor === null || anchor === undefined) return null
+        if (typeof Element !== 'undefined' && anchor instanceof Element) {
+          if (!anchor.isConnected) return null
+          const r = anchor.getBoundingClientRect()
+          return r.width > 0 || r.height > 0 ? r : null
+        }
+        if (Number.isFinite(anchor.left) && Number.isFinite(anchor.top)) {
+          const w = anchor.width || 0
+          const h = anchor.height || 0
+          return { left: anchor.left, top: anchor.top, right: anchor.left + w, bottom: anchor.top + h, width: w, height: h }
+        }
+        return null
+      }
+
+      let lastPos = ''
+      const put = (pos) => {
+        const key = pos.left + '|' + pos.right + '|' + pos.top + '|' + pos.bottom
+        if (key === lastPos) return
+        lastPos = key
+        root.style.left = pos.left
+        root.style.right = pos.right
+        root.style.top = pos.top
+        root.style.bottom = pos.bottom
+      }
+
+      /**
+       * Where the caption goes, in order:
+       *  1. above her right shoulder, while the peeker is on screen -- she is
+       *     the one speaking;
+       *  2. otherwise (she is switched off) beside whatever triggered the
+       *     line (a sidebar item, the whale, the note pad badge): to its
+       *     right when it sits in the left half of the window, else just below
+       *     or above it. Pages without a composer get no caption at all --
+       *     see onChatPage();
+       *  3. with neither, a caption strip at the top centre of the window.
+       */
       const place = () => {
         const box = typeof getPeekBox === 'function' ? getPeekBox() : null
         const vw = window.innerWidth
         const vh = window.innerHeight
-        // Default: above the composer's right shoulder, used when she is not
-        // on screen (the peeker hides itself when there is no composer).
-        let anchorRight = vw - 40
-        let anchorBottom = 150
+        const maxW = Math.max(160, Math.min(320, vw - 80))
+        root.style.maxWidth = maxW + 'px'
+        const px = (n) => Math.round(n) + 'px'
         if (box !== null && box.visible) {
-          anchorRight = vw - (box.left + box.width)
-          anchorBottom = vh - box.top + 10
+          put({
+            left: 'auto',
+            right: px(Math.max(12, vw - (box.left + box.width))),
+            top: 'auto',
+            bottom: px(Math.max(12, vh - box.top + 10)),
+          })
+          return
         }
-        const right = Math.max(12, Math.round(anchorRight))
-        const bottom = Math.max(12, Math.round(anchorBottom))
-        // Write only on change: this now runs every frame while visible, and a
-        // redundant style write would keep invalidating layout for nothing.
-        if (right !== lastRight) {
-          root.style.right = right + 'px'
-          lastRight = right
+        const at = anchorRect()
+        if (at !== null) {
+          const h = root.offsetHeight || 48
+          const w = root.offsetWidth || maxW
+          if (at.left < vw / 2 && at.right + 12 + w <= vw - 12) {
+            const top = Math.min(Math.max(16, at.top + at.height / 2 - h / 2), vh - h - 12)
+            put({ left: px(at.right + 12), right: 'auto', top: px(top), bottom: 'auto' })
+            return
+          }
+          const right = Math.max(12, vw - at.right)
+          if (at.bottom + 10 + h <= vh - 12) {
+            put({ left: 'auto', right: px(right), top: px(at.bottom + 10), bottom: 'auto' })
+          } else {
+            put({ left: 'auto', right: px(right), top: 'auto', bottom: px(Math.max(12, vh - at.top + 10)) })
+          }
+          return
         }
-        if (bottom !== lastBottom) {
-          root.style.bottom = bottom + 'px'
-          lastBottom = bottom
-        }
-        // Never let it run off the left edge on a narrow window.
-        root.style.maxWidth = Math.max(160, Math.min(320, vw - 80)) + 'px'
+        const w = root.offsetWidth || maxW
+        put({ left: px(Math.max(12, (vw - w) / 2)), right: 'auto', top: '64px', bottom: 'auto' })
       }
 
       const hideNow = () => {
         clearTimers()
         stopFollow()
-        root.setAttribute('data-holo-voice-state', 'hidden')
+        root.setAttribute('data-horo-voice-state', 'hidden')
       }
 
       /** Show a line, then hold, then fade. Returns immediately. */
-      const show = (zh, holdMs) => {
+      const show = (zh, holdMs, from) => {
         if (disposed) return
+        if (!onChatPage()) {
+          if (isUp()) hideNow()
+          return
+        }
         clearTimers()
         line.textContent = zh
-        lastRight = null
-        lastBottom = null
+        anchor = from === undefined ? null : from
+        lastPos = ''
+        // Measure with the text in place: placing beside an anchor needs the
+        // bubble's own size, and a display:none box measures 0.
+        root.setAttribute('data-horo-voice-state', 'shown')
         place()
-        root.setAttribute('data-holo-voice-state', 'shown')
+        root.setAttribute('data-horo-voice-state', 'shown')
         startFollow()
         const hold = Number.isFinite(holdMs) && holdMs >= 0 ? holdMs : VOICE_BUBBLE_HOLD_MS
         hideTimer = window.setTimeout(() => {
           hideTimer = 0
           if (disposed) return
-          root.setAttribute('data-holo-voice-state', 'fading')
+          root.setAttribute('data-horo-voice-state', 'fading')
           fadeTimer = window.setTimeout(() => {
             fadeTimer = 0
             if (disposed) return
             stopFollow()
-            root.setAttribute('data-holo-voice-state', 'hidden')
+            root.setAttribute('data-horo-voice-state', 'hidden')
           }, VOICE_BUBBLE_FADE_MS)
         }, hold)
       }
@@ -3844,7 +4335,7 @@ function render(t) {
       root.addEventListener('click', onClick)
 
       const onResize = () => {
-        if (root.getAttribute('data-holo-voice-state') !== 'hidden') place()
+        if (root.getAttribute('data-horo-voice-state') !== 'hidden') place()
       }
       window.addEventListener('resize', onResize)
 
@@ -3898,11 +4389,11 @@ function render(t) {
       }
 
       /** Caption a line whose audio is played by someone else. */
-      const announce = (trigger) => {
+      const announce = (trigger, from) => {
         if (disposed) return
         const cue = byTrigger.get(trigger)
         if (cue === undefined) return
-        bubble.show(cue.zh, holdFor(cue, null))
+        bubble.show(cue.zh, holdFor(cue, null), from)
       }
 
       const playerFor = (cue) => {
@@ -3946,7 +4437,7 @@ function render(t) {
         return null
       }
 
-      const play = (cue) => {
+      const play = (cue, from) => {
         if (disposed) return
         const audio = playerFor(cue)
         if (audio === null) return
@@ -3959,7 +4450,7 @@ function render(t) {
 
         // The bubble holds for the clip's length plus the fixed tail, so the
         // translation stays up exactly as long as the line is audible.
-        bubble.show(cue.zh, holdFor(cue, audio))
+        bubble.show(cue.zh, holdFor(cue, audio), from)
 
         const played = audio.play()
         if (played !== undefined && played !== null && typeof played.catch === 'function') {
@@ -3971,9 +4462,9 @@ function render(t) {
         const target = event.target
         if (!(target instanceof Element)) return
         // Never let a click on the bubble itself fire a cue.
-        if (typeof target.closest === 'function' && target.closest('[data-holo-voice-bubble]') !== null) return
+        if (typeof target.closest === 'function' && target.closest('[data-horo-voice-bubble]') !== null) return
         const cue = cueFor(target)
-        if (cue !== null) play(cue)
+        if (cue !== null) play(cue, target.closest('a, button') || target)
       }
 
       document.addEventListener('click', onClick, true)
@@ -3987,8 +4478,9 @@ function render(t) {
         const target = event.target
         if (!(target instanceof Element)) return
         if (typeof target.closest !== 'function') return
-        if (target.closest('.dshwv-body') === null) return
-        announce('whale')
+        const whale = target.closest('.dshwv-body')
+        if (whale === null) return
+        announce('whale', whale)
       }
       document.addEventListener('pointerdown', onWhalePress, true)
 
@@ -4017,21 +4509,21 @@ function render(t) {
      * quota that one localStorage key shares with everything else on the origin.
      *
      * Both the badge and the panel carry data- attributes instead of ids on
-     * purpose: the dark-palette rule `[id^="holo-"] { display: none }` collects
+     * purpose: the dark-palette rule `[id^="horo-"] { display: none }` collects
      * every ornament by id, and a note pad is a tool — the user needs it to
      * stay put whatever palette is on.
      */
-    const PLANNER_OFF_KEY = 'dsh-theme-holo.planner-off'
+    const PLANNER_OFF_KEY = 'dsh-theme-horo.planner-off'
     /** 「简化写字板按钮」：开启后不显示徽章，改为头部工具条里的一个按钮。 */
-    const PLANNER_SIMPLE_KEY = 'dsh-theme-holo.planner-simple'
-    const PLANNER_PLACE_KEY = 'dsh-theme-holo.planner-place'
-    const PLANNER_TEXT_KEY = 'dsh-theme-holo.planner-text'
+    const PLANNER_SIMPLE_KEY = 'dsh-theme-horo.planner-simple'
+    const PLANNER_PLACE_KEY = 'dsh-theme-horo.planner-place'
+    const PLANNER_TEXT_KEY = 'dsh-theme-horo.planner-text'
     /** Badge edge length in px. Same band as the peeker (138–196 at
      *  client.js:2115) so the two read as one family of floating props.
      *  151 = 168 minus 10%, after the wheat ring was tightened to hug her. */
     const PLANNER_BADGE_SIZE = 151
     const PLANNER_PANEL_W = 432
-    const PLANNER_DB = 'dsh-theme-holo'
+    const PLANNER_DB = 'dsh-theme-horo'
     const PLANNER_DB_VERSION = 1
     const PLANNER_STORE = 'planner-images'
     /** Keep the gallery from growing without bound: every image is a real
@@ -4114,13 +4606,13 @@ function render(t) {
     }
 
     /** Reflect the opt-out on <html>. Same mechanism as the peeker's latch
-     *  (client.js:4645 writes data-holo-peek): the CSS rule keys off an
+     *  (client.js:4645 writes data-horo-peek): the CSS rule keys off an
      *  attribute, so writing the attribute IS the switch — without this the
      *  settings button would flip state and change nothing on screen. */
     const applyPlannerOff = () => {
       if (typeof document === 'undefined') return
       try {
-        document.documentElement.setAttribute('data-holo-planner-off', plannerState.off ? 'on' : 'off')
+        document.documentElement.setAttribute('data-horo-planner-off', plannerState.off ? 'on' : 'off')
       } catch (error) { /* no documentElement: nothing to gate */ }
     }
 
@@ -4149,17 +4641,64 @@ function render(t) {
     /** IndexedDB wrapper. Every failure path returns a usable empty result: a
      *  browser that refuses the database (private mode, disabled storage) still
      *  gets a working note pad, it just cannot keep pictures past a reload. */
+    /** The database's name before the holo -> horo rename. */
+    const PLANNER_DB_LEGACY = 'dsh-theme-' + 'holo'
+
+    /** Copy pasted images out of the pre-rename database into a freshly
+     *  created one, keeping their ids. A legacy database that does not exist
+     *  is never created: its upgrade is aborted, which fails the open. The old
+     *  database is left as it was. */
+    const copyLegacyPlannerImages = (db) => new Promise((resolve) => {
+      let request = null
+      try { request = indexedDB.open(PLANNER_DB_LEGACY) } catch (error) { resolve(); return }
+      request.onupgradeneeded = () => {
+        try { request.transaction.abort() } catch (error) { /* ignore */ }
+      }
+      request.onerror = () => resolve()
+      request.onblocked = () => resolve()
+      request.onsuccess = () => {
+        const old = request.result
+        const done = () => {
+          try { old.close() } catch (error) { /* ignore */ }
+          resolve()
+        }
+        if (!old.objectStoreNames.contains(PLANNER_STORE)) { done(); return }
+        let read = null
+        try { read = old.transaction(PLANNER_STORE, 'readonly').objectStore(PLANNER_STORE).getAll() } catch (error) { done(); return }
+        read.onerror = done
+        read.onsuccess = () => {
+          const rows = Array.isArray(read.result) ? read.result : []
+          if (rows.length === 0) { done(); return }
+          let tx = null
+          try { tx = db.transaction(PLANNER_STORE, 'readwrite') } catch (error) { done(); return }
+          const store = tx.objectStore(PLANNER_STORE)
+          for (const row of rows) {
+            try { store.put(row) } catch (error) { /* skip a row that will not clone */ }
+          }
+          tx.oncomplete = done
+          tx.onerror = done
+          tx.onabort = done
+        }
+      }
+    })
+
     const openPlannerDb = () => new Promise((resolve) => {
       if (typeof indexedDB === 'undefined') { resolve(null); return }
       let request = null
+      let created = false
       try { request = indexedDB.open(PLANNER_DB, PLANNER_DB_VERSION) } catch (error) { resolve(null); return }
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (event) => {
         const db = request.result
+        if (event && event.oldVersion === 0) created = true
         if (!db.objectStoreNames.contains(PLANNER_STORE)) {
           db.createObjectStore(PLANNER_STORE, { keyPath: 'id', autoIncrement: true })
         }
       }
-      request.onsuccess = () => resolve(request.result)
+      request.onsuccess = () => {
+        const db = request.result
+        if (!created) { resolve(db); return }
+        copyLegacyPlannerImages(db).then(() => resolve(db), () => resolve(db))
+      }
       request.onerror = () => resolve(null)
       request.onblocked = () => resolve(null)
     })
@@ -4219,23 +4758,23 @@ function render(t) {
       loadPlanner()
 
       const root = document.createElement('div')
-      root.setAttribute('data-holo-planner', '')
-      root.setAttribute('data-holo-planner-open', 'off')
+      root.setAttribute('data-horo-planner', '')
+      root.setAttribute('data-horo-planner-open', 'off')
 
       // ---- badge (the folded form) ----
       const badge = document.createElement('div')
-      badge.setAttribute('data-holo-planner-badge', '')
+      badge.setAttribute('data-horo-planner-badge', '')
       badge.setAttribute('role', 'button')
       badge.setAttribute('tabindex', '0')
       badge.setAttribute('title', '羊皮纸便笺')
       badge.setAttribute('aria-label', '打开羊皮纸便笺')
 
       const ring = document.createElement('span')
-      ring.setAttribute('data-holo-planner-ring', '')
+      ring.setAttribute('data-horo-planner-ring', '')
       badge.appendChild(ring)
 
       const photo = document.createElement('img')
-      photo.setAttribute('data-holo-planner-photo', '')
+      photo.setAttribute('data-horo-planner-photo', '')
       photo.src = PLANNER_SRC
       photo.alt = ''
       photo.draggable = false
@@ -4243,7 +4782,7 @@ function render(t) {
 
       // ---- panel (the unfolded form) ----
       const panel = document.createElement('div')
-      panel.setAttribute('data-holo-planner-panel', '')
+      panel.setAttribute('data-horo-planner-panel', '')
       // NOT role="dialog": the peeking companion treats any [role=dialog] in
       // the document as "a modal is open" and fades itself out
       // (client.js:2534). This panel is display:none most of the time, but the
@@ -4253,29 +4792,35 @@ function render(t) {
       panel.setAttribute('aria-label', '羊皮纸便笺')
 
       const head = document.createElement('div')
-      head.setAttribute('data-holo-planner-head', '')
+      head.setAttribute('data-horo-planner-head', '')
 
       const title = document.createElement('span')
-      title.setAttribute('data-holo-planner-title', '')
+      title.setAttribute('data-horo-planner-title', '')
       title.textContent = '羊皮纸便笺'
 
       const count = document.createElement('span')
-      count.setAttribute('data-holo-planner-count', '')
+      count.setAttribute('data-horo-planner-count', '')
       count.textContent = '0 字'
 
+      // Icons are inline SVG strokes, not the text glyphs '—' / '×': a font's
+      // dash and multiplication sign sit at different heights from face to
+      // face and never land in the middle of a round button.
+      const ICON = (d) => '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">'
+        + '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
+
       const foldBtn = document.createElement('button')
-      foldBtn.setAttribute('data-holo-planner-btn', '')
+      foldBtn.setAttribute('data-horo-planner-btn', 'fold')
       foldBtn.type = 'button'
       foldBtn.title = '收起到图标'
       foldBtn.setAttribute('aria-label', '收起到图标')
-      foldBtn.textContent = '—'
+      foldBtn.innerHTML = ICON('M4 8h8')
 
       const closeBtn = document.createElement('button')
-      closeBtn.setAttribute('data-holo-planner-btn', '')
+      closeBtn.setAttribute('data-horo-planner-btn', 'close')
       closeBtn.type = 'button'
       closeBtn.title = '关闭便笺'
       closeBtn.setAttribute('aria-label', '关闭便笺')
-      closeBtn.textContent = '×'
+      closeBtn.innerHTML = ICON('M4.5 4.5l7 7M11.5 4.5l-7 7')
 
       head.appendChild(title)
       head.appendChild(count)
@@ -4283,24 +4828,24 @@ function render(t) {
       head.appendChild(closeBtn)
 
       const body = document.createElement('div')
-      body.setAttribute('data-holo-planner-body', '')
+      body.setAttribute('data-horo-planner-body', '')
 
       const input = document.createElement('textarea')
-      input.setAttribute('data-holo-planner-input', '')
+      input.setAttribute('data-horo-planner-input', '')
       input.placeholder = '随手记点什么，也可以直接粘贴图片…'
       input.spellcheck = false
 
       const gallery = document.createElement('div')
-      gallery.setAttribute('data-holo-planner-gallery', '')
+      gallery.setAttribute('data-horo-planner-gallery', '')
 
       body.appendChild(input)
       body.appendChild(gallery)
 
       const foot = document.createElement('div')
-      foot.setAttribute('data-holo-planner-foot', '')
+      foot.setAttribute('data-horo-planner-foot', '')
 
       const hint = document.createElement('span')
-      hint.setAttribute('data-holo-planner-hint', '')
+      hint.setAttribute('data-horo-planner-hint', '')
       hint.textContent = '文字自动保存'
 
       foot.appendChild(hint)
@@ -4346,7 +4891,7 @@ function render(t) {
         for (const row of rows) {
           if (row === null || row.blob === undefined) continue
           const cell = document.createElement('div')
-          cell.setAttribute('data-holo-planner-shot', '')
+          cell.setAttribute('data-horo-planner-shot', '')
 
           const img = document.createElement('img')
           const url = URL.createObjectURL(row.blob)
@@ -4356,7 +4901,7 @@ function render(t) {
           img.addEventListener('load', () => URL.revokeObjectURL(url), { once: true })
 
           const del = document.createElement('button')
-          del.setAttribute('data-holo-planner-del', '')
+          del.setAttribute('data-horo-planner-del', '')
           del.type = 'button'
           del.title = '删除这张图'
           del.setAttribute('aria-label', '删除这张图')
@@ -4409,10 +4954,10 @@ function render(t) {
           if (imageIds.length >= PLANNER_MAX_IMAGES) { overflow = true; break }
           const id = await plannerAddImage(file)
           if (id === null) {
-            hint.setAttribute('data-holo-planner-warn', 'on')
+            hint.setAttribute('data-horo-planner-warn', 'on')
             hint.textContent = '这张图没能存下来（浏览器拒绝写入本地存储）'
             setTimeout(() => {
-              hint.removeAttribute('data-holo-planner-warn')
+              hint.removeAttribute('data-horo-planner-warn')
               hint.textContent = '文字自动保存'
             }, 3600)
             continue
@@ -4420,10 +4965,10 @@ function render(t) {
           imageIds.push(id)
         }
         if (overflow) {
-          hint.setAttribute('data-holo-planner-warn', 'on')
+          hint.setAttribute('data-horo-planner-warn', 'on')
           hint.textContent = '最多放 ' + PLANNER_MAX_IMAGES + ' 张图，先删几张吧'
           setTimeout(() => {
-            hint.removeAttribute('data-holo-planner-warn')
+            hint.removeAttribute('data-horo-planner-warn')
             hint.textContent = '文字自动保存'
           }, 3600)
         }
@@ -4480,7 +5025,7 @@ function render(t) {
 
         // 按钮模式（simple）下徽章不出现：入口换成头部工具条里的按钮。
         badge.style.display = plannerState.simple ? 'none' : ''
-        root.setAttribute('data-holo-planner-open', plannerState.open ? 'on' : 'off')
+        root.setAttribute('data-horo-planner-open', plannerState.open ? 'on' : 'off')
       }
 
       const seen = () => { paint() }
@@ -4535,8 +5080,10 @@ function render(t) {
           const started = plannerVoice.play()
           if (started !== undefined && typeof started.catch === 'function') started.catch(() => {})
         } catch (error) { /* 音频不可用也不能影响打开面板 */ }
-        if (typeof announce === 'function') announce('planner')
+        // Open first, then caption: the badge hides as the panel opens, so the
+        // caption is anchored to the panel that takes its place.
         setPlannerOpen(true)
+        if (typeof announce === 'function') announce('planner', panel)
       }
 
       badge.addEventListener('pointerdown', onDown)
@@ -4556,7 +5103,11 @@ function render(t) {
       // "not moved yet", and then paint() derives the spot beside the badge.
       let panelDrag = null
       const onHeadDown = (event) => {
-        if (event.target === foldBtn || event.target === closeBtn) return
+        // The press usually lands on the button's <svg> or <path>, not the
+        // button itself, so match by ancestry. An identity check let the drag
+        // grab the pointer (and preventDefault the press) before the click.
+        const target = event.target
+        if (target instanceof Element && target.closest('[data-horo-planner-btn], button') !== null) return
         if (event.button !== undefined && event.button !== 0) return
         const rect = panel.getBoundingClientRect()
         panelDrag = {
@@ -4640,7 +5191,7 @@ function render(t) {
      */
     function createHeaderButton(React) {
       const h = React.createElement
-      return function HoloPlannerButton() {
+      return function HoroPlannerButton() {
         const [simple, setSimple] = React.useState(() => {
           loadPlanner()
           return plannerState.simple
@@ -4662,8 +5213,8 @@ function render(t) {
         if (!simple || off) return null
 
         const onOpen = () => {
-          if (holoPlannerHandle !== null && typeof holoPlannerHandle.toggle === 'function') {
-            holoPlannerHandle.toggle()
+          if (horoPlannerHandle !== null && typeof horoPlannerHandle.toggle === 'function') {
+            horoPlannerHandle.toggle()
           }
         }
 
@@ -4672,7 +5223,7 @@ function render(t) {
           onClick: onOpen,
           title: '打开羊皮纸便笺',
           'aria-label': '打开羊皮纸便笺',
-          className: 'holo-planner-btn',
+          className: 'horo-planner-btn',
         }, '写字板')
       }
     }
@@ -4687,8 +5238,8 @@ function render(t) {
       loadLogoPlace()
 
       const root = document.createElement('div')
-      root.setAttribute('data-holo-logo', '')
-      root.setAttribute('data-holo-logo-edit', 'off')
+      root.setAttribute('data-horo-logo', '')
+      root.setAttribute('data-horo-logo-edit', 'off')
       root.setAttribute('aria-hidden', 'true')
 
       const img = document.createElement('img')
@@ -4698,12 +5249,12 @@ function render(t) {
       root.appendChild(img)
 
       const grip = document.createElement('span')
-      grip.setAttribute('data-holo-logo-grip', '')
+      grip.setAttribute('data-horo-logo-grip', '')
       grip.title = '拖动改变大小'
       root.appendChild(grip)
 
       const readout = document.createElement('span')
-      readout.setAttribute('data-holo-logo-readout', '')
+      readout.setAttribute('data-horo-logo-readout', '')
       root.appendChild(readout)
 
       let drag = null
@@ -4714,7 +5265,7 @@ function render(t) {
         // the edit mode alive with nothing visible to grab.
         if (logoState.hidden) {
           root.style.display = 'none'
-          root.setAttribute('data-holo-logo-edit', 'off')
+          root.setAttribute('data-horo-logo-edit', 'off')
           root.setAttribute('aria-hidden', 'true')
           return
         }
@@ -4728,7 +5279,7 @@ function render(t) {
         // siblings of the image, so this leaves them fully opaque.
         img.style.opacity = String(logoState.alpha)
         if (logoState.edit) {
-          root.setAttribute('data-holo-logo-edit', 'on')
+          root.setAttribute('data-horo-logo-edit', 'on')
           root.removeAttribute('aria-hidden')
           const heightPx = size.w === 0 ? 0 : Math.round(logoState.wPct * size.w / LOGO_ASPECT)
           readout.textContent = Math.round(logoState.xPct * size.w) + ', ' +
@@ -4749,7 +5300,7 @@ function render(t) {
           readout.style.top = flip ? 'auto' : 'calc(100% + 6px)'
           readout.style.bottom = flip ? 'calc(100% + 6px)' : 'auto'
         } else {
-          root.setAttribute('data-holo-logo-edit', 'off')
+          root.setAttribute('data-horo-logo-edit', 'off')
           root.setAttribute('aria-hidden', 'true')
         }
       }
@@ -4862,8 +5413,10 @@ function render(t) {
       if (findColumn() === null) return null
 
       const root = document.createElement('div')
-      root.id = 'holo-wheat'
+      root.id = 'horo-wheat'
       root.setAttribute('aria-hidden', 'true')
+      // root (side falloff) > field (top falloff): one mask gradient per
+      // element, so no mask-composite support is needed.
       const field = document.createElement('i')
       root.appendChild(field)
       document.body.appendChild(root)
@@ -4873,10 +5426,10 @@ function render(t) {
       const accountRow = () => {
         const column = findColumn()
         if (column !== null) {
-          const inside = column.querySelector('[aria-label="账号菜单"]')
+          const inside = column.querySelector(ACCOUNT_ROW)
           if (inside !== null) return inside
         }
-        return document.querySelector('[aria-label="账号菜单"]')
+        return document.querySelector(ACCOUNT_ROW)
       }
 
       const place = () => {
@@ -4892,15 +5445,16 @@ function render(t) {
           root.style.width = '0px'
           return
         }
+        // The full field: 18% of the column, and never shorter than the reach
+        // to a little above the account row, so the button always stands in
+        // the wheat. The button carries its own translucent plate and sits
+        // above this layer (see the account-button rule in STYLE), so the
+        // name stays readable without thinning the field around it.
         const row = accountRow()
-        let height
+        let height = Math.round(box.height * 0.18)
         if (row !== null) {
           const at = row.getBoundingClientRect()
-          // Middle of the row, measured against the column foot. Rounding keeps
-          // the value off the sub-pixel grid so a repeated layout cannot walk.
-          height = Math.round(box.bottom - (at.top + at.height / 2))
-        } else {
-          height = Math.round(box.height * 0.18)
+          if (at.height > 0) height = Math.max(height, Math.round(box.bottom - at.top + 18))
         }
         // Guard rails: a hidden or scrolled-away row can produce nonsense, and
         // a field taller than its column would be drawn under the whole GUI.
@@ -5009,25 +5563,25 @@ function render(t) {
      *  the source package's own rule, only retargeted: it cleared the left
      *  column and its ancestors, this clears the right one.
      *
-     *  See the STYLE comment on #holo-scene for why the video is oversized and
+     *  See the STYLE comment on #horo-scene for why the video is oversized and
      *  cropped rather than scaled to the column. */
     function createScene(announce) {
       if (typeof document === 'undefined' || document.body === null) return null
       const root = document.createElement('div')
-      root.id = 'holo-scene'
+      root.id = 'horo-scene'
       root.setAttribute('aria-hidden', 'true')
       const clip = document.createElement('div')
-      clip.className = 'holo-scene-clip'
+      clip.className = 'horo-scene-clip'
       // Painted directly above the video (enter() inserts the <video> before
       // scrim, which puts it above this layer) so its backdrop-filter samples
       // the plate itself. Only the outer tenth a side is left visible by the
       // CSS mask.
       const blur = document.createElement('div')
-      blur.className = 'holo-scene-blur'
+      blur.className = 'horo-scene-blur'
       const scrim = document.createElement('div')
-      scrim.className = 'holo-scene-scrim'
+      scrim.className = 'horo-scene-scrim'
       const veil = document.createElement('div')
-      veil.className = 'holo-scene-veil'
+      veil.className = 'horo-scene-veil'
       clip.appendChild(blur)
       clip.appendChild(scrim)
       clip.appendChild(veil)
@@ -5039,25 +5593,50 @@ function render(t) {
       document.body.appendChild(root)
 
       // ---- click target for her line -------------------------------------
-      // A SEPARATE layer, not a child of #holo-scene. #holo-scene is
-      // z-index:-1, and a negative-z layer sits below its container's
-      // background: a child with pointer-events:auto inside it still never
-      // receives a click. So the hit band lives on its own, above the content,
-      // and only where the plate's artwork is.
+      // No overlay. #horo-scene is z-index:-1, so it can never receive a click
+      // itself, and the transparent band that used to sit above the content to
+      // catch them also caught the column's tab strip and its header buttons
+      // (split / fullscreen / close), which then could not be pressed. Instead
+      // the band is only a rectangle in memory: a document-level click inside
+      // it plays her line, unless the click landed on something interactive --
+      // so the host's own controls always win.
       //
       // Shape: a fixed proportion of the plate (top 62%), NOT traced around
-      // her — the six standby clips are swappable and she stands differently in
-      // each, so a silhouette would miss on most of them.
-      const hit = document.createElement('div')
-      hit.id = 'holo-scene-hit'
-      hit.setAttribute('aria-hidden', 'true')
-      hit.style.display = 'none'
-      document.body.appendChild(hit)
+      // her -- the six standby clips are swappable and she stands differently
+      // in each, so a silhouette would miss on most of them.
+      const band = { left: 0, top: 0, width: 0, height: 0, live: false }
+      const INTERACTIVE = 'button, a[href], input, textarea, select, label, summary, '
+        + '[role="button"], [role="tab"], [role="menuitem"], [role="option"], [role="link"], '
+        + '[contenteditable=""], [contenteditable="true"], [data-sidebar-right-guide-entry], '
+        + '[data-horo-planner], [data-horo-voice-bubble], #horo-peek'
+      const inBand = (x, y) => band.live
+        && x >= band.left && x <= band.left + band.width
+        && y >= band.top && y <= band.top + band.height
+      const plainTarget = (target) => {
+        if (!(target instanceof Element)) return true
+        return target.closest(INTERACTIVE) === null
+      }
+      // A stand-in for the old band element, so the sync / enter / leave code
+      // below keeps one switch to flip.
+      const hit = {
+        style: {},
+        show(on) {
+          band.live = on
+          if (!on) setHover(false)
+        },
+      }
+      let hovering = false
+      const setHover = (on) => {
+        if (on === hovering) return
+        hovering = on
+        if (on) document.documentElement.setAttribute('data-horo-scene-hover', 'on')
+        else document.documentElement.removeAttribute('data-horo-scene-hover')
+      }
 
       /** Her line for this plate. One element, rewound per tap. */
       let sceneVoice = null
 
-      const speak = () => {
+      const speak = (at) => {
         try {
           if (sceneVoice === null) {
             sceneVoice = new Audio(SCENE_VOICE_SRC)
@@ -5066,9 +5645,9 @@ function render(t) {
           sceneVoice.pause()
           sceneVoice.currentTime = 0
           const started = sceneVoice.play()
-          if (started !== undefined && started.catch === 'function') started.catch(() => {})
+          if (started !== undefined && started !== null && typeof started.catch === 'function') started.catch(() => {})
         } catch (error) { /* audio unavailable: the caption still shows */ }
-        if (typeof announce === 'function') announce('scene')
+        if (typeof announce === 'function') announce('scene', at)
       }
 
       /**
@@ -5093,8 +5672,16 @@ function render(t) {
         }
       }
 
-      const onHit = () => {
-        // Belt and braces: sync() already hides the band while a modal is up, but
+      const onHit = (event) => {
+        if (event.button !== undefined && event.button !== 0) return
+        if (!inBand(event.clientX, event.clientY)) return
+        if (!plainTarget(event.target)) return
+        // A click that ends a text selection is not a tap on her.
+        try {
+          const sel = typeof window.getSelection === 'function' ? window.getSelection() : null
+          if (sel !== null && !sel.isCollapsed && String(sel).trim() !== '') return
+        } catch (error) { /* ignore */ }
+        // Belt and braces: sync() already drops the band while a modal is up, but
         // a click landing in the same frame would otherwise still get through.
         if (modalOpen()) return
         let stillOpen = false
@@ -5103,15 +5690,47 @@ function render(t) {
         } catch (error) {
           stillOpen = false
         }
-        if (stillOpen) speak()
+        if (stillOpen) speak({ left: event.clientX - 1, top: event.clientY - 1, width: 2, height: 2 })
       }
-      hit.addEventListener('click', onHit)
+      // Capture phase: the right column's own handlers may stop a click
+      // before it bubbles up to the document, and a bubbling listener then
+      // never hears the tap. Nothing is stopped or prevented here, so the
+      // host's controls still get every click.
+      document.addEventListener('click', onHit, true)
+      const onHover = (event) => {
+        setHover(inBand(event.clientX, event.clientY) && plainTarget(event.target))
+      }
+      document.addEventListener('pointermove', onHover, { passive: true })
 
       let video = null
       let on = false
       let watched = null
       let raf = 0
       const cleared = []
+
+      // Dragging the column's edge resizes it without a window resize and
+      // without any attribute write, so the plate and the hit band used to
+      // wait for the 1200ms re-check and visibly trailed the column. A
+      // ResizeObserver fires after layout and before paint in the same frame,
+      // so re-placing from it keeps the slice glued to the edge. Only place()
+      // runs here; the fill clearing is a whole-subtree walk and stays on the
+      // slow beat.
+      let sized = null
+      const sizer = typeof ResizeObserver === 'function'
+        ? new ResizeObserver(() => {
+          if (!on) return
+          const ok = place()
+          if (!modalOpen()) hit.show(ok !== false)
+        })
+        : null
+      const trackColumn = (col) => {
+        if (sizer === null || col === sized) return
+        try {
+          if (sized !== null) sizer.unobserve(sized)
+          sized = col
+          if (col !== null) sizer.observe(col)
+        } catch (error) { sized = null }
+      }
 
       // The right column's panel. It is the one stable handle this shell offers:
       // the class names are build hashes, the attributes are not.
@@ -5161,11 +5780,11 @@ function render(t) {
 
       const clearOne = (el) => {
         if (el === null || el === undefined) return
-        if (el.dataset !== undefined && el.dataset.holoSceneFill === 'cleared') return
+        if (el.dataset !== undefined && el.dataset.horoSceneFill === 'cleared') return
         let bg = ''
         try { bg = getComputedStyle(el).backgroundColor } catch (error) { bg = '' }
         if (bg === '' || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') return
-        el.setAttribute('data-holo-scene-fill', 'cleared')
+        el.setAttribute('data-horo-scene-fill', 'cleared')
         el.style.setProperty('background-color', 'transparent', 'important')
         cleared.push(el)
       }
@@ -5206,7 +5825,7 @@ function render(t) {
           const el = cleared.pop()
           try {
             el.style.removeProperty('background-color')
-            el.removeAttribute('data-holo-scene-fill')
+            el.removeAttribute('data-horo-scene-fill')
           } catch (error) { /* a detached node needs no restore */ }
         }
       }
@@ -5258,17 +5877,38 @@ function render(t) {
         return best
       }
 
+      // Bottom edge of the column's header: the dock's tab strip with 开始 on
+      // the left and the split / fullscreen / close buttons on the right. Taken
+      // from the lowest tab or button that sits in the column's top 72px;
+      // without one, a 44px allowance. Only strip-sized boxes count: the shell
+      // also puts `data-sidebar-right-tab` on each tab's whole body (the start
+      // page included), which starts just under the strip and runs to the
+      // column's foot -- counted as a tab, it pushed the band's top to the
+      // bottom of the column and left her with no tappable area at all.
+      const stripBottom = (col, box) => {
+        let bottom = Math.round(box.top) + 44
+        try {
+          const all = col.querySelectorAll('[role="tab"], [role="tablist"], [data-sidebar-right-tab], button')
+          for (let i = 0; i < all.length; i += 1) {
+            const r = all[i].getBoundingClientRect()
+            if (r.height <= 0 || r.height > 64 || r.top > box.top + 72) continue
+            if (r.bottom + 4 > bottom) bottom = Math.round(r.bottom + 4)
+          }
+        } catch (error) { /* keep the allowance */ }
+        return bottom
+      }
+
       const place = () => {
         const col = findColumn()
         if (col === null) {
           clip.style.width = '0px'
-          hit.style.display = 'none'
+          band.height = 0
           return false
         }
         const box = col.getBoundingClientRect()
         if (box.width <= 0) {
           clip.style.width = '0px'
-          hit.style.display = 'none'
+          band.height = 0
           return false
         }
         // Cap the slice at the plate's own width and re-centre it inside the
@@ -5280,34 +5920,27 @@ function render(t) {
         const plate = Math.min(Math.round(box.width), SCENE_PLATE_WIDTH)
         clip.style.left = Math.round(box.left + (box.width - plate) / 2) + 'px'
         clip.style.width = plate + 'px'
-        // Mirror the same rectangle onto the hit band. The band keeps the
-        // plate's own 608x1080 proportion, so it covers the same part of the
-        // artwork whatever the column width is.
-        hit.style.left = Math.round(box.left + (box.width - plate) / 2) + 'px'
-        hit.style.width = plate + 'px'
-        const top = Math.round(box.top)
-        hit.style.top = top + 'px'
-        let height = Math.round(plate * (1080 / 608) * 0.62)
+        // The same rectangle is the hit band. It keeps the plate's own
+        // 608x1080 proportion, so it covers the same part of the artwork
+        // whatever the column width is -- but it starts below the column's tab
+        // strip, so a click on the strip's empty space is never taken as a tap
+        // on her.
+        band.left = Math.round(box.left + (box.width - plate) / 2)
+        band.width = plate
+        const top = stripBottom(col, box)
+        band.top = top
+        let height = Math.round(plate * (1080 / 608) * 0.62) - (top - Math.round(box.top))
         // Never reach into the quick-action cards. Their top edge is measured
         // live (see guideEntryTop) because the shell centres them vertically and
         // they shuffle as the window resizes. A 6px gap keeps the band off the
-        // button's own rounded corner, where a stray click would otherwise land
-        // on whichever of the two sits on top.
+        // button's own rounded corner.
         const entryTop = guideEntryTop()
         if (entryTop !== null) {
-          const room = Math.round(entryTop - box.top) - 6
+          const room = Math.round(entryTop - top) - 6
           if (room < height) height = room
         }
-        // A column too short to leave any room collapses the band to zero
-        // instead of going negative. The height is always written, even when it
-        // is 0: place() must not leave a stale taller value behind, because the
-        // caller (sync) is what decides whether the band is shown at all.
         if (height < 0) height = 0
-        hit.style.height = height + 'px'
-        // Tell the caller whether there is any clickable band left, so sync can
-        // keep it out of the tree entirely rather than displaying a 0-height
-        // box. A zero-height element eats no clicks either way; hiding it just
-        // keeps the DOM honest.
+        band.height = height
         return height > 0
       }
 
@@ -5352,9 +5985,9 @@ function render(t) {
       const enter = () => {
         if (on) return
         on = true
-        document.documentElement.setAttribute('data-holo-scene', 'on')
+        document.documentElement.setAttribute('data-horo-scene', 'on')
         video = document.createElement('video')
-        video.className = 'holo-scene-img'
+        video.className = 'horo-scene-img'
         video.muted = true
         video.loop = true
         video.playsInline = true
@@ -5368,20 +6001,20 @@ function render(t) {
         clip.insertBefore(video, scrim)
         place()
         clearFills()
-        // place() runs again once the band is displayable: the cards' own
-        // positions are only final after the plate is in the tree, and the band
-        // is measured against them (see guideEntryTop).
-        hit.style.display = 'block'
-        const hasBand = place()
-        if (hasBand === false) hit.style.display = 'none'
+        trackColumn(findColumn())
+        // place() runs again once the plate is in the tree: the cards' own
+        // positions are only final then, and the band is measured against them
+        // (see guideEntryTop).
+        hit.show(place() !== false && !modalOpen())
         play()
       }
 
       const leave = () => {
         if (!on) return
         on = false
-        hit.style.display = 'none'
-        document.documentElement.removeAttribute('data-holo-scene')
+        hit.show(false)
+        trackColumn(null)
+        document.documentElement.removeAttribute('data-horo-scene')
         restoreFills()
         if (video !== null) {
           try { video.pause() } catch (error) { /* ignore */ }
@@ -5406,6 +6039,11 @@ function render(t) {
         const panel = findColumn()
         if (panel === null) return false
         if (!panel.hasAttribute('data-sidebar-right-open')) return false
+        // Fullscreen: the panel is laid over the whole conversation instead of
+        // beside it. Clearing its fills there let the conversation show through
+        // the start page and the 608px plate sat as a cropped strip in the
+        // middle, so the plate stays down while the column is fullscreen.
+        if (panel.getAttribute('data-sidebar-right-panel') === 'fullscreen') return false
         return findGate() !== null
       }
 
@@ -5423,17 +6061,11 @@ function render(t) {
         // right column's start page, so `show` stays true and the band kept
         // covering the lightbox -- its top-right ✕ swallowed the click and her
         // line played instead of closing the image.
-        if (hit !== null) {
-          if (show && !modalOpen()) {
-            const hasBand = place()
-            hit.style.display = hasBand === false ? 'none' : 'block'
-          } else {
-            hit.style.display = 'none'
-          }
-        }
+        if (show && !modalOpen()) hit.show(place() !== false)
+        else hit.show(false)
         if (show && !on) enter()
         else if (!show && on) leave()
-        else if (on) { place(); clearFills() }
+        else if (on) { place(); clearFills(); trackColumn(findColumn()) }
       }
 
       const schedule = () => {
@@ -5483,6 +6115,7 @@ function render(t) {
           if (!on) return
           const col = findColumn()
           if (col !== watched) { watched = col }
+          trackColumn(col)
           place()
           clearFills()
         }, 1200)
@@ -5501,12 +6134,14 @@ function render(t) {
           if (raf !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf)
           if (observer !== null) observer.disconnect()
           leave()
-          hit.removeEventListener('click', onHit)
+          if (sizer !== null) sizer.disconnect()
+          document.removeEventListener('click', onHit, true)
+          document.removeEventListener('pointermove', onHover)
+          setHover(false)
           if (sceneVoice !== null) {
             try { sceneVoice.pause() } catch (error) { /* ignore */ }
             sceneVoice = null
           }
-          if (hit.parentNode !== null) hit.parentNode.removeChild(hit)
           if (root.parentNode !== null) root.parentNode.removeChild(root)
         },
       }
@@ -5521,7 +6156,7 @@ function render(t) {
       const rowStyle = { display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0 0' }
       const dimStyle = { color: 'var(--dsw-alias-label-secondary)', fontSize: '13px', lineHeight: '1.6' }
       const strongStyle = { color: 'var(--dsw-alias-label-primary)', fontWeight: 600, fontSize: '14px' }
-      const BOOT_SKIP_KEY = 'dsh-theme-holo.skip-boot'
+      const BOOT_SKIP_KEY = 'dsh-theme-horo.skip-boot'
       const buttonStyle = (enabled) => ({
         cursor: enabled ? 'pointer' : 'not-allowed',
         opacity: enabled ? 1 : 0.55,
@@ -5594,7 +6229,7 @@ function render(t) {
             const next = !previous
             try { localStorage.setItem(PEEK_OFF_KEY, next ? '1' : '0') } catch (err) { /* ignore */ }
             try {
-              document.documentElement.setAttribute('data-holo-peek', next ? 'off' : 'on')
+              document.documentElement.setAttribute('data-horo-peek', next ? 'off' : 'on')
             } catch (err) { /* ignore */ }
             return next
           })
@@ -5626,6 +6261,43 @@ function render(t) {
             window.dispatchEvent(new CustomEvent(SCENE_CHANGE_EVENT, { detail: next }))
           } catch (err) { /* ignore */ }
         }, [])
+
+        // The clip picker is a themed listbox, not a native <select>: the
+        // native popup is drawn by the OS (blue highlight, square system
+        // menu) and ignores the palette. Closed by an outside press or Escape.
+        const [sceneOpen, setSceneOpen] = useState(false)
+        const sceneBoxRef = React.useRef(null)
+        useEffect(() => {
+          if (!sceneOpen) return undefined
+          const onDown = (event) => {
+            const box = sceneBoxRef.current
+            if (box !== null && event.target instanceof Node && box.contains(event.target)) return
+            setSceneOpen(false)
+          }
+          const onKey = (event) => {
+            if (event.key === 'Escape') setSceneOpen(false)
+          }
+          document.addEventListener('pointerdown', onDown, true)
+          document.addEventListener('keydown', onKey, true)
+          return () => {
+            document.removeEventListener('pointerdown', onDown, true)
+            document.removeEventListener('keydown', onKey, true)
+          }
+        }, [sceneOpen])
+        const pickScene = useCallback((one) => {
+          changeScene(one)
+          setSceneOpen(false)
+        }, [changeScene])
+        const onSceneKey = useCallback((event) => {
+          const at = SCENE_OPTIONS.indexOf(readSceneName())
+          let next = -1
+          if (event.key === 'ArrowDown') next = Math.min(SCENE_OPTIONS.length - 1, at + 1)
+          else if (event.key === 'ArrowUp') next = Math.max(0, at - 1)
+          if (next >= 0) {
+            event.preventDefault()
+            changeScene(SCENE_OPTIONS[next])
+          }
+        }, [changeScene])
 
         // The wordmark's placement lives in module state rather than here: the
         // card writes it, the floating layer reads it, and the two never share a
@@ -5874,22 +6546,31 @@ function render(t) {
             : '当前：' + sceneName +
               (sceneName === SCENE_NAME_DEFAULT ? '（默认）' : '') +
               '。只在右侧栏的开始页显示；左右边缘渐变到 50% 不透明度。'))
-        children.push(h('div', { key: 'sceneRow', style: rowStyle }, h('select', {
+        const chevron = h('svg', { viewBox: '0 0 16 16', width: 14, height: 14, 'aria-hidden': 'true' },
+          h('path', { d: 'M4 6l4 4 4-4', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' }))
+        children.push(h('div', { key: 'sceneRow', style: rowStyle }, h('div', {
           key: 'sceneSelect',
-          value: sceneName,
-          onChange: changeScene,
+          ref: sceneBoxRef,
+          'data-horo-select': '',
+          'data-horo-select-open': sceneOpen ? 'on' : 'off',
+        },
+        h('button', {
+          type: 'button',
+          'data-horo-select-btn': '',
+          'aria-haspopup': 'listbox',
+          'aria-expanded': sceneOpen ? 'true' : 'false',
           'aria-label': '右侧待机动画',
-          style: {
-            cursor: 'pointer',
-            borderRadius: '9px',
-            padding: '7px 11px',
-            font: '500 13px/1.2 "Microsoft YaHei",system-ui,sans-serif',
-            border: '1px solid var(--dsw-alias-border-l3)',
-            background: 'transparent',
-            color: 'var(--dsw-alias-label-primary)',
-            minWidth: '180px',
-          },
-        }, SCENE_OPTIONS.map((one) => h('option', { key: one, value: one }, one)))))
+          onClick: () => setSceneOpen((v) => !v),
+          onKeyDown: onSceneKey,
+        }, h('span', { 'data-horo-select-value': '' }, sceneName), chevron),
+        sceneOpen ? h('div', { role: 'listbox', 'aria-label': '右侧待机动画', 'data-horo-select-list': '' },
+          SCENE_OPTIONS.map((one) => h('div', {
+            key: one,
+            role: 'option',
+            'aria-selected': one === sceneName ? 'true' : 'false',
+            'data-horo-select-opt': one === SCENE_OFF ? 'off' : '',
+            onClick: () => pickScene(one),
+          }, one))) : null)))
 
         children.push(h('div', {
           key: 'plannerTitle',
@@ -6006,8 +6687,8 @@ function render(t) {
            这一段目前是骨架：入口和按钮都在，但 download 分支还没有接上
            真实的下载地址（等附件上传后再填）。点了会如实说明「还没上传」，
            不会假装成功。 */
-        const TAVERN_STATE_KEY = 'dsh-theme-holo.tavern-installed'
-        const TAVERN_VERSION_KEY = 'dsh-theme-holo.tavern-version'
+        const TAVERN_STATE_KEY = 'dsh-theme-horo.tavern-installed'
+        const TAVERN_VERSION_KEY = 'dsh-theme-horo.tavern-version'
 
         /* 必须是「绝对 URL」，不能是相对路径。
          *
@@ -6021,13 +6702,13 @@ function render(t) {
          *
          * ⚠️ 桌面版的 window.location.origin 是 `dsh-app://app` —— DSH 自己的
          * 协议，不是 http。用它拼出来的地址同样会被 deny（实测：点了没反应，
-         * 诊断里显示「目标：dsh-app://app/holo-tavern/...」）。
+         * 诊断里显示「目标：dsh-app://app/horo-tavern/...」）。
          *
-         * 所以真实地址要从宿主取：/holo-base-url 返回
+         * 所以真实地址要从宿主取：/horo-base-url 返回
          * webApp.getAdvertisedUrl()，那才是 http://127.0.0.1:<端口>。
          * 端口每次启动都会变，只能现取。 */
-        const TAVERN_PATH = '/holo-tavern/lesson/index.html'
-        const BASE_URL_ENDPOINT = '/holo-base-url'
+        const TAVERN_PATH = '/horo-tavern/lesson/index.html'
+        const BASE_URL_ENDPOINT = '/horo-base-url'
 
         /** 取真实 HTTP 根地址；取不到就退回 location.origin（网页版仍是对的）。 */
         const resolveBaseUrl = async () => {
@@ -6067,7 +6748,7 @@ function render(t) {
          * tavern/assets，但那两个 localStorage 键没人写过，于是「前往」按钮
          * 会被永久禁用——而它禁用的理由（怕白屏）其实不成立。
          *
-         * 所以改为真问一次服务器：HEAD /holo-tavern/assets/holo.glb。
+         * 所以改为真问一次服务器：HEAD /horo-tavern/assets/holo.glb。
          * 200 就是有，其余都当没有。这样两种情况都对：
          *   - 开发机（assets 已提交）     -> 探测通过，按钮立刻可点
          *   - 别人装了发布版（files 不收
@@ -6079,7 +6760,7 @@ function render(t) {
           let alive = true
           const check = async () => {
             try {
-              const res = await fetch('/holo-tavern/assets/holo.glb', {
+              const res = await fetch('/horo-tavern/assets/holo.glb', {
                 method: 'HEAD',
                 cache: 'no-store',
               })
@@ -6155,7 +6836,7 @@ function render(t) {
               try {
                 /* 交给 host 做：前端拿到的字节存不进插件目录，
                  * host 有 node:fs，能直接写进 tavern/，静态路由立刻就能服务。 */
-                const res = await fetch('/holo-tavern-install', { method: 'POST' })
+                const res = await fetch('/horo-tavern-install', { method: 'POST' })
                 let data = null
                 try { data = await res.json() } catch (err) { /* 非 JSON */ }
 
@@ -6226,10 +6907,10 @@ function render(t) {
     // file. The reel belongs to the page session rather than to the fiber, so a
     // window-level latch keeps it to one showing per page load: it survives a
     // module re-execution and resets when the page actually reloads.
-    const BOOT_SHOWN_KEY = '__dshThemeHoloBootShown'
+    const BOOT_SHOWN_KEY = '__dshThemeHoroBootShown'
 
     return {
-      name: 'themeHolo',
+      name: 'themeHoro',
       inject: [],
       apply(ctx) {
         // Dialogs the offer raises outlive the boot fiber, so the plugin owns
@@ -6238,20 +6919,20 @@ function render(t) {
         ctx.effect(() => () => {
           for (const dialog of linkDialogs) dialog.dispose()
           linkDialogs.clear()
-        }, 'theme-holo: whale link dialogs')
+        }, 'theme-horo: whale link dialogs')
 
         // Plugin-owned stylesheet: removed with the plugin's fiber.
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
           const tag = document.createElement('style')
-          tag.dataset.plugin = 'dsh-theme-holo'
-          tag.dataset.pluginCss = 'dsh-theme-holo/theme.css'
+          tag.dataset.plugin = 'dsh-theme-horo'
+          tag.dataset.pluginCss = 'dsh-theme-horo/theme.css'
           tag.textContent = STYLE
           document.head.appendChild(tag)
           return () => {
             tag.remove()
           }
-        }, 'theme-holo: theme stylesheet')
+        }, 'theme-horo: theme stylesheet')
 
         // The boot scene: a wheat field, a lantern moon, two amber eyes, then the
         // wordmark. Twelve seconds of canvas-drawn reel above everything, and any
@@ -6272,32 +6953,83 @@ function render(t) {
           // leaves the latch clear so the next apply can try again.
           try { window[BOOT_SHOWN_KEY] = true } catch (error) { /* no window: harmless */ }
           return () => boot.dispose()
-        }, 'theme-holo: boot scene')
+        }, 'theme-horo: boot scene')
 
         // Role labels in the transcript get a quiet colour code.
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
           const tags = createLogTags()
           return () => tags.dispose()
-        }, 'theme-holo: transcript labels')
+        }, 'theme-horo: transcript labels')
+
+        // Marks <html data-horo-right-full="on"> while the right column is
+        // fullscreen. In that state the shell lays the column over the whole
+        // conversation, but the theme's own floating layers sit above the
+        // shell's frame: the wordmark (z-index 2) stuck out of the column's top
+        // edge cut in half, and the peeker stayed over the composer it can no
+        // longer be seen with, head clipped at the composer's edge. Both stand
+        // down while the flag is set (CSS for the wordmark, place() for her).
+        ctx.effect(() => {
+          if (typeof document === 'undefined') return () => {}
+          const html = document.documentElement
+          const shown = (el) => typeof el.getClientRects === 'function' && el.getClientRects().length > 0
+          const check = () => {
+            let full = false
+            try {
+              const all = document.querySelectorAll('[data-sidebar-right-panel="fullscreen"]')
+              for (let i = 0; i < all.length; i += 1) {
+                if (all[i].hasAttribute('data-sidebar-right-open') && shown(all[i])) { full = true; break }
+              }
+            } catch (error) { full = false }
+            if (full) {
+              if (html.getAttribute('data-horo-right-full') !== 'on') html.setAttribute('data-horo-right-full', 'on')
+            } else if (html.hasAttribute('data-horo-right-full')) {
+              html.removeAttribute('data-horo-right-full')
+            }
+          }
+          let raf = 0
+          const schedule = () => {
+            if (raf !== 0) return
+            if (typeof requestAnimationFrame !== 'function') { check(); return }
+            raf = requestAnimationFrame(() => { raf = 0; check() })
+          }
+          let observer = null
+          if (typeof MutationObserver === 'function') {
+            observer = new MutationObserver(schedule)
+            try {
+              observer.observe(html, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['data-sidebar-right-open', 'data-sidebar-right-panel'],
+              })
+            } catch (error) { observer = null }
+          }
+          check()
+          return () => {
+            if (observer !== null) observer.disconnect()
+            if (raf !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf)
+            html.removeAttribute('data-horo-right-full')
+          }
+        }, 'theme-horo: right column fullscreen flag')
 
         // The companion peeking over the composer's edge.
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
           try {
             const peeker = createPeeker((trigger) => {
-              if (typeof holoVoiceAnnounce === 'function') holoVoiceAnnounce(trigger)
+              if (typeof horoVoiceAnnounce === 'function') horoVoiceAnnounce(trigger)
             })
             document.body.appendChild(peeker.root)
-            holoPeekerHandle = peeker
+            horoPeekerHandle = peeker
             return () => {
-              if (holoPeekerHandle === peeker) holoPeekerHandle = null
+              if (horoPeekerHandle === peeker) horoPeekerHandle = null
               peeker.dispose()
             }
           } catch (error) {
             return () => {}
           }
-        }, 'theme-holo: peeking companion')
+        }, 'theme-horo: peeking companion')
 
         // The living profile card: peek it at the account row, hide the moment
         // the pointer leaves. The account menu itself stays untouched.
@@ -6305,29 +7037,84 @@ function render(t) {
           if (typeof document === 'undefined') return () => {}
           const card = createProfileCard()
           document.body.appendChild(card.root)
+          // Distance between the account row and the menu it opens. The menu
+          // primitive owns that offset, so it is read off the first real menu
+          // (see tagMenu) and reused, keeping the card and the menu at one gap.
+          let gap = 6
           let hideTimer = 0
           const hideSoon = () => {
             clearTimeout(hideTimer)
             hideTimer = setTimeout(() => card.leave(), 180)
           }
+          const rowOf = (target) => {
+            if (!(target instanceof Element)) return null
+            return target.closest(ACCOUNT_ROW)
+          }
+          const menuOpen = (row) => row !== null && row.getAttribute('aria-expanded') === 'true'
           const onOver = (event) => {
             const target = event.target
             if (!(target instanceof Element)) return
-            const account = target.closest('[aria-label="账号菜单"]')
+            const account = rowOf(target)
             if (account !== null) {
               clearTimeout(hideTimer)
-              card.enter((account.textContent || '').trim())
+              // The menu is up: the card would sit on top of it.
+              if (menuOpen(account)) { card.leave(); return }
+              card.enter((account.textContent || '').trim(), account, gap)
               return
             }
             if (card.root.contains(target)) clearTimeout(hideTimer)
             else hideSoon()
           }
-          const onDown = (event) => {
-            const target = event.target
-            if (target instanceof Element && target.closest('[aria-label="账号菜单"]') !== null) {
-              clearTimeout(hideTimer)
-              card.leave()
+
+          // Tag the account menu the moment it is portalled in. A mutation
+          // callback runs before the next paint, so the entrance animation
+          // starts from its first frame instead of popping in and then moving.
+          let pendingRow = null
+          let watchUntil = 0
+          const tagMenu = (menu) => {
+            if (pendingRow === null || menu.hasAttribute('data-horo-account-menu')) return
+            const at = pendingRow.getBoundingClientRect()
+            const mr = menu.getBoundingClientRect()
+            if (mr.height <= 0) return
+            // Only a menu that opened above this row and overlaps it sideways.
+            if (mr.bottom > at.top + 2 || mr.right < at.left || mr.left > at.right) return
+            menu.setAttribute('data-horo-account-menu', '')
+            const measured = Math.round(at.top - mr.bottom)
+            if (measured >= 0 && measured <= 24) gap = measured
+          }
+          // The observer is connected only for the short window after a press
+          // on the row: the message list mutates constantly while a turn
+          // streams, and a body-wide observer left running would pay for that.
+          let menuObserver = null
+          const stopWatch = () => {
+            pendingRow = null
+            if (menuObserver !== null) { menuObserver.disconnect(); menuObserver = null }
+          }
+          const scanMenus = () => {
+            if (pendingRow === null) return
+            if (Date.now() > watchUntil) { stopWatch(); return }
+            const all = document.querySelectorAll('[role="menu"]')
+            for (let i = 0; i < all.length; i += 1) tagMenu(all[i])
+          }
+          const startWatch = (row) => {
+            pendingRow = row
+            watchUntil = Date.now() + 800
+            if (menuObserver === null && typeof MutationObserver === 'function') {
+              menuObserver = new MutationObserver(scanMenus)
+              try { menuObserver.observe(document.body, { childList: true, subtree: true }) } catch (error) { menuObserver = null }
             }
+            // The menu may stay mounted between openings: catch it on the next
+            // frames as well as through the observer.
+            requestAnimationFrame(() => { scanMenus(); requestAnimationFrame(scanMenus) })
+            setTimeout(scanMenus, 820)
+          }
+
+          const onDown = (event) => {
+            const account = rowOf(event.target)
+            if (account === null) return
+            clearTimeout(hideTimer)
+            card.handoff()
+            if (!menuOpen(account)) startWatch(account)
           }
           document.addEventListener('pointerover', onOver, true)
           document.addEventListener('pointerdown', onDown, true)
@@ -6341,12 +7128,13 @@ function render(t) {
           document.addEventListener('scroll', onScroll, true)
           return () => {
             clearTimeout(hideTimer)
+            stopWatch()
             document.removeEventListener('pointerover', onOver, true)
             document.removeEventListener('pointerdown', onDown, true)
             document.removeEventListener('scroll', onScroll, true)
             card.dispose()
           }
-        }, 'theme-holo: living profile card')
+        }, 'theme-horo: living profile card')
 
         // The wordmark: a free-floating layer the person positions themselves.
         // It is created outside the React tree on purpose — the settings card
@@ -6365,8 +7153,8 @@ function render(t) {
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
           let pad = null
-          const announce = (trigger) => {
-            if (typeof holoVoiceAnnounce === 'function') holoVoiceAnnounce(trigger)
+          const announce = (trigger, from) => {
+            if (typeof horoVoiceAnnounce === 'function') horoVoiceAnnounce(trigger, from)
           }
           try { pad = createPlanner(announce) } catch (error) { pad = null }
           if (pad === null) return () => {}
@@ -6375,12 +7163,12 @@ function render(t) {
           } catch (error) {
             return () => {}
           }
-          holoPlannerHandle = pad
+          horoPlannerHandle = pad
           return () => {
-            if (holoPlannerHandle === pad) holoPlannerHandle = null
+            if (horoPlannerHandle === pad) horoPlannerHandle = null
             pad.dispose()
           }
-        }, 'theme-holo: parchment note pad')
+        }, 'theme-horo: parchment note pad')
 
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
@@ -6397,7 +7185,7 @@ function render(t) {
             return () => {}
           }
           return () => layer.dispose()
-        }, 'theme-holo: floating wordmark')
+        }, 'theme-horo: floating wordmark')
 
         // The wheat at the foot of the sidebar. The field itself now lives on
         // <body>, but it is still measured against the host's column, so the
@@ -6428,7 +7216,7 @@ function render(t) {
             if (observer !== null) observer.disconnect()
             if (layer !== null) layer.dispose()
           }
-        }, 'theme-holo: wheat at the sidebar foot')
+        }, 'theme-horo: wheat at the sidebar foot')
 
         // The idle plate behind the right column: up while that column shows
         // its own start page, gone the moment something real is opened there.
@@ -6437,17 +7225,17 @@ function render(t) {
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
           let scene = null
-          // Pass a lazy closure, not holoVoiceAnnounce itself: this effect
+          // Pass a lazy closure, not horoVoiceAnnounce itself: this effect
           // registers BEFORE the voice-cue effect below, so at registration
-          // time holoVoiceAnnounce is still null. The closure reads it at
+          // time horoVoiceAnnounce is still null. The closure reads it at
           // click time, by which point it is wired.
-          const announce = (trigger) => {
-            if (typeof holoVoiceAnnounce === 'function') holoVoiceAnnounce(trigger)
+          const announce = (trigger, from) => {
+            if (typeof horoVoiceAnnounce === 'function') horoVoiceAnnounce(trigger, from)
           }
           try { scene = createScene(announce) } catch (error) { scene = null }
           if (scene === null) return () => {}
           return () => scene.dispose()
-        }, 'theme-holo: idle plate behind the right column')
+        }, 'theme-horo: idle plate behind the right column')
 
 
         // The install button on the plugin's own row page. `ctx.inject` rather
@@ -6470,9 +7258,9 @@ function render(t) {
           if (typeof document === 'undefined') return () => {}
           let off = false
           try { off = localStorage.getItem(PEEK_OFF_KEY) === '1' } catch (err) { off = false }
-          document.documentElement.setAttribute('data-holo-peek', off ? 'off' : 'on')
+          document.documentElement.setAttribute('data-horo-peek', off ? 'off' : 'on')
           return () => {}
-        }, 'theme-holo: peek latch')
+        }, 'theme-horo: peek latch')
 
         // Spoken cues for shell buttons (see VOICE_CUES), each with a bubble
         // showing the translation above her right shoulder.
@@ -6480,20 +7268,20 @@ function render(t) {
           if (typeof document === 'undefined') return () => {}
           let bubble = null
           let cues = null
-          const getPeekBox = () => (holoPeekerHandle !== null ? holoPeekerHandle.peekBox : null)
+          const getPeekBox = () => (horoPeekerHandle !== null ? horoPeekerHandle.peekBox : null)
           try { bubble = createVoiceBubble(getPeekBox) } catch (error) { bubble = null }
           if (bubble === null) return () => {}
           try { document.body.appendChild(bubble.root) } catch (error) { return () => {} }
           try { cues = createVoiceCues(bubble) } catch (error) { cues = null }
-          holoVoiceAnnounce = (cues !== null && typeof cues.announce === 'function')
-            ? (trigger) => { try { cues.announce(trigger) } catch (error) { /* ignore */ } }
+          horoVoiceAnnounce = (cues !== null && typeof cues.announce === 'function')
+            ? (trigger, from) => { try { cues.announce(trigger, from) } catch (error) { /* ignore */ } }
             : null
           return () => {
-            holoVoiceAnnounce = null
+            horoVoiceAnnounce = null
             if (cues !== null) cues.dispose()
             bubble.dispose()
           }
-        }, 'theme-holo: voice cues')
+        }, 'theme-horo: voice cues')
 
         // Note pad opt-out: same pattern as the peeker's latch above — the
         // choice is re-applied on every load so it survives a reload without
@@ -6503,9 +7291,9 @@ function render(t) {
           loadPlanner()
           applyPlannerOff()
           return () => {
-            try { document.documentElement.removeAttribute('data-holo-planner-off') } catch (error) { /* ignore */ }
+            try { document.documentElement.removeAttribute('data-horo-planner-off') } catch (error) { /* ignore */ }
           }
-        }, 'theme-holo: planner latch')
+        }, 'theme-horo: planner latch')
 
         let React = null
         try {
@@ -6524,19 +7312,19 @@ function render(t) {
             // same card is still reachable from the component row.
             sctx.slots.inject('plugins.bundle.config', () => sctx.slots.register({
               name: 'plugins.bundle.config',
-              key: 'dsh-theme-holo',
+              key: 'dsh-theme-horo',
             }, (props) => React.createElement(LinkCard, props)))
             // 「写字板」按钮：与 ErrorNotes 的「提示词 / 错误库」同一个 slot，
             // order 20 < 它的 30 → 排在「提示词」左边。
             const PlannerButton = createHeaderButton(React)
             sctx.slots.inject('conversation.session.header.utilities', () => sctx.slots.register({
               name: 'conversation.session.header.utilities',
-              id: 'theme-holo-planner',
+              id: 'theme-horo-planner',
               order: 20,
             }, PlannerButton))
             sctx.slots.inject('plugins.row.config', () => sctx.slots.register({
               name: 'plugins.row.config',
-              key: 'dsh-theme-holo#theme-holo',
+              key: 'dsh-theme-horo#theme-horo',
             }, (props) => {
               if (props && props.view === 'summary') return '联动与开场动画'
               return React.createElement(LinkCard, props)
