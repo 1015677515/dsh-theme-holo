@@ -521,9 +521,6 @@ html body [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Ac
   -webkit-backdrop-filter: blur(2.5px) saturate(1.05);
   backdrop-filter: blur(2.5px) saturate(1.05);
   box-shadow: inset 0 0 0 .5px rgba(184, 130, 43, .26), 0 2px 10px rgba(58, 38, 18, .06);
-  /* a thinner plate lets more wheat through; a soft parchment halo behind
-     the letters keeps the name readable over the stalks */
-  text-shadow: 0 0 2px rgba(251, 247, 239, .95), 0 0 7px rgba(251, 247, 239, .85);
   transition: background .16s ease, box-shadow .16s ease;
 }
 html body [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]):hover,
@@ -534,7 +531,6 @@ html body [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Ac
 html body[data-ds-dark-theme] [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]) {
   background: rgba(27, 21, 16, .34);
   box-shadow: inset 0 0 0 .5px rgba(224, 174, 92, .22);
-  text-shadow: 0 0 2px rgba(20, 15, 10, .95), 0 0 7px rgba(20, 15, 10, .8);
 }
 html body[data-ds-dark-theme] [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"]):hover,
 html body[data-ds-dark-theme] [class*="sidebarCol"] :is([aria-label="账号菜单"], [aria-label="Account menu"])[aria-expanded="true"] {
