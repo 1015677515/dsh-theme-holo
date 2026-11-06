@@ -280,10 +280,14 @@ window.__ModuleLoader__.load({
     const STYLE = `
 
 /* ---- secondary surfaces: menus, popovers, dialogs, code ------------- */
-/* One warm panel language for everything that floats above the page.        */
+/* One warm panel language for everything that floats above the page.
+   Dialogs are not listed here: [role="dialog"] is the panel itself and gets
+   its own rule further down. An earlier [role="dialog"] > div:first-child
+   here turned the first row INSIDE each dialog into a second floating card --
+   in the settings window that is the 「Settings」 title row, which came out as
+   a raised box overhanging the window's top-left corner. */
 html body:not([data-ds-dark-theme]) [role="menu"],
-html body:not([data-ds-dark-theme]) [role="listbox"],
-html body:not([data-ds-dark-theme]) [role="dialog"] > div:first-child {
+html body:not([data-ds-dark-theme]) [role="listbox"] {
   background: rgba(255, 252, 245, .985) !important;
   border: .5px solid rgba(58, 38, 18, .14);
   border-radius: 14px !important;
