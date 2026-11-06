@@ -101,6 +101,34 @@ const TAVERN_DIR = join(dirname(fileURLToPath(import.meta.url)), 'tavern')
 /** Served subtrees under TAVERN_DIR. Anything else 404s. */
 const TAVERN_ALLOW_DIRS = ['lesson/', 'vendor/', 'assets/']
 
+/**
+ * 酒馆分两半：
+ *   · 代码与第三方库（lesson/js、lesson/css、lesson/index.html、vendor/）
+ *     随插件发布，装完就有，约 1.53 MB。
+ *   · 素材（lesson/assets/、assets/holo.glb）不随插件发布，约 5.38 MB，
+ *     用户点「下载酒馆」时从素材仓库拉。
+ *
+ * 所以「能不能进酒馆」不能只看目录在不在 —— 目录一直都在。
+ * 判定靠下面两组期望文件：它们全部存在才算完整。
+ */
+const TAVERN_CODE_FILES = [
+  'lesson/index.html',
+  'lesson/js/main.js',
+  'lesson/js/story.js',
+  'lesson/css/style.css',
+  'vendor/three.module.js',
+]
+
+/** 素材抽样：每个素材子目录各挑一个，覆盖 holo.glb、配音、舞台、收藏品、2D 立绘。
+ *  这不是逐文件校验（那需要 manifest），而是「下载过没有」的判定依据。 */
+const TAVERN_MEDIA_FILES = [
+  'assets/holo.glb',
+  'lesson/assets/voice/index.json',
+  'lesson/assets/stage/bg.webp',
+  'lesson/assets/items/final/gold.webp',
+  'lesson/assets/holo2d/holo2d.json',
+]
+
 /** Never served, even inside an allowed subtree (compression backups). */
 const TAVERN_DENY = ['_png_backup/', 'final_png_backup']
 
@@ -420,8 +448,11 @@ export function apply(ctx) {
    *   · 拒绝 SymbolicLink / 设备文件等非常规条目
    */
   const INSTALL_PATH = '/holo-tavern-install'
+  /* 素材包 v1.1.0（2026-11-06）：素材从插件仓库搬到独立仓库后的第一个版本。
+     内容和 v1.0.0 的 62 文件包不同 —— 现在只含素材 43 个文件，
+     不含 lesson/js、lesson/css、vendor（那些跟着插件走）。 */
   const ASSET_URL =
-    'https://github.com/1015677515/holo-tavern-assets/releases/download/v1.0.0/tavern-assets.tar.gz'
+    'https://github.com/1015677515/holo-tavern-assets/releases/download/v1.1.0/tavern-assets.tar.gz'
 
   const installRoute = webServer.register({
     kind: 'prefix',
@@ -493,4 +524,73 @@ export function apply(ctx) {
     },
   })
   ctx.effect(() => installRoute, 'theme-holo: tavern install route')
+
+  /* ───────────────── 酒馆状态端点 ─────────────────
+   *
+   * GET /holo-tavern-status
+   *   回答一个问题：「酒馆能不能进？」
+   *
+   * 为什么需要它：
+   *   搬家后素材不再随插件发布，两个目录（lesson/、vendor/）装完就有，
+   *   所以前端无法用「目录存不存在」判断完整度。下载写到一半中断时，
+   *   早写入的文件已经在磁盘上，光探一个 holo.glb 会误判为可进，
+   *   结果就是白屏或图片全裂。
+   *
+   * 判定方式：
+   *   · code   = TAVERN_CODE_FILES 全部存在（随包发布，理论上恒真）
+   *   · media  = TAVERN_MEDIA_FILES 全部存在（要靠下载）
+   *   · 两者全真才 ready
+   *
+   * 刻意不逐文件校验（那需要随包带 manifest 并对 43 个文件做哈希比对）。
+   * 抽样足以覆盖「下载过没有」，而且素材子目录任一缺失都会被拓到。
+   */
+  const STATUS_PATH = '/holo-tavern-status'
+
+  const probeFiles = async (list) => {
+    const { stat } = await import('node:fs/promises')
+    const missing = []
+    for (const rel of list) {
+      try {
+        const st = await stat(join(TAVERN_DIR, rel))
+        if (!st.isFile() || st.size === 0) missing.push(rel)
+      } catch (error) {
+        missing.push(rel)
+      }
+    }
+    return missing
+  }
+
+  const statusRoute = webServer.register({
+    kind: 'prefix',
+    path: STATUS_PATH,
+    handler: async (req, res) => {
+      const send = (code, obj) => {
+        res.statusCode = code
+        res.setHeader('Content-Type', 'application/json; charset=utf-8')
+        res.setHeader('Cache-Control', 'no-store')
+        res.end(JSON.stringify(obj))
+      }
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        res.statusCode = 405
+        res.setHeader('Allow', 'GET, HEAD')
+        res.end()
+        return
+      }
+      try {
+        const codeMissing = await probeFiles(TAVERN_CODE_FILES)
+        const mediaMissing = await probeFiles(TAVERN_MEDIA_FILES)
+        send(200, {
+          ok: true,
+          code: codeMissing.length === 0,
+          media: mediaMissing.length === 0,
+          ready: codeMissing.length === 0 && mediaMissing.length === 0,
+          codeMissing,
+          mediaMissing,
+        })
+      } catch (e) {
+        send(500, { ok: false, error: String(e && e.message ? e.message : e) })
+      }
+    },
+  })
+  ctx.effect(() => statusRoute, 'theme-holo: tavern status route')
 }

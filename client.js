@@ -1659,6 +1659,17 @@ html body[data-ds-dark-theme] [data-holo-voice-bubble]::after {
        the empty margin beside it, which is what made the edge read as a hard
        step instead of a fade. */
     const SCENE_PLATE_WIDTH = 608
+    /* How far below the top of the window the click band starts.
+       The band is a fixed, pointer-events:auto layer at z-index 2147482995, so
+       wherever it reaches it eats the click. Its top used to equal the column's
+       own top, which is the window's top -- that put it straight over the start
+       page's header row and made those three utility buttons unclickable.
+       70px clears that row with a little air under its icons. It is a constant
+       rather than a measurement on purpose: the shell exposes no stable selector
+       for the header (searched: the plugin only ever probes [class*="sidebarCol"],
+       [class*="_title_"] and aria-label="账号菜单"), and guessing one would break
+       silently the day the shell renames it. A constant fails visibly instead. */
+    const SCENE_HIT_TOP_INSET = 70
     const sceneSrcFor = (name) => ANIME_BASE + encodeURIComponent(name) + '.webm'
     /* Hover preview: one still per clip, taken from the middle of the clip and
        downscaled to 304x540 so the browser holds it in memory cheaply. They live
@@ -5285,9 +5296,14 @@ function render(t) {
         // artwork whatever the column width is.
         hit.style.left = Math.round(box.left + (box.width - plate) / 2) + 'px'
         hit.style.width = plate + 'px'
-        const top = Math.round(box.top)
+        // The band starts SCENE_HIT_TOP_INSET below the column's top (see the
+        // constant for why), and its height is measured from there, so the two
+        // edges move together: the band keeps its bottom and only gives up the
+        // header row.
+        const columnTop = Math.round(box.top)
+        const top = columnTop + SCENE_HIT_TOP_INSET
         hit.style.top = top + 'px'
-        let height = Math.round(plate * (1080 / 608) * 0.62)
+        let height = Math.round(plate * (1080 / 608) * 0.62) - SCENE_HIT_TOP_INSET
         // Never reach into the quick-action cards. Their top edge is measured
         // live (see guideEntryTop) because the shell centres them vertically and
         // they shuffle as the window resizes. A 6px gap keeps the band off the
@@ -5295,7 +5311,9 @@ function render(t) {
         // on whichever of the two sits on top.
         const entryTop = guideEntryTop()
         if (entryTop !== null) {
-          const room = Math.round(entryTop - box.top) - 6
+          // Measured from the band's own top, not the column's: the band starts
+          // SCENE_HIT_TOP_INSET lower, so the room below it is that much shorter.
+          const room = Math.round(entryTop - top) - 6
           if (room < height) height = room
         }
         // A column too short to leave any room collapses the band to zero
@@ -5552,7 +5570,7 @@ function render(t) {
         // 重新渲染一次，不把 localStorage 复制进 state 里做双份真相。
         const [tavernBusyState, setTavernBusy] = useState(false)
         const [tavernNote, setTavernNote] = useState('')
-        const [, setTavernTick] = useState(0)
+        const [tavernTick, setTavernTick] = useState(0)
         const [skipBoot, setSkipBoot] = useState(() => {
           try { return localStorage.getItem(BOOT_SKIP_KEY) === '1' } catch (err) { return false }
         })
@@ -6074,23 +6092,45 @@ function render(t) {
          *     tavern/assets）             -> 探测 404，按钮保持禁用等下载
          */
         const [tavernProbe, setTavernProbe] = useState('pending')
+        /* 下载后哪些素材缺失（由 /holo-tavern-status 报回）。
+           非空 = 下载过但没完整，提示用户重下。 */
+        const [tavernBroken, setTavernBroken] = useState([])
 
         useEffect(() => {
           let alive = true
           const check = async () => {
             try {
-              const res = await fetch('/holo-tavern/assets/holo.glb', {
-                method: 'HEAD',
-                cache: 'no-store',
-              })
-              if (alive) setTavernProbe(res.ok ? 'present' : 'absent')
+              /* 问 host，不问单个文件。搬家后素材不随包发布，
+                 而 lesson/、vendor/ 一直都在，所以「目录存在」不再是完整度信号；
+                 下载写到一半中断时，早写下的文件已经在盘上，
+                 单探 holo.glb 会误判为可进，结果是白屏或图全裂。 */
+              const res = await fetch('/holo-tavern-status', { cache: 'no-store' })
+              if (!res.ok) throw new Error('HTTP ' + res.status)
+              const data = await res.json()
+              if (!alive) return
+              if (data && data.ready) {
+                setTavernBroken([])
+                setTavernProbe('present')
+              } else {
+                const miss = (data && data.mediaMissing) || []
+                setTavernBroken(miss)
+                setTavernProbe(data && data.code ? 'incomplete' : 'absent')
+              }
             } catch (err) {
-              if (alive) setTavernProbe('absent')
+              if (!alive) return
+              /* 端点不存在（旧版宿主）时退回旧行为：探模型文件。
+                 保住向后兼容，不让旧宿主直接变砖。 */
+              try {
+                const r = await fetch('/holo-tavern/assets/holo.glb', { method: 'HEAD', cache: 'no-store' })
+                if (alive) setTavernProbe(r.ok ? 'present' : 'absent')
+              } catch (e2) {
+                if (alive) setTavernProbe('absent')
+              }
             }
           }
           check()
           return () => { alive = false }
-        }, [])
+        }, [tavernTick])
 
         children.push(h('div', {
           key: 'tavernTitle',
@@ -6107,7 +6147,10 @@ function render(t) {
               ? (tavern.installed
                 ? '已下载' + (tavern.version ? '（v' + tavern.version + '）' : '') + '：点下面「前往黄昏酒馆」在新标签页打开。'
                 : '素材已就位（本地已存在，无需下载）：点下面「前往黄昏酒馆」在新标签页打开。')
-              : '未下载。酒馆是一个独立的 3D 互动小场景（约 3.8 MB），默认不随插件安装，需要时再下。'))
+              : tavernProbe === 'incomplete'
+                ? '素材不完整，缺 ' + tavernBroken.length + ' 项（如 ' + tavernBroken.slice(0, 3).join('、')
+                  + (tavernBroken.length > 3 ? ' 等' : '') + '）。\n请点下面「重新下载素材」补齐；反复失败请提 issue。'
+                : '未下载。酒馆是一个独立的 3D 互动小场景（约 4.6 MB），默认不随插件安装，需要时再下。'))
 
         const tavernBusy = tavernBusyState
         const tavernButtons = [
