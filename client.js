@@ -3187,6 +3187,13 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
         appleDone = false
       }
       const onClick = () => {
+        // Only a press that STARTED on her counts. Dragging a sidebar's edge
+        // moves the composer -- and her with it -- under the pointer, and the
+        // click that closes such a drag could land on her and play the line
+        // although nobody pressed her. pressedHere is set by her own
+        // pointerdown and cleared by every pointerdown elsewhere.
+        if (!pressedHere) return
+        pressedHere = false
         // A drag that ends on her must not also fire the voice: the pointerup
         // that finishes a drag is followed by a click event.
         if (suppressClick) {
@@ -3221,9 +3228,15 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
       const DRAG_SLOP = 4
       let drag = null
       let suppressClick = false
+      let pressedHere = false
+
+      // Capture phase on the document runs before her own pointerdown, so a
+      // press anywhere clears the flag and only a press on her sets it again.
+      const onAnyDown = () => { pressedHere = false }
 
       const onDown = (event) => {
         if (event.button !== undefined && event.button !== 0) return
+        pressedHere = true
         drag = {
           pointerId: event.pointerId,
           startX: event.clientX,
@@ -3303,6 +3316,7 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
       document.addEventListener('pointermove', onPointerMove, true)
       document.addEventListener('keydown', onKey, true)
       document.addEventListener('click', onClickDoc, true)
+      document.addEventListener('pointerdown', onAnyDown, true)
       root.addEventListener('pointerenter', onEnter)
       root.addEventListener('pointerleave', onLeave)
       root.addEventListener('click', onClick)
@@ -3327,6 +3341,7 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
           document.removeEventListener('pointermove', onPointerMove, true)
           document.removeEventListener('keydown', onKey, true)
           document.removeEventListener('click', onClickDoc, true)
+          document.removeEventListener('pointerdown', onAnyDown, true)
           root.removeEventListener('pointerenter', onEnter)
           root.removeEventListener('pointerleave', onLeave)
           root.removeEventListener('click', onClick)
