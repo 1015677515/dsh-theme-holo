@@ -35,6 +35,8 @@
     "index.js",
     "client.js",
     "tavern-kit",
+    "tavern/lesson",
+    "tavern/vendor",
     "assets",
     "docs",
     "素材",
