@@ -4206,6 +4206,14 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
       const onChatPage = () => {
         // A fullscreen right column covers the chat, composer included.
         if (document.documentElement.getAttribute('data-horo-right-full') === 'on') return false
+        // So does a dialog (Settings and the like): the composer and the peeker
+        // are still laid out behind it and would pass the tests below, which
+        // put the caption on top of the dialog.
+        try {
+          for (const d of document.querySelectorAll('[role="dialog"], [aria-modal="true"]')) {
+            if (d.offsetWidth > 0 && d.offsetHeight > 0) return false
+          }
+        } catch (error) { /* ignore */ }
         const box = typeof getPeekBox === 'function' ? getPeekBox() : null
         if (box !== null && box !== undefined && box.visible) return true
         const input = document.querySelector('[data-composer-input]') || document.querySelector('[role="textbox"]')
