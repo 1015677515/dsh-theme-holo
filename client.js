@@ -2917,7 +2917,9 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
         peekBox.width = geo.width
         peekBox.height = h
         peekBox.top = cardRect.top - h + SINK
-        peekBox.visible = true
+        // Faded out (a menu or dialog is open) counts as gone: she is still
+        // laid out, but a caption over her shoulder would float in thin air.
+        peekBox.visible = alpha >= 0.5
       }
 
       const place = () => {
@@ -4214,8 +4216,12 @@ html[data-windows-titlebar] body:has(> #horo-boot) {
             if (d.offsetWidth > 0 && d.offsetHeight > 0) return false
           }
         } catch (error) { /* ignore */ }
+        // While she is switched on, every line is hers and goes over her
+        // shoulder: no caption while she is off screen (composer too narrow,
+        // faded out for a menu), and one already up leaves with her. Only with
+        // the peeker switched off does a line sit beside its trigger instead.
         const box = typeof getPeekBox === 'function' ? getPeekBox() : null
-        if (box !== null && box !== undefined && box.visible) return true
+        if (box !== null && box !== undefined) return box.visible === true
         const input = document.querySelector('[data-composer-input]') || document.querySelector('[role="textbox"]')
         if (input === null || !input.isConnected) return false
         return input.offsetWidth > 0 && input.offsetHeight > 0
