@@ -14,8 +14,9 @@
 //     staged folders also hold un-cleaned originals and design drafts, and this
 //     package is published, so a directory listing must never be reachable
 
-import { createReadStream } from 'node:fs'
-import { stat } from 'node:fs/promises'
+import { createReadStream, readdirSync, unlinkSync } from 'node:fs'
+import { mkdir, rename, stat, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { dirname, extname, join, normalize, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -97,6 +98,95 @@ const BASE_URL_PATH = '/holo-base-url'
 
 /** Directory the tavern lives in, next to this file. */
 const TAVERN_DIR = join(dirname(fileURLToPath(import.meta.url)), 'tavern')
+
+/* ── 会话头像（「我」/「助手」两张用户导入的图）─────────────────────────
+ *
+ * 前缀单独一段，不挂在别的路由下：/holo-theme/assets、/holo-tavern 那些都是
+ * 「读安装目录里的白名单」，而这一族是**读写**用户资产，语义完全不同。
+ *
+ * 为什么落盘在用户主目录、不在插件目录里：赫萝现有资源全部从安装目录读
+ * （assets/、素材/、tavern/），那些随包发布、由版本管理；头像恰恰相反 ——
+ * 是用户自己导入的。npm 更新会重装插件目录，放里面等于每次升级丢一次图。
+ *
+ * 为什么只有两个 side：头像位的语义就是「会话的两方」，多发一个 side 只会
+ * 变成三张对不上的脸。路径段当白名单查（不是拼进文件名）⇒ ../ 与分隔符
+ * 根本不在表里，路径穿越在这一步就不可能。
+ */
+const AVATAR_BASE = '/holo-avatar'
+const AVATAR_ROOT = join(homedir(), '.dsh-theme-holo', 'avatars')
+const AVATAR_SIDES = ['user', 'ai']
+/** MIME 白名单：只有这三种能原样落盘（客户端导入前已按 512px 缩过一轮）。 */
+const AVATAR_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
+/** 单张上限 8 MB —— 512px 的图远小于此，留足余量给「客户端没缩」的情况。 */
+const AVATAR_MAX_BYTES = 8 * 1024 * 1024
+
+/** 头像目录（按需创建；失败就让上层 500，不静默吞）。 */
+async function ensureAvatarDir() {
+  await mkdir(AVATAR_ROOT, { recursive: true })
+  return AVATAR_ROOT
+}
+
+/**
+ * 某一方**当前那张**文件的绝对路径。
+ *
+ * 按前缀扫目录取第一个命中的正式文件（不是按固定文件名）：每次导入都写
+ * 一个新名字（`<side>-<stamp>.<ext>`），名字进 URL 的查询串当缓存键，
+ * 于是路由敢给长缓存而换图立刻生效。旧文件由导入路径自己清。
+ */
+function avatarCurrentPath(side) {
+  if (!AVATAR_SIDES.includes(side)) return undefined
+  let entries
+  try { entries = readdirSync(AVATAR_ROOT) } catch { return undefined } // 目录还没建 = 没设置过
+  const prefix = side + '-'
+  // 只认正式文件；`.tmp` 是原子写的半成品，绝不能当有效头像服务出去。
+  const hit = entries.find((n) => n.startsWith(prefix) && !n.endsWith('.tmp'))
+  return hit === undefined ? undefined : join(AVATAR_ROOT, hit)
+}
+
+/** 文件名里的时间戳（`Date.now()` 的 36 进制 + 4 位随机）：换图即换名。 */
+function avatarStamp() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+}
+
+/** 原子落盘：`.tmp` + rename。半写的图会被当成有效头像服务出去，所以不用 writeFile 直写。 */
+async function writeAvatarAtomic(target, buf) {
+  await ensureAvatarDir()
+  const tmp = target + '.tmp'
+  await writeFile(tmp, buf)
+  await rename(tmp, target)
+}
+
+/**
+ * 收请求体（带硬上限）。返回 Buffer；超限 / 中断一律 reject。
+ *
+ * 为什么不流式落盘：上限只有 8 MB，缓冲在内存里完全够用，而流式落盘要多一套
+ * 「半成品文件怎么清」的状态机 —— 这个功能不值得。
+ */
+function readAvatarBody(req, maxBytes) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    let size = 0
+    let settled = false
+    const settle = (fn, arg) => { if (settled) return; settled = true; fn(arg) }
+    req.on('data', (chunk) => {
+      if (settled) return
+      size += chunk.length
+      if (size > maxBytes) {
+        settle(reject, Object.assign(new Error('too-large'), { code: 'TOO_LARGE' }))
+        // ⚠ 不能 `req.destroy()`：那会把连接断开，之后写出的 413 根本没有对端
+        // 能收到（客户端只看到 connection reset）。正确做法是把剩余字节**读掉
+        // 丢弃** —— 上面的 data 回调在 settled 之后直接 return，等于自动漏掉。
+        // `resume()` 只是保证流继续走到 end，不留下挂起的 socket。
+        try { req.resume() } catch { /* ignore */ }
+        return
+      }
+      chunks.push(chunk)
+    })
+    req.on('end', () => settle(resolve, Buffer.concat(chunks)))
+    req.on('error', (err) => settle(reject, err))
+    req.on('aborted', () => settle(reject, new Error('aborted')))
+  })
+}
 
 /** Served subtrees under TAVERN_DIR. Anything else 404s. */
 const TAVERN_ALLOW_DIRS = ['lesson/', 'vendor/', 'assets/']
@@ -242,8 +332,12 @@ function parseRange(header, size) {
   return { start, end: Math.min(end, size - 1) }
 }
 
-/** Send `file` with caching and range semantics. */
-async function serveFile(req, res, file) {
+/** Send `file` with caching and range semantics.
+ *
+ * `cacheControl` lets a caller override the default long cache: the avatar route
+ * needs the same immutable policy on a hit, but a `no-store` 404 (see the caller)
+ * so a freshly imported image is never masked by a cached miss. */
+async function serveFile(req, res, file, cacheControl) {
   let info
   try {
     info = await stat(file)
@@ -263,7 +357,7 @@ async function serveFile(req, res, file) {
   const etag = `W/"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`
   const headers = {
     'Content-Type': MIME[extname(file).toLowerCase()] ?? 'application/octet-stream',
-    'Cache-Control': 'public, max-age=31536000, immutable',
+    'Cache-Control': cacheControl ?? 'public, max-age=31536000, immutable',
     'X-Content-Type-Options': 'nosniff',
     ETag: etag,
     'Last-Modified': info.mtime.toUTCString(),
@@ -593,4 +687,121 @@ export function apply(ctx) {
     },
   })
   ctx.effect(() => statusRoute, 'theme-holo: tavern status route')
+
+  /* 会话头像：导入（POST raw body）/ 查看（GET、HEAD）/ 清除（DELETE）。
+   *
+   * 一条 prefix 注册覆盖三个端点。三个方法共用同一套「谁是合法的一方 /
+   * 文件名长什么样 / 换图怎么清兄弟」的规则 —— 收在一处才能一次读完。
+   *
+   * 与上面几条的差别只有一个：它们是只读白名单，这一条会**写盘**。
+   * 所以它自带 MIME 白名单、8 MB 上限与原子落盘（见 writeAvatarAtomic）——
+   * 半写的图会被当成有效头像服务出去，一次断流就能让屏上留一张裂图。
+   */
+  const avatarRoute = webServer.register({
+    kind: 'prefix',
+    path: AVATAR_BASE,
+    handler: async (req, res) => {
+      const send = (code, obj) => {
+        res.statusCode = code
+        res.setHeader('Content-Type', 'application/json; charset=utf-8')
+        // 错误响应绝不能被缓存：否则导入成功之后再取仍是那条 cached 404。
+        res.setHeader('Cache-Control', 'no-store')
+        res.end(JSON.stringify(obj))
+      }
+
+      const method = (req.method || 'GET').toUpperCase()
+      let pathname
+      try {
+        pathname = new URL(req.url || '/', 'http://x').pathname
+      } catch {
+        send(400, { ok: false, error: 'bad-url' })
+        return
+      }
+      let side
+      try {
+        side = decodeURIComponent(pathname.slice(AVATAR_BASE.length + 1)).replace(/\/+$/, '')
+      } catch {
+        send(400, { ok: false, error: 'bad-encoding' })
+        return
+      }
+      // 只认两个 side（路径段当白名单查）：非法的一方连目录都不碰。
+      if (!AVATAR_SIDES.includes(side)) {
+        send(400, { ok: false, error: 'bad-side' })
+        return
+      }
+
+      if (method === 'GET' || method === 'HEAD') {
+        const file = avatarCurrentPath(side)
+        if (file === undefined) {
+          send(404, { ok: false, error: 'not-set' })
+          return
+        }
+        // 文件名在 URL 的查询串上（`?v=<name>`）⇒ 换图即换 URL ⇒ 这一条敢给长缓存
+        // （一屏头像会渲染多份 <img>，不给缓存就是每个气泡一次请求）。
+        await serveFile(req, res, file)
+        return
+      }
+
+      if (method === 'DELETE') {
+        let removed = false
+        try {
+          for (const name of readdirSync(AVATAR_ROOT)) {
+            if (!name.startsWith(side + '-')) continue
+            try { unlinkSync(join(AVATAR_ROOT, name)); removed = true } catch { /* ignore */ }
+          }
+        } catch { /* 目录不存在 = 没设置过 */ }
+        send(200, { ok: true, side, removed })
+        return
+      }
+
+      if (method !== 'POST') {
+        send(405, { ok: false, error: 'method not allowed' })
+        return
+      }
+
+      const ctype = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase()
+      const ext = AVATAR_EXT[ctype]
+      if (ext === undefined) {
+        send(415, { ok: false, error: '不支持的格式：' + ctype + '（仅支持 JPG / PNG / WebP）' })
+        return
+      }
+
+      let body
+      try {
+        body = await readAvatarBody(req, AVATAR_MAX_BYTES)
+      } catch (err) {
+        if (err && err.code === 'TOO_LARGE') {
+          send(413, { ok: false, error: '图片过大（上限 8MB）' })
+        } else {
+          send(400, { ok: false, error: 'request error' })
+        }
+        return
+      }
+      // 空体当失败：一次 0 字节的导入只会让 <img> 静默裂开，不如当场报错。
+      if (body.length === 0) {
+        send(400, { ok: false, error: 'empty body' })
+        return
+      }
+
+      // 换图即清兄弟：同一 side 的旧正式文件与陈旧 .tmp 一并清掉，再写这次的新名字。
+      // 读取侧只取第一个命中的正式文件 ⇒ 留着旧文件就是「新图导进去了、屏上还是旧图」
+      // （名字每次都变，所以这里按前缀清而不是按同名清）。
+      try {
+        for (const name of readdirSync(AVATAR_ROOT)) {
+          if (!name.startsWith(side + '-')) continue
+          try { unlinkSync(join(AVATAR_ROOT, name)) } catch { /* ignore */ }
+        }
+      } catch { /* 空目录 */ }
+
+      const name = side + '-' + avatarStamp() + '.' + ext
+      try {
+        await writeAvatarAtomic(join(AVATAR_ROOT, name), body)
+      } catch (err) {
+        send(500, { ok: false, error: 'write failed：' + String(err && err.message ? err.message : err) })
+        return
+      }
+      send(200, { ok: true, side, name, bytes: body.length })
+    },
+  })
+  ctx.effect(() => avatarRoute, 'theme-holo: avatar route')
 }

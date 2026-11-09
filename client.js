@@ -1602,6 +1602,223 @@ html body[data-ds-dark-theme] [data-holo-voice-bubble]::after {
     linear-gradient(24deg, transparent 44%, rgba(224, 174, 92, 0.55) 44%, rgba(224, 174, 92, 0.55) 52%, transparent 52%);
 }
 
+/* ---- 会话头像 -------------------------------------------------------
+   这一层是宿主会话 DOM 的补丁：给三类消息行（data-chat-flow-kind =
+   user / steering / assistant-step）补一张头像，并把行改成两列 grid ——
+   一列头像、一列内容。助手行头像在第 1 列（左），用户行在第 2 列（右）
+   ⇒「你的消息在右、她在左」，像好友之间互相发消息。
+
+   关掉开关时 html 上没有 data-holo-avatar 属性，下面每一条规则都不匹配；
+   装饰层同时把注入的节点与行标记全撤掉 ⇒ 屏上一点痕迹都没有。
+
+   尺寸与圆角来自 html 上的两个变量（装饰层按设置写）⇒ 拖滑块只是变量
+   替换，不重建任何节点。
+
+   ⚠ 内容那一格必须**穿透槽出口锚点**：宿主把节点渲染包在
+   div[data-slot="conversation.chat.node"] 里，并给它写死内联
+   display: contents —— 那层没有盒子，既不是 grid item 也不接受 grid 属性。
+   所以两条选择器都写：直挂内容 + 锚点后面那一层，否则规则打在空气上，
+   真正成为 grid item 的是锚点的孩子。grid 的 minmax(0, 1fr) 列宽是要害
+   （固有宽为 0 的内容靠列宽撑住，不会像 flex-grow 那样被压成 0）。 */
+
+html[data-holo-avatar="on"] [data-holo-avatar-row] {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: start;
+}
+
+html[data-holo-avatar="on"] [data-holo-avatar-row="user"] {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+html[data-holo-avatar="on"] [data-holo-avatar-row] > :not(.holo-avatar):not([data-slot]),
+html[data-holo-avatar="on"] [data-holo-avatar-row] > [data-slot] > :not(.holo-avatar) {
+  grid-column: 2;
+  min-width: 0;
+}
+
+html[data-holo-avatar="on"] [data-holo-avatar-row="user"] > :not(.holo-avatar):not([data-slot]),
+html[data-holo-avatar="on"] [data-holo-avatar-row="user"] > [data-slot] > :not(.holo-avatar) {
+  grid-column: 1;
+}
+
+/* 头像本体：一个圆脸。宽度固定为边长 ⇒ 长消息不会被空列挤窄。 */
+.holo-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  width: var(--holo-avatar-size, 40px);
+  height: var(--holo-avatar-size, 40px);
+  border-radius: calc(var(--holo-avatar-round, 100) * 0.5%);
+  margin-top: 2px;
+  background: rgba(58, 38, 18, 0.06);
+  border: .5px solid rgba(58, 38, 18, 0.12);
+}
+
+html body[data-ds-dark-theme] .holo-avatar {
+  background: rgba(255, 250, 240, 0.07);
+  border-color: rgba(255, 250, 240, 0.14);
+}
+
+html[data-holo-avatar="on"] [data-holo-avatar-row="ai"] > .holo-avatar { grid-column: 1; }
+html[data-holo-avatar="on"] [data-holo-avatar-row="user"] > .holo-avatar { grid-column: 2; }
+
+.holo-avatar__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.holo-avatar__glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 内置默认头像的占比。
+   原版（wallpaper-engine）是 62% —— 那边的头像框是**圆角方块**，四角留白不显眼；
+   赫萝这里是正圆，62% 撑不出轮廓，看着像框里空了一半。82% 是实测下来
+   「填满但不顶到圆弧」的那一档：人像最宽处（x 3.4..12.6 / 16）在圆形容器里
+   仍留 6px 余量，不会被圆角切。 */
+.holo-avatar__glyph svg {
+  width: 82%;
+  height: 82%;
+}
+
+/* 连续同侧的续行：头像只做 visibility: hidden，节点始终留在 DOM 里
+   （摘掉节点会让锚点下的内容塌宽，见上面那条注释）。 */
+.holo-avatar--cont { visibility: hidden; }
+
+/* 助手侧的续行同时把**行**退化成单列、列间距归零：脸不露，但正文也不再
+   被 40px 的空列加上 8px 间距整体右移（思考链「层次不齐」的根因）。 */
+html[data-holo-avatar="on"] [data-holo-avatar-row="ai"][data-holo-avatar-cont] {
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 0;
+}
+
+html[data-holo-avatar="on"] [data-holo-avatar-row="ai"][data-holo-avatar-cont] > .holo-avatar {
+  display: none;
+}
+
+/* ---- 裁切取景弹窗（口径照 wallpaper-engine 那份：居中模态 + 方形取景框）----
+   取景框 overflow: hidden 是「框外不显示」的唯一手段；框里那张图由
+   avatarCropGeometry 现算的几何定位（left/top 偏移），**不用 transform** ——
+   transform 会建合成层，而这里每拖一下都改它的值。
+
+   z-index 取到极高层：这个弹窗从设置页里画出来，而设置页自身可能落在宿主的
+   层叠上下文里。宁可盖住一切，也不要出现「半透明遮罩下面还能点会话」。 */
+
+html body .holo-crop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .45);
+}
+
+html body .holo-crop__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--dsw-alias-bg-layer-1, #FFFCF5);
+  border: 1px solid var(--dsw-alias-border-l2, rgba(58, 38, 18, .2));
+  box-shadow: 0 24px 60px rgba(58, 38, 18, .28);
+  max-width: min(92vw, 364px);
+}
+
+html body[data-ds-dark-theme] .holo-crop__card {
+  background: var(--dsw-alias-bg-layer-1, #241C14);
+  border-color: var(--dsw-alias-border-l2, rgba(255, 250, 240, .18));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .55);
+}
+
+html body .holo-crop__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+html body .holo-crop__hint {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-secondary);
+  text-align: center;
+}
+
+html body .holo-crop__view {
+  position: relative;
+  overflow: hidden;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: rgba(58, 38, 18, .08);
+  cursor: grab;
+  touch-action: none;
+}
+
+html body .holo-crop__view:active { cursor: grabbing; }
+
+html body .holo-crop__img {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 框线：纯装饰（拖拽由整格接管），压在图上但吃不到指针。 */
+html body .holo-crop__frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 2px solid rgba(255, 255, 255, .9);
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, .35);
+}
+
+html body .holo-crop__zoom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+}
+
+html body .holo-crop__zoom > span {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+html body .holo-crop__zoom > input {
+  flex: 1 1 auto;
+  min-width: 0;
+  cursor: pointer;
+  accent-color: var(--dsw-alias-label-primary, #3A2C1A);
+}
+
+html body .holo-crop__zoom > output {
+  flex: 0 0 46px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+html body .holo-crop__actions {
+  display: flex;
+  gap: 8px;
+  align-self: stretch;
+  justify-content: flex-end;
+}
+
 
 `
 
@@ -5530,11 +5747,579 @@ function render(t) {
       }
     }
 
+    /* ═══ 会话头像：设置键、默认头像与装饰层 ═══════════════════════════════
+
+       功能：给会话双方各配一张头像，消息像好友聊天一样左右分列。
+
+       做法是**纯 DOM 装饰**：给宿主已经渲染出来的消息行补一个头像节点，
+       不改任何官方组件的代码、也不注册任何插槽。官方聊天列表的消息渲染器
+       是按 kind 注册的（conversation.chat.node 的 user / assistant-step 两个
+       key），注册同名 key 是**替换**官方渲染器 —— 那等于把宿主的消息卡片整个
+       接过来养，升级一次就崩一次。而「在旁边放一张脸」只需要两件东西：一个
+       稳定的选择器（data-chat-flow-kind，官方 ChatNodeSeat 写在每个消息行上的
+       属性）与一个观察者（消息是动态插入的）。
+
+       与 wallpaper-engine 那份的差别（这件事照抄不了的地方）：
+         · 设置**全在 localStorage**，没有宿主设置 store。四个键：
+           avatar-on（总开关）/ avatar-user / avatar-ai（文件名）/ avatar-repeat。
+         · 图片本体由宿主落在 ~/.dsh-theme-holo/avatars/，路由 /holo-avatar/<side>，
+           见 index.js。名字进 URL 的查询串当缓存键。
+         · 面板改了设置就 dispatch AVATAR_CHANGE_EVENT ⇒ 本层重读一次。
+
+       不变量：
+         · **关掉 = 逐字节回到原生**：摘节点、抹行标记、撤 html 属性与两个
+           变量、断开观察者。宿主 DOM 上不留任何痕迹。
+         · **只碰消息行**：user / steering / assistant-step 三种 kind。
+           工具调用、压缩标记、回合尾巴一律不碰（那些不是「好友发的消息」）。
+         · **幂等**：同一个消息行只补一次（data-holo-avatar-row 是标记）；
+           设置变化时就地更新已补节点的图与形状，不重建 DOM。
+         · **不假设头像是行首**：第三方插件也会往这一行里塞东西、而且常常插到
+           最前面 ⇒ 找节点一律按类名扫**直接子元素**，否则下一次 sweep 会把
+           「首个子节点不是头像」误判成「节点没了」，再补一张脸。
+         · **默认头像是画出来的、不是资源**：两张内置 SVG，不占安装包体积，
+           也不随 npm 版本漂。
+    */
+
+    /** 三种「消息行」的 kind（官方 ChatNodeSeat 的 data-chat-flow-kind 值）→ 头像属于哪一方。 */
+    const AVATAR_FLOW_SIDES = { user: 'user', steering: 'user', 'assistant-step': 'ai' }
+    /** 消息行的选择器（只扫这三种）。 */
+    const AVATAR_ROW_SELECTOR = '[data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], [data-chat-flow-kind="assistant-step"]'
+    /**
+     * **全部**会话流行的选择器（分组用）。分组必须看见工具调用 / 思考过程这些
+     * 不补头像的行：它们承载宿主的折叠状态，决定哪一条助手行才是屏幕上真正
+     * 可见的「段首」。
+     */
+    const AVATAR_FLOW_ROW_SELECTOR = '[data-chat-flow-kind]'
+    /** 宿主写在每条流条目上的回合号：同一回合的助手行按间隔露脸。 */
+    const AVATAR_TURN_ATTR = 'data-chat-turn'
+    /** 宿主「这一行属于折叠中的过程窗口」的标记 —— 折叠行不占「段首」也不计数。 */
+    const AVATAR_FOLD_ATTR = 'data-turn-process-hidden'
+
+    /** 注入标记：行上是 data-holo-avatar-row="<side>"，头像是 .holo-avatar 节点。 */
+    const AVATAR_ROW_ATTR = 'data-holo-avatar-row'
+    const AVATAR_NODE_CLASS = 'holo-avatar'
+    const AVATAR_NODE_ATTR = 'data-holo-avatar-node'
+    /** 「连续同侧消息的后续行」标记：加在**头像节点**上，CSS 只做 visibility: hidden。 */
+    const AVATAR_CONT_CLASS = 'holo-avatar--cont'
+    /** 同一件事在**行**上的标记（只给助手侧续行）：让该行退化成单列、列间距归零。 */
+    const AVATAR_CONT_ROW_ATTR = 'data-holo-avatar-cont'
+    /** 开关属性与两个观感变量（样式表里那一段读它们）。 */
+    const AVATAR_ATTR = 'data-holo-avatar'
+    const AVATAR_VAR_SIZE = '--holo-avatar-size'
+    const AVATAR_VAR_ROUND = '--holo-avatar-round'
+    /** 「这张图试过、加载失败」的记账属性（值 = 失败时那个 URL）：失败后按「没设置过」画内置头像。 */
+    const AVATAR_IMG_FAILED = 'data-holo-avatar-imgfail'
+
+    /** 设置键（localStorage）。数据名与宿主路由的 side 名一致。 */
+    const AVATAR_ON_KEY = 'dsh-theme-holo.avatar-on'
+    const AVATAR_USER_KEY = 'dsh-theme-holo.avatar-user'
+    const AVATAR_AI_KEY = 'dsh-theme-holo.avatar-ai'
+    const AVATAR_REPEAT_KEY = 'dsh-theme-holo.avatar-repeat'
+    /** 面板改了任何头像设置就 dispatch 一次；装饰层重读一遍。 */
+    const AVATAR_CHANGE_EVENT = 'dsh-theme-holo:avatar-change'
+    /** 头像边长（px）。这一版固定一档，不做滑块 —— 只求「配张脸」。 */
+    const AVATAR_SIZE_PX = 40
+    /** 助手头像再露脸的间隔（默认可与合法域）：1 = 每条都露，越大越稀。 */
+    const AVATAR_REPEAT_DEFAULT = 6
+    const AVATAR_REPEAT_MIN = 1
+    const AVATAR_REPEAT_MAX = 30
+    /** 上传路由前缀（与宿主半 index.js 的 AVATAR_BASE 同名，同源相对路径）。 */
+    const AVATAR_ROUTE_BASE = '/holo-avatar/'
+    /** 导入前缩到的边长：屏上最大也就 40px，512 够两倍屏用。 */
+    const AVATAR_IMPORT_BOX = 512
+
+    /**
+     * 读一次头像设置。缺键 / 坏值一律回落默认，绝不抛 ——
+     * 它会被观察者回调与面板渲染反复调用，抛一次就整层挂掉。
+     */
+    function readAvatarSettings() {
+      const readStr = (key) => {
+        try { return localStorage.getItem(key) || '' } catch (error) { return '' }
+      }
+      const rawRepeat = Number(readStr(AVATAR_REPEAT_KEY))
+      // 0 / NaN / 空串都当「没设过」：合法域从 1 起，所以 0 不可能是用户的选择。
+      const repeat = Number.isFinite(rawRepeat) && rawRepeat >= AVATAR_REPEAT_MIN
+        ? Math.min(AVATAR_REPEAT_MAX, Math.round(rawRepeat))
+        : AVATAR_REPEAT_DEFAULT
+      return {
+        on: readStr(AVATAR_ON_KEY) === '1',
+        user: readStr(AVATAR_USER_KEY),
+        ai: readStr(AVATAR_AI_KEY),
+        repeat,
+      }
+    }
+
+    /**
+     * 头像图的 URL：/holo-avatar/<side>?v=<文件名>。
+     * 文件名进查询串既是「这一方到底设置过没有」的判据，也是**缓存键** ——
+     * 换图 ⇒ 换名 ⇒ URL 变（路由那边因此敢给长缓存）。
+     * 没设置过就返回空串（调用方画内置默认头像）。
+     */
+    function avatarImageUrl(side, settings) {
+      const s = settings || readAvatarSettings()
+      const name = side === 'ai' ? s.ai : s.user
+      if (!name) return ''
+      return AVATAR_ROUTE_BASE + side + '?v=' + encodeURIComponent(name)
+    }
+
+    /**
+     * 内置默认头像的**零件表**（唯一真源）。
+     *
+     * 两侧都画在 0..16 的方格上，`currentColor` 上色、fill="none" + 描边 ——
+     * 于是它们自动跟随主题的文字色，深浅两套都不需要第二份配色。
+     *   · user = 人像（头 + 肩），最不容易被误读的一张。
+     *   · ai   = **一穗麦子**（中轴 + 两对谷粒）：赫萝与罗伦斯的记号，也是
+     *            「麦秋晨光」这套配色的来处。不画品牌鲸 —— 头像位是角色自己的，
+     *            不是广告位。
+     */
+    const AVATAR_GLYPH_PARTS = {
+      user: [
+        ['circle', { cx: '8', cy: '5.6', r: '2.5' }],
+        ['path', { d: 'M3.4 13.2c0-2.3 2.1-3.8 4.6-3.8s4.6 1.5 4.6 3.8' }],
+      ],
+      ai: [
+        ['path', { d: 'M8 15V4.4' }],
+        ['path', { d: 'M8 5.6C6.9 5.6 6 6.5 6 7.6s.9 2 2 2' }],
+        ['path', { d: 'M8 5.6C9.1 5.6 10 6.5 10 7.6s-.9 2-2 2' }],
+        ['path', { d: 'M8 9C6.9 9 6 9.9 6 11s.9 2 2 2' }],
+        ['path', { d: 'M8 9C9.1 9 10 9.9 10 11s-.9 2-2 2' }],
+      ],
+    }
+    const AVATAR_GLYPH_VIEW_BOX = '0 0 16 16'
+
+    /** 默认头像的 SVG 字符串（DOM 的 innerHTML 用）。 */
+    function avatarGlyphSvgString(side, size) {
+      const parts = AVATAR_GLYPH_PARTS[side] || AVATAR_GLYPH_PARTS.user
+      const px = Number(size) > 0 ? Number(size) : 16
+      const attrs = 'viewBox="' + AVATAR_GLYPH_VIEW_BOX + '" width="' + px + '" height="' + px
+        + '" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"'
+        + ' stroke-linejoin="round" aria-hidden="true" focusable="false"'
+      const inner = parts.map(([tag, a]) => '<' + tag + ' '
+        + Object.keys(a).map((k) => k + '="' + a[k] + '"').join(' ') + '/>').join('')
+      return '<svg ' + attrs + '>' + inner + '</svg>'
+    }
+
+    /* ── 裁切取景：几何口径照 wallpaper-engine 那份 ─────────────────────────
+       口径一句话：方形取景框边长 AVATAR_CROP_VIEW；`zoom = 1` 时图**短边刚好铺满**
+       取景框（cover 语义 —— 再小就会在框里露白），放大只增不减。x / y 是 -1..1 的
+       归一化平移，边界取「图不能露出空白」的最大可移动量。
+
+       为什么平移存归一化值而不是像素：像素值在缩放后会失配（同一个 20px 偏移，
+       zoom=1 时还看得见、zoom=4 时早就出框了）。归一化到「可用位移」上，缩放后
+       边界自然跟着变，不需要额外的钳位状态机。
+    */
+    const AVATAR_CROP_VIEW = 260
+    const AVATAR_CROP_ZOOM_MIN = 1
+    const AVATAR_CROP_ZOOM_MAX = 4
+    /** 待裁的原图与目标 side：**只存内存**，唯一消费者是这一次弹窗（不是设置）。 */
+    let avatarCropPending = null
+
+    /**
+     * 取景框里那张图的实际绘制几何（换算成「显示 px」）。
+     *
+     * 唯一实现：弹窗渲染与真正裁切都读它，两处算法不会漂 ——
+     * 「屏上看到的那一块」与「切出来那一块」因此必然逐像素对应。
+     */
+    function avatarCropGeometry(w, h, zoom, x, y) {
+      const W = Number(w) || 0
+      const H = Number(h) || 0
+      const z = Math.max(AVATAR_CROP_ZOOM_MIN, Number(zoom) || AVATAR_CROP_ZOOM_MIN)
+      if (!W || !H) return { dw: 0, dh: 0, dx: 0, dy: 0, base: 1 }
+      const base = AVATAR_CROP_VIEW / Math.min(W, H) // 短边铺满
+      const dw = W * base * z
+      const dh = H * base * z
+      const slackX = Math.max(0, (dw - AVATAR_CROP_VIEW) / 2)
+      const slackY = Math.max(0, (dh - AVATAR_CROP_VIEW) / 2)
+      const nx = Math.max(-1, Math.min(1, Number(x) || 0))
+      const ny = Math.max(-1, Math.min(1, Number(y) || 0))
+      return {
+        dw, dh, base,
+        dx: -slackX * nx, // 向右拖（nx>0）⇒ 图左移
+        dy: -slackY * ny,
+      }
+    }
+
+    /** 取景框里被框住那一块在原图里的边长（像素）。 */
+    function avatarCropSourceSide(w, h, zoom) {
+      const geo = avatarCropGeometry(w, h, zoom, 0, 0)
+      const z = Math.max(AVATAR_CROP_ZOOM_MIN, Number(zoom) || AVATAR_CROP_ZOOM_MIN)
+      // 显示 px → 原图 px 的换算系数
+      const perSrc = 1 / (geo.base * z)
+      return { perSrc, side: AVATAR_CROP_VIEW * perSrc }
+    }
+
+    /**
+     * 把选中的图缩到 box 见方以内（等比，不裁）。
+     *
+     * 裁切已经产出正方形，这一步只是把边长收敛到 512 —— 原图 3000px 时裁出来
+     * 还有 2500px，直接上传是白耗流量（屏上只显示 40px）。
+     */
+    function scaleBlobToBox(blob, box) {
+      return new Promise((resolve, reject) => {
+        let objectUrl = ''
+        try { objectUrl = URL.createObjectURL(blob) } catch (error) { reject(new Error('无法读取裁好的图')); return }
+        const revoke = () => { try { URL.revokeObjectURL(objectUrl) } catch (error) { /* ignore */ } }
+        const image = new Image()
+        image.onload = () => {
+          try {
+            const sw = image.naturalWidth || 0
+            const sh = image.naturalHeight || 0
+            if (!sw || !sh) throw new Error('裁好的图读不出尺寸')
+            const k = Math.min(1, box / Math.max(sw, sh))
+            const tw = Math.max(1, Math.round(sw * k))
+            const th = Math.max(1, Math.round(sh * k))
+            if (k === 1 && blob.type === 'image/webp') { revoke(); resolve(blob); return }
+            const canvas = document.createElement('canvas')
+            canvas.width = tw
+            canvas.height = th
+            const g = canvas.getContext('2d')
+            if (g === null) throw new Error('画布不可用')
+            g.imageSmoothingQuality = 'high'
+            g.drawImage(image, 0, 0, sw, sh, 0, 0, tw, th)
+            canvas.toBlob((out) => {
+              revoke()
+              if (out) resolve(out)
+              else reject(new Error('缩放失败'))
+            }, 'image/webp', 0.92)
+          } catch (error) {
+            revoke()
+            reject(error)
+          }
+        }
+        image.onerror = () => { revoke(); reject(new Error('裁好的图解不开')) }
+        image.src = objectUrl
+      })
+    }
+
+    /**
+     * 装饰层：一次会话只有一个实例（模块级单例的观察者与开关都在闭包里）。
+     *
+     * 它对外的面只有两个：`sync()`（设置变了就调一次）与 `dispose()`。
+     * 关 / 开 / 改图 / 改间隔全部走 sync —— 幂等，不留状态机。
+     */
+    function createAvatarLayer() {
+      let observer = null
+      let active = false
+      let groupRaf = 0
+
+      /** 开关与变量都挂在 <html> 上（与 data-holo-peek / data-holo-planner-off 同一个位置）。 */
+      const htmlEl = () => (typeof document === 'undefined' ? null : document.documentElement)
+
+      /**
+       * 把一个已注入的头像节点**就地更新**到当前设置：里面是一张圆脸
+       * （导入的图，或内置默认头像）。只在「该显示什么」真的变了才动 DOM。
+       */
+      function fillNode(node, side) {
+        const url = avatarImageUrl(side)
+        // 这一方这张图**试过且失败**（文件被删 / 路由某次没起来）⇒ 本轮按「没
+        // 设置过」画内置头像；URL 不变就不再重试，换了一张图自然重试。
+        const failed = Boolean(url) && node.getAttribute(AVATAR_IMG_FAILED) === url
+        const want = url && !failed ? 'img' : 'glyph'
+        if (node.getAttribute('data-holo-avatar-kind') === want) {
+          if (want === 'img') {
+            const img = node.firstElementChild
+            const src = img ? img.getAttribute('src') : ''
+            if (src !== url) { try { img.setAttribute('src', url) } catch (error) { /* ignore */ } }
+          }
+          return
+        }
+        node.setAttribute('data-holo-avatar-kind', want)
+        try { node.textContent = '' } catch (error) { /* ignore */ }
+        if (want === 'img') {
+          const img = document.createElement('img')
+          img.className = AVATAR_NODE_CLASS + '__img'
+          img.setAttribute('alt', '')
+          img.setAttribute('draggable', 'false')
+          // <img> 兜底：图加载失败 ⇒ 记下这次失败（按 URL 记）并把节点**就地**
+          // 改成内置默认头像 —— 会话里绝不会停在「破图」上。
+          img.onerror = () => {
+            try { node.setAttribute(AVATAR_IMG_FAILED, url) } catch (error) { /* ignore */ }
+            fillNode(node, side)
+          }
+          img.setAttribute('src', url)
+          node.appendChild(img)
+        } else {
+          const glyph = document.createElement('span')
+          glyph.className = AVATAR_NODE_CLASS + '__glyph'
+          glyph.innerHTML = avatarGlyphSvgString(side, 16)
+          node.appendChild(glyph)
+        }
+      }
+
+      /** 这一行里**本层注入的头像节点**（不假设它在行首，按类名扫直接子元素）。 */
+      function nodeOf(row) {
+        if (!row || !row.children) return null
+        for (let i = 0; i < row.children.length; i += 1) {
+          const kid = row.children[i]
+          if (kid && kid.classList && kid.classList.contains(AVATAR_NODE_CLASS)) return kid
+        }
+        return null
+      }
+
+      /** 给一条消息行补头像（已补过则只做就地更新）。返回是否动过 DOM。 */
+      function decorateRow(row) {
+        if (!row || typeof row.getAttribute !== 'function') return false
+        const side = AVATAR_FLOW_SIDES[row.getAttribute('data-chat-flow-kind')]
+        if (!side) return false
+        const marked = row.getAttribute(AVATAR_ROW_ATTR)
+        const existing = nodeOf(row)
+        if (existing && marked === side) {
+          fillNode(existing, side)
+          return false
+        }
+        // 旧节点先摘掉：同一行换了另一方（kind 变了），或标记已丢但节点还在。
+        if (existing) { try { existing.remove() } catch (error) { /* ignore */ } }
+        if (marked) { try { row.removeAttribute(AVATAR_ROW_ATTR) } catch (error) { /* ignore */ } }
+        // 旧行可能带着上一轮的「续行塌列」标记；重建时先清掉，等分组重算再按新状态写。
+        if (row.hasAttribute && row.hasAttribute(AVATAR_CONT_ROW_ATTR)) {
+          try { row.removeAttribute(AVATAR_CONT_ROW_ATTR) } catch (error) { /* ignore */ }
+        }
+        const node = document.createElement('div')
+        node.className = AVATAR_NODE_CLASS + ' ' + AVATAR_NODE_CLASS + '--' + side
+        node.setAttribute(AVATAR_NODE_ATTR, side)
+        node.setAttribute('aria-hidden', 'true')
+        fillNode(node, side)
+        // 插到行的**最前面**只是习惯位次：左右由样式表的 grid 列决定（助手第 1 列、
+        // 用户第 2 列），插入位置不再承担左右语义。
+        try { row.setAttribute(AVATAR_ROW_ATTR, side) } catch (error) { /* ignore */ }
+        try { row.insertBefore(node, row.firstChild) } catch (error) { /* ignore */ }
+        return true
+      }
+
+      /** 扫一遍全文档，把还没补过的消息行补上（观察者只管新插入的，这一条管「已经在了的」）。 */
+      function sweep() {
+        if (typeof document.querySelectorAll !== 'function') return
+        let rows
+        try { rows = document.querySelectorAll(AVATAR_ROW_SELECTOR) } catch (error) { return }
+        for (const row of rows) decorateRow(row)
+        applyGrouping()
+      }
+
+      /**
+       * 这一行**当前是否看不见**（宿主自己的两种折叠机制 + 标准 `hidden`）。
+       *
+       * 只看三样东西，都是宿主写在流条目上的真实事实：
+       *   · 条目自己的 `hidden`（`hidden="until-found"` 也算隐藏）；
+       *   · `data-turn-process-hidden`（这条属于「折叠中的过程窗口」）；
+       *   · 祖先里那层 `[data-step-process-body][hidden]` —— 过程组折叠时是
+       *     整个 body 被藏起来，成员行自己不带 `hidden`。
+       * **不向上无限找 `hidden`**：侧栏 / 整页级隐藏也用 `hidden`，那种情况下
+       * 把每行都判成「看不见」会让整轮头像全灭。
+       */
+      function rowHidden(row) {
+        if (!row || typeof row.getAttribute !== 'function') return false
+        if (row.hasAttribute && row.hasAttribute('hidden')) return true
+        if (row.getAttribute(AVATAR_FOLD_ATTR) !== null) return true
+        try {
+          return Boolean(row.closest && row.closest('[data-step-process-body][hidden]'))
+        } catch (error) { return false }
+      }
+
+      /**
+       * 分组：助手侧**每回合第一张脸露出来、长回合按可见行数周期性再露**，
+       * 用户侧连续消息只显示第一张。
+       *
+       * 为什么不能只按「连续同侧」：宿主把思考 / 工具调用渲染成**过程窗口**里的
+       * 独立行，折叠时它们带 hidden / data-turn-process-hidden —— 若「段首」落在
+       * 这些看不见的行上，本轮唯一可见的那条回复就会被判成续行，整轮一张脸都没有。
+       * 为什么不能「一个回合只一张」：一个回合里思考 + 几十次工具调用能撑满好几屏，
+       * 唯一那张脸早早滚出视野 ⇒ 整页看不到助手。所以口径是：
+       *   · 回合的**第一条可见**助手行露脸；
+       *   · 之后每过「助手头像间隔」条**可见**流条目（任何 kind，含工具调用）就在下一条
+       *     可见助手行上再露一次 —— 脸因此跟着内容往下走；
+       *   · 同一回合计一次「该露了」的额度，工具调用行不重置它（否则每一步工具调用都
+       *     重新贴一张，正是「太频繁」来的那一侧）；不同回合（data-chat-turn 变了）重新起算；
+       *   · 折叠窗口里的行不计数也不露脸（看不见的图不占位），展开 / 收起时重算；
+       *   · 用户开口（user / steering）⇒ 助手侧重新从「第一条可见」起算。
+       *
+       * ⚠ 做法是给不露脸的行**头像节点加一个 --cont 修饰类**（CSS 里 visibility: hidden），
+       * **绝不摘掉节点**：节点在，锚点下内容的宽度约束就不会塌。
+       */
+      function applyGrouping() {
+        if (!active || typeof document.querySelectorAll !== 'function') return
+        let rows
+        try { rows = document.querySelectorAll(AVATAR_FLOW_ROW_SELECTOR) } catch (error) { return }
+        // 间隔在每次重算时现读设置（面板改完就 dispatch，这一趟跟着重算）。
+        const repeatRows = readAvatarSettings().repeat
+        let prevSide = ''         // 用户侧连续段：任何非用户行都断开
+        let turn                  // 助手侧当前回合（宿主没写 data-chat-turn 时是 undefined）
+        let aiFacePending = true  // 下一条**可见**助手行该不该露脸
+        let aiSince = 0           // 上次露脸之后又滚过去多少条**可见**流条目
+        for (const row of rows) {
+          const turnAttr = row.getAttribute(AVATAR_TURN_ATTR)
+          if (turnAttr !== null && turnAttr !== turn) {
+            // 新回合一进来就重新起算（第一条可见的助手行必定露脸）。
+            turn = turnAttr
+            aiFacePending = true
+            aiSince = 0
+          }
+          const side = AVATAR_FLOW_SIDES[row.getAttribute('data-chat-flow-kind')]
+          const hidden = rowHidden(row)
+          const node = nodeOf(row)
+          // 没头像节点的行（工具调用、回合头等不属于 AVATAR_FLOW_SIDES 的条目）：
+          // 看得见就计一条可见流内容，但不消耗 aiFacePending —— 否则额度会被
+          // 不是「好友消息」的行花掉。
+          if (!side || !node) {
+            prevSide = ''
+            if (!hidden) aiSince += 1
+            continue
+          }
+          let cont
+          if (side === 'ai') {
+            const show = !hidden && (aiFacePending || aiSince >= repeatRows)
+            cont = !show
+            if (!hidden) {
+              if (show) { aiFacePending = false; aiSince = 0 } else { aiSince += 1 }
+            }
+            prevSide = 'ai'
+          } else {
+            cont = prevSide === 'user'
+            prevSide = 'user'
+            aiFacePending = true
+            aiSince = 0
+          }
+          if (typeof node.classList.toggle === 'function') {
+            try { node.classList.toggle(AVATAR_CONT_CLASS, cont) } catch (error) { /* ignore */ }
+          }
+          // 助手续行：把行退化成单列（头像仍留在 DOM 里、只是不可见），正文不再被空列顶到右边。
+          try {
+            if (cont && side === 'ai') row.setAttribute(AVATAR_CONT_ROW_ATTR, '')
+            else if (row.hasAttribute(AVATAR_CONT_ROW_ATTR)) row.removeAttribute(AVATAR_CONT_ROW_ATTR)
+          } catch (error) { /* ignore */ }
+        }
+      }
+
+      /**
+       * 分组重算的**限频**入口：流式输出时消息行会连续插入，每插一行就全文档扫
+       * 一次是 O(帧 × 行数)。合并到一帧一次（没有 rAF 的环境退化为同步）。
+       */
+      function scheduleGrouping() {
+        if (groupRaf) return
+        if (typeof requestAnimationFrame !== 'function') { applyGrouping(); return }
+        groupRaf = requestAnimationFrame(() => {
+          groupRaf = 0
+          applyGrouping()
+        })
+      }
+
+      /**
+       * 观察者的回调。两类：
+       *   ① **属性变化**（只订 hidden / 折叠标记 / 行种类 / 回合号）：宿主展开或
+       *      收起过程窗口时「哪条助手行可见」会变 ⇒ 只需要重算分组（不重建节点）；
+       *   ② 新增元素：新增的**消息行** ⇒ 补头像；其余新增元素如果已经在装饰过的
+       *      行里就直接放行 —— 流式输出期间消息内部每帧都在插节点，这一级早退把
+       *      开销钉在「每个新增元素一次 closest」上。
+       */
+      function onMutations(records) {
+        if (!active) return
+        let decorated = false
+        let regroup = false
+        for (const r of records) {
+          if (r.type === 'attributes') {
+            regroup = true
+            continue
+          }
+          const added = r.addedNodes
+          if (!added || !added.length) continue
+          for (const n of added) {
+            if (!n || n.nodeType !== 1) continue
+            try {
+              if (n.matches && n.matches(AVATAR_ROW_SELECTOR)) {
+                if (decorateRow(n)) decorated = true
+                continue
+              }
+              if (n.closest && n.closest('[' + AVATAR_ROW_ATTR + ']')) continue
+              const inner = n.querySelectorAll ? n.querySelectorAll(AVATAR_ROW_SELECTOR) : []
+              for (const row of inner) { if (decorateRow(row)) decorated = true }
+            } catch (error) { /* ignore */ }
+          }
+        }
+        // 补了新行 ⇒ 分组可能变了（新行算不算「续行」取决于它前面那条）；
+        // 属性变化（折叠 / 展开）会让「当前可见的第一条助手行」换人 ⇒ 同样重算。
+        if (decorated || regroup) scheduleGrouping()
+      }
+
+      /** 全部收掉：摘节点、抹行标记、撤 html 属性与两个变量、断观察者。 */
+      function stop() {
+        active = false
+        if (observer) {
+          try { observer.disconnect() } catch (error) { /* ignore */ }
+          observer = null
+        }
+        // 挂起的分组重算要取消：它不属于 fiber，留着会在卸载后再扫一次 DOM。
+        if (groupRaf) {
+          try { if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(groupRaf) } catch (error) { /* ignore */ }
+          groupRaf = 0
+        }
+        const html = htmlEl()
+        if (html) {
+          html.removeAttribute(AVATAR_ATTR)
+          html.style.removeProperty(AVATAR_VAR_SIZE)
+          html.style.removeProperty(AVATAR_VAR_ROUND)
+        }
+        if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return
+        let nodes = []
+        try { nodes = document.querySelectorAll('[' + AVATAR_NODE_ATTR + ']') } catch (error) { /* ignore */ }
+        for (const n of nodes) { try { n.remove() } catch (error) { /* ignore */ } }
+        let rows = []
+        try { rows = document.querySelectorAll('[' + AVATAR_ROW_ATTR + ']') } catch (error) { /* ignore */ }
+        for (const row of rows) {
+          try { row.removeAttribute(AVATAR_ROW_ATTR) } catch (error) { /* ignore */ }
+          try { row.removeAttribute(AVATAR_CONT_ROW_ATTR) } catch (error) { /* ignore */ }
+        }
+      }
+
+      /**
+       * 设置变了就调一次（面板 dispatch 事件驱动，挂载时也调一次）。
+       *
+       * 开 → 挂开关属性与两个变量、起观察者、补一遍现况；关 → 全部收掉。
+       * **每一条写入都是幂等的**：重复 setAttribute / 重复 sweep 的代价是
+       * 「一次属性写 + 一次选择器扫描」，换来的是「任何时刻屏上的形态都等于
+       * 当前设置」这条不需要额外状态机的性质。
+       */
+      function sync() {
+        const settings = readAvatarSettings()
+        const html = htmlEl()
+        if (!settings.on || !html || typeof MutationObserver !== 'function' || !document.body) {
+          if (active || observer) stop()
+          else if (html) {
+            html.removeAttribute(AVATAR_ATTR)
+            html.style.removeProperty(AVATAR_VAR_SIZE)
+            html.style.removeProperty(AVATAR_VAR_ROUND)
+          }
+          return
+        }
+        html.setAttribute(AVATAR_ATTR, 'on')
+        html.style.setProperty(AVATAR_VAR_SIZE, AVATAR_SIZE_PX + 'px')
+        html.style.setProperty(AVATAR_VAR_ROUND, '100')
+        if (!observer) {
+          try {
+            observer = new MutationObserver(onMutations)
+            observer.observe(document.body, {
+              childList: true, subtree: true,
+              // 折叠 / 展开过程窗口会改这些属性，而「哪条助手行可见」决定这一轮的脸贴在哪条上。
+              // 只订这四枚，别的属性变化（包括本层自己加的 class）一概不惊动。
+              attributes: true,
+              attributeFilter: ['hidden', AVATAR_FOLD_ATTR, AVATAR_TURN_ATTR, 'data-chat-flow-kind'],
+            })
+          } catch (error) { observer = null }
+        }
+        active = true
+        sweep()
+      }
+
+      return {
+        sync,
+        dispose() { stop() },
+      }
+    }
+
     function createLinkCard(React) {
       const h = React.createElement
       const useCallback = React.useCallback
       const useEffect = React.useEffect
       const useState = React.useState
+      const useRef = React.useRef
 
       const rowStyle = { display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0 0' }
       const dimStyle = { color: 'var(--dsw-alias-label-secondary)', fontSize: '13px', lineHeight: '1.6' }
@@ -5574,6 +6359,336 @@ function render(t) {
         const [skipBoot, setSkipBoot] = useState(() => {
           try { return localStorage.getItem(BOOT_SKIP_KEY) === '1' } catch (err) { return false }
         })
+
+        /* ── 会话头像 ──────────────────────────────────────────────────────
+           两张图的名字存在 localStorage，图片本体在宿主落盘的
+           ~/.dsh-theme-holo/avatars/（见 index.js 那段注释：放插件目录里，
+           npm 更新就把用户自己导入的图一起清了）。
+
+           任何一项变化都要 dispatch AVATAR_CHANGE_EVENT —— 装饰层是 DOM 补丁，
+           它不在 React 树里（面板重渲染与它无关），只能靠事件知道「该重画了」。
+           预览图走同一条 URL 构造（avatarImageUrl），所以面板里看到的就是
+           会话里会出现的那一张。 */
+        const [avatarOn, setAvatarOn] = useState(() => readAvatarSettings().on)
+        const [avatarUser, setAvatarUserState] = useState(() => readAvatarSettings().user)
+        const [avatarAi, setAvatarAiState] = useState(() => readAvatarSettings().ai)
+        const [avatarRepeat, setAvatarRepeat] = useState(() => readAvatarSettings().repeat)
+        const [avatarBusy, setAvatarBusy] = useState('')
+        const [avatarError, setAvatarError] = useState('')
+
+        /* 裁切取景的瞬态（不是设置：关掉弹窗就没了）。
+           x / y / zoom 放在 ref 里同时镜像一份到 state：拖动时走 ref（命令式改
+           style，不进 React），松手才收敛进 state —— 否则拖一次就是上百次整卡重渲染。 */
+        const [cropSide, setCropSide] = useState('')
+        const [cropUrl, setCropUrl] = useState('')
+        const [cropW, setCropW] = useState(0)
+        const [cropH, setCropH] = useState(0)
+        const [cropZoom, setCropZoom] = useState(AVATAR_CROP_ZOOM_MIN)
+        const [cropX, setCropX] = useState(0)
+        const [cropY, setCropY] = useState(0)
+        const cropLive = useRef({ x: 0, y: 0, zoom: AVATAR_CROP_ZOOM_MIN })
+        const cropImgRef = useRef(null)
+
+        /** 设置一改就喊一声。 */
+        const announceAvatarChange = useCallback(() => {
+          try { window.dispatchEvent(new CustomEvent(AVATAR_CHANGE_EVENT)) } catch (err) { /* ignore */ }
+        }, [])
+
+        const toggleAvatar = useCallback(() => {
+          const next = !avatarOn
+          try { localStorage.setItem(AVATAR_ON_KEY, next ? '1' : '0') } catch (err) { /* ignore */ }
+          setAvatarOn(next)
+          announceAvatarChange()
+        }, [avatarOn, announceAvatarChange])
+
+        /** 上传一张已经处理好的图（裁切 / 缩放之后）。 */
+        const postAvatarBlob = useCallback(async (side, blob) => {
+          const res = await fetch(AVATAR_ROUTE_BASE + side, {
+            method: 'POST',
+            headers: { 'Content-Type': blob.type },
+            body: blob,
+            cache: 'no-store',
+          })
+          let data = null
+          try { data = await res.json() } catch (err) { data = null }
+          if (!res.ok || !data || !data.ok) {
+            const why = (data && data.error) ? data.error : ('HTTP ' + res.status)
+            throw new Error(why)
+          }
+          const name = String(data.name || '')
+          try { localStorage.setItem(side === 'ai' ? AVATAR_AI_KEY : AVATAR_USER_KEY, name) } catch (err) { /* ignore */ }
+          if (side === 'ai') setAvatarAiState(name)
+          else setAvatarUserState(name)
+          announceAvatarChange()
+        }, [announceAvatarChange])
+
+        /**
+         * 把取景框里那一块**按原图分辨率**裁出来（口径照 wallpaper-engine 那份）。
+         *
+         * 几何全部来自 avatarCropGeometry（唯一实现）—— 这里不自己再算一遍，
+         * 否则「屏上看到的那一块」与「切出来那一块」迟早会漂。
+         */
+        const cropToBlob = useCallback((file, w, h, zoom, nx, ny) => new Promise((resolve, reject) => {
+          let objectUrl = ''
+          try {
+            objectUrl = URL.createObjectURL(file)
+          } catch (err) {
+            reject(new Error('无法读取原图'))
+            return
+          }
+          const revoke = () => {
+            try { URL.revokeObjectURL(objectUrl) } catch (err) { /* ignore */ }
+          }
+          const image = new Image()
+          image.onload = () => {
+            try {
+              const sw = image.naturalWidth || 0
+              const sh = image.naturalHeight || 0
+              if (!sw || !sh) throw new Error('原图读不出尺寸')
+              const geo = avatarCropGeometry(w, h, zoom, nx, ny)
+              const z = Math.max(AVATAR_CROP_ZOOM_MIN, Number(zoom) || AVATAR_CROP_ZOOM_MIN)
+              // 显示 px -> 原图 px：取景框边长对应原图 (VIEW / (base*zoom)) 个像素。
+              const perSrc = 1 / (geo.base * z)
+              const side = AVATAR_CROP_VIEW * perSrc
+              // 取景框左上角在图坐标里的位置：图中心 + dx/dy，再退半个框。
+              const cx = sw / 2 - geo.dx * perSrc
+              const cy = sh / 2 - geo.dy * perSrc
+              const sx = Math.max(0, Math.min(sw - side, cx - side / 2))
+              const sy = Math.max(0, Math.min(sh - side, cy - side / 2))
+              const out = document.createElement('canvas')
+              out.width = Math.max(1, Math.round(side))
+              out.height = Math.max(1, Math.round(side))
+              const g = out.getContext('2d')
+              if (g === null) throw new Error('画布不可用')
+              g.imageSmoothingQuality = 'high'
+              g.drawImage(image, sx, sy, side, side, 0, 0, out.width, out.height)
+              revoke()
+              // 优先 WebP；环境不支持编码时退 PNG（无损，体积大一点但绝不失败）。
+              out.toBlob((blob) => {
+                if (blob && blob.type === 'image/webp') { resolve(blob); return }
+                out.toBlob((png) => {
+                  if (png) resolve(png)
+                  else reject(new Error('裁切失败'))
+                }, 'image/png')
+              }, 'image/webp', 0.92)
+            } catch (err) {
+              revoke()
+              reject(err)
+            }
+          }
+          image.onerror = () => {
+            revoke()
+            reject(new Error('这个文件不是图片（或格式读不了）'))
+          }
+          image.src = objectUrl
+        }), [])
+
+        /**
+         * 选好图之后的**第一站**：读原图尺寸，把弹窗支起来。
+         * 真正上传发生在「确认并导入」（confirmCrop）—— 在此之前取消 = 什么都没发生。
+         */
+        const openCrop = useCallback((side, file) => {
+          if (!file) return
+          setAvatarError('')
+          let url = ''
+          try {
+            url = URL.createObjectURL(file)
+          } catch (err) {
+            setAvatarError('无法读取这个文件')
+            return
+          }
+          const probe = new Image()
+          probe.onload = () => {
+            const w = probe.naturalWidth || 0
+            const h = probe.naturalHeight || 0
+            if (!w || !h) {
+              // 无 intrinsic size 的 SVG 走到这里：没尺寸就没法算几何。
+              try { URL.revokeObjectURL(url) } catch (err) { /* ignore */ }
+              setAvatarError('这张图读不出尺寸（无尺寸的 SVG？）')
+              return
+            }
+            avatarCropPending = { side: side, file: file }
+            cropLive.current = { x: 0, y: 0, zoom: AVATAR_CROP_ZOOM_MIN }
+            setCropUrl(url)
+            setCropW(w)
+            setCropH(h)
+            setCropZoom(AVATAR_CROP_ZOOM_MIN)
+            setCropX(0)
+            setCropY(0)
+            setCropSide(side)
+          }
+          probe.onerror = () => {
+            try { URL.revokeObjectURL(url) } catch (err) { /* ignore */ }
+            setAvatarError('这个文件不是图片（或格式读不了）')
+          }
+          probe.src = url
+        }, [])
+
+        /** 关掉弹窗：撤预览 URL、丢掉待裁的原图，**不上传**。 */
+        const closeCrop = useCallback(() => {
+          if (cropUrl !== '') {
+            try { URL.revokeObjectURL(cropUrl) } catch (err) { /* ignore */ }
+          }
+          avatarCropPending = null
+          cropLive.current = { x: 0, y: 0, zoom: AVATAR_CROP_ZOOM_MIN }
+          setCropSide('')
+          setCropUrl('')
+          setCropW(0)
+          setCropH(0)
+          setCropZoom(AVATAR_CROP_ZOOM_MIN)
+          setCropX(0)
+          setCropY(0)
+        }, [cropUrl])
+
+        /**
+         * 拖动 / 滚轮期间把取景框里那张图**就地**挪到新几何。
+         *
+         * 为什么不 setState：拖一次就是上百个 pointermove，每个都重渲染整张设置
+         * 卡片（二十几行 + 两个预览）会把拖动拖成幻灯片。渲染器只在完整渲染时按
+         * 状态写 inline style，而这里走的是命令式 —— 松手那一次才收敛进状态，
+         * 两种写法的结果是逐字相同的（同一份 avatarCropGeometry）。
+         */
+        const applyCropLive = useCallback(() => {
+          const img = cropImgRef.current
+          if (!img || !img.style) return
+          const live = cropLive.current
+          const geo = avatarCropGeometry(cropW, cropH, live.zoom, live.x, live.y)
+          img.style.width = geo.dw + 'px'
+          img.style.height = geo.dh + 'px'
+          img.style.left = (AVATAR_CROP_VIEW - geo.dw) / 2 + geo.dx + 'px'
+          img.style.top = (AVATAR_CROP_VIEW - geo.dh) / 2 + geo.dy + 'px'
+        }, [cropW, cropH])
+
+        const onCropPointerDown = useCallback((event) => {
+          let lastX = event.clientX
+          let lastY = event.clientY
+          // 传**增量**而不是「相对按下点的总位移」：处理器每次都在已更新的 x/y 上
+          // 继续累加，传总位移会让拖动越拖越快。
+          const move = (ev) => {
+            const dx = ev.clientX - lastX
+            const dy = ev.clientY - lastY
+            lastX = ev.clientX
+            lastY = ev.clientY
+            if (!dx && !dy) return
+            const live = cropLive.current
+            const geo = avatarCropGeometry(cropW, cropH, live.zoom, live.x, live.y)
+            const slackX = Math.max(0, (geo.dw - AVATAR_CROP_VIEW) / 2)
+            const slackY = Math.max(0, (geo.dh - AVATAR_CROP_VIEW) / 2)
+            live.x = slackX > 0 ? Math.max(-1, Math.min(1, live.x - dx / slackX)) : 0
+            live.y = slackY > 0 ? Math.max(-1, Math.min(1, live.y - dy / slackY)) : 0
+            applyCropLive()
+          }
+          const up = () => {
+            try {
+              window.removeEventListener('pointermove', move)
+              window.removeEventListener('pointerup', up)
+              window.removeEventListener('pointercancel', up)
+            } catch (err) { /* ignore */ }
+            // 松手才收敛进状态。
+            setCropX(cropLive.current.x)
+            setCropY(cropLive.current.y)
+          }
+          try {
+            window.addEventListener('pointermove', move)
+            window.addEventListener('pointerup', up)
+            window.addEventListener('pointercancel', up)
+          } catch (err) { /* ignore */ }
+          if (event.preventDefault) event.preventDefault()
+        }, [applyCropLive, cropW, cropH])
+
+        /** 滚轮缩放（增量）。按百分位取整：滚一格 +-0.1，浮点累加会留下 1.2000000000000002 这类尾巴。 */
+        const onCropWheel = useCallback((event) => {
+          const live = cropLive.current
+          const next = Math.round(Math.max(AVATAR_CROP_ZOOM_MIN, Math.min(AVATAR_CROP_ZOOM_MAX,
+            live.zoom + ((event.deltaY || 0) > 0 ? -0.1 : 0.1))) * 100) / 100
+          live.zoom = next
+          applyCropLive()
+          setCropZoom(next)
+          if (event.preventDefault) event.preventDefault()
+        }, [applyCropLive])
+
+        /** 缩放滑块（绝对值，100% = 短边铺满）。 */
+        const onCropZoomInput = useCallback((event) => {
+          const raw = Number(event && event.target ? event.target.value : event)
+          const next = Math.max(AVATAR_CROP_ZOOM_MIN, Math.min(AVATAR_CROP_ZOOM_MAX,
+            Number.isFinite(raw) ? raw / 100 : AVATAR_CROP_ZOOM_MIN))
+          cropLive.current.zoom = next
+          applyCropLive()
+          setCropZoom(next)
+        }, [applyCropLive])
+
+        /** 确认裁切 -> 上传。中途任何一步失败都把原因摆到卡片上，并关掉弹窗。 */
+        const confirmCrop = useCallback(async () => {
+          const pending = avatarCropPending
+          if (!pending) { closeCrop(); return }
+          const side = pending.side
+          setAvatarBusy(side)
+          setAvatarError('')
+          try {
+            const cut = await cropToBlob(pending.file, cropW, cropH, cropZoom, cropX, cropY)
+            // 裁完可能仍有几千像素：屏上只显示 40px，先收敛到 512 再传。
+            const scaled = await scaleBlobToBox(cut, AVATAR_IMPORT_BOX)
+            await postAvatarBlob(side, scaled)
+            closeCrop()
+          } catch (err) {
+            setAvatarError('导入失败：' + String(err && err.message ? err.message : err))
+            closeCrop()
+          } finally {
+            setAvatarBusy('')
+          }
+        }, [closeCrop, cropH, cropW, cropX, cropY, cropZoom, cropToBlob, postAvatarBlob])
+
+        /** 打开系统文件选择器。input 是一次性的 DOM 副作用，用完就摘，不留在树里。 */
+        const pickAvatar = useCallback((side) => {
+          if (typeof document === 'undefined') return
+          const input = document.createElement('input')
+          input.type = 'file'
+          input.accept = 'image/*'
+          input.style.display = 'none'
+          const detach = () => { try { input.remove() } catch (err) { /* ignore */ } }
+          input.addEventListener('change', () => {
+            const file = input.files && input.files[0]
+            detach()
+            if (file) openCrop(side, file)
+          })
+          // 按取消时 change 不触发；不摘就是留在 body 上的垃圾。
+          input.addEventListener('cancel', detach)
+          document.body.appendChild(input)
+          input.click()
+        }, [openCrop])
+
+        const clearAvatar = useCallback(async (side) => {
+          setAvatarBusy(side)
+          setAvatarError('')
+          try {
+            const res = await fetch(AVATAR_ROUTE_BASE + side, { method: 'DELETE', cache: 'no-store' })
+            let data = null
+            try { data = await res.json() } catch (err) { data = null }
+            if (!res.ok || !data || !data.ok) {
+              const why = (data && data.error) ? data.error : ('HTTP ' + res.status)
+              throw new Error(why)
+            }
+            try { localStorage.setItem(side === 'ai' ? AVATAR_AI_KEY : AVATAR_USER_KEY, '') } catch (err) { /* ignore */ }
+            if (side === 'ai') setAvatarAiState('')
+            else setAvatarUserState('')
+            announceAvatarChange()
+          } catch (err) {
+            setAvatarError(String(err && err.message ? err.message : err))
+          } finally {
+            setAvatarBusy('')
+          }
+        }, [announceAvatarChange])
+
+        const changeAvatarRepeat = useCallback((event) => {
+          const raw = event && event.target ? event.target.value : event
+          const n = Number(raw)
+          const next = Number.isFinite(n) && n >= AVATAR_REPEAT_MIN
+            ? Math.min(AVATAR_REPEAT_MAX, Math.round(n))
+            : AVATAR_REPEAT_DEFAULT
+          try { localStorage.setItem(AVATAR_REPEAT_KEY, String(next)) } catch (err) { /* ignore */ }
+          setAvatarRepeat(next)
+          announceAvatarChange()
+        }, [announceAvatarChange])
 
         const toggleBoot = useCallback(() => {
           setSkipBoot((previous) => {
@@ -6258,6 +7373,198 @@ function render(t) {
           }, tavernNote))
         }
 
+        /* ---- 会话头像 ---------------------------------------------------
+           总开关 + 两行上传 + 间隔滑块。装饰本体是 createAvatarLayer()，
+           它不在 React 树里（会话界面上的 DOM 补丁），所以这里只写设置、发事件，
+           「画脸」那件事完全归它 —— 面板重渲染与头像节点互不牵连。 */
+        children.push(h('div', {
+          key: 'avatarTitle',
+          style: { ...strongStyle, marginTop: '14px', paddingTop: '12px', borderTop: '0.5px solid var(--dsw-alias-border-l3)' },
+        }, '会话头像'))
+        children.push(h('div', { key: 'avatarToggleRow', style: rowStyle }, h('button', {
+          key: 'avatarToggle',
+          type: 'button',
+          onClick: toggleAvatar,
+          style: buttonStyle(true),
+        }, avatarOn ? '关闭会话头像' : '开启会话头像')))
+        children.push(h('div', {
+          key: 'avatarStatus',
+          style: { ...dimStyle, marginTop: '6px' },
+        }, avatarOn
+          ? '已开启：你的消息靠右、带你的头像；她的消息靠左、带她的头像。'
+          : '已关闭：会话保持原样，不显示任何头像。'))
+
+        if (avatarOn) {
+          /** 默认头像的 React 版（面板预览用）：与装饰层同一张零件表。 */
+          const renderAvatarGlyph = (side, size) => {
+            const parts = AVATAR_GLYPH_PARTS[side] || AVATAR_GLYPH_PARTS.user
+            const px = Number(size) > 0 ? Number(size) : 16
+            return h('svg', {
+              viewBox: AVATAR_GLYPH_VIEW_BOX,
+              width: px,
+              height: px,
+              fill: 'none',
+              stroke: 'currentColor',
+              'stroke-width': '1.4',
+              'stroke-linecap': 'round',
+              'stroke-linejoin': 'round',
+              'aria-hidden': 'true',
+              focusable: 'false',
+            }, parts.map(([tag, attrs], i) => h(tag, { ...attrs, key: 'p' + i })))
+          }
+
+          const avatarSideRow = (side, label, hint, name) => {
+            const isBusy = avatarBusy === side
+            const url = avatarImageUrl(side, { on: avatarOn, user: avatarUser, ai: avatarAi, repeat: avatarRepeat })
+            const faceBox = {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '44px',
+              height: '44px',
+              flex: '0 0 auto',
+              overflow: 'hidden',
+              borderRadius: '50%',
+              background: 'var(--dsw-alias-bg-layer-3)',
+              border: '1px solid var(--dsw-alias-border-l3)',
+            }
+            const face = url !== ''
+              ? h('img', {
+                key: 'face',
+                src: url,
+                alt: '',
+                draggable: false,
+                style: { display: 'block', width: '100%', height: '100%', objectFit: 'cover' },
+              })
+              : h('span', {
+                key: 'face',
+                style: { display: 'flex', color: 'var(--dsw-alias-label-secondary)' },
+              }, renderAvatarGlyph(side, 34))
+            const acts = [h('button', {
+              key: 'pick',
+              type: 'button',
+              disabled: isBusy,
+              onClick: () => pickAvatar(side),
+              style: buttonStyle(!isBusy),
+            }, isBusy ? '导入中…' : (name ? '替换图片…' : '导入图片…'))]
+            if (name) {
+              acts.push(h('button', {
+                key: 'clear',
+                type: 'button',
+                disabled: isBusy,
+                onClick: () => clearAvatar(side),
+                style: ghostButtonStyle,
+              }, '清除'))
+            }
+            return h('div', {
+              key: 'avatar-' + side,
+              style: { ...rowStyle, marginTop: '10px', alignItems: 'flex-start' },
+            },
+            h('span', { key: 'faceBox', style: faceBox }, face),
+            h('div', {
+              key: 'meta',
+              style: { display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '0' },
+            },
+            h('span', { key: 'label', style: { ...strongStyle, fontSize: '13px' } }, label),
+            h('span', { key: 'hint', style: dimStyle }, hint),
+            h('div', { key: 'acts', style: { ...rowStyle, marginTop: '4px' } }, acts)))
+          }
+
+          children.push(avatarSideRow('user', '「我」的头像', '你的消息在右侧，头像跟着在右侧', avatarUser))
+          children.push(avatarSideRow('ai', '「赫萝」的头像', '她的消息在左侧，头像跟着在左侧', avatarAi))
+
+          children.push(h('div', {
+            key: 'avatarRepeatStatus',
+            style: { ...dimStyle, marginTop: '12px' },
+          }, '助手头像间隔：每过 ' + avatarRepeat + ' 条可见的思考 / 工具调用 / 回复，'
+            + '就在下一条消息前再露一次脸。1 = 每条都露，越大越稀。'))
+          children.push(h('div', { key: 'avatarRepeatRow', style: rowStyle }, h('input', {
+            key: 'avatarRepeatRange',
+            type: 'range',
+            min: String(AVATAR_REPEAT_MIN),
+            max: String(AVATAR_REPEAT_MAX),
+            step: '1',
+            value: String(avatarRepeat),
+            onChange: changeAvatarRepeat,
+            onInput: changeAvatarRepeat,
+            'aria-label': '助手头像间隔',
+            style: {
+              flex: '1 1 auto',
+              minWidth: '0',
+              maxWidth: '260px',
+              cursor: 'pointer',
+              accentColor: 'var(--dsw-alias-label-primary, #3A2C1A)',
+            },
+          })))
+        }
+
+        if (avatarError !== '') {
+          children.push(h('div', {
+            key: 'avatarError',
+            style: { ...dimStyle, marginTop: '6px', color: 'var(--dsw-alias-label-danger, #B4432F)' },
+          }, avatarError))
+        }
+
+        /* 裁切取景弹窗：只在「已选好图、还没确认」时画。
+           它是 children 的最后一个 —— 靠 position: fixed 脱出设置卡片的排版，
+           不参与卡片的高度计算（否则弹窗一开，下面的「七、常用命令」那种排版都会跳）。 */
+        if (cropSide !== '') {
+          const geo = avatarCropGeometry(cropW, cropH, cropZoom, cropX, cropY)
+          const croBusy = avatarBusy === cropSide
+          children.push(h('div', { key: 'avatarCrop', className: 'holo-crop' },
+            h('div', { className: 'holo-crop__card' },
+              h('div', { className: 'holo-crop__title' }, '裁切头像'),
+              h('div', { className: 'holo-crop__hint' },
+                '拖动调整位置、滚轮或滑块缩放；框内这一块会作为头像（方形）。'),
+              h('div', {
+                className: 'holo-crop__view',
+                style: { width: AVATAR_CROP_VIEW + 'px', height: AVATAR_CROP_VIEW + 'px' },
+                onPointerDown: onCropPointerDown,
+                onWheel: onCropWheel,
+              },
+              h('img', {
+                className: 'holo-crop__img',
+                src: cropUrl,
+                alt: '',
+                draggable: false,
+                ref: cropImgRef,
+                style: {
+                  width: geo.dw + 'px',
+                  height: geo.dh + 'px',
+                  left: (AVATAR_CROP_VIEW - geo.dw) / 2 + geo.dx + 'px',
+                  top: (AVATAR_CROP_VIEW - geo.dh) / 2 + geo.dy + 'px',
+                },
+              }),
+              h('span', { className: 'holo-crop__frame', 'aria-hidden': 'true' })),
+              h('div', { className: 'holo-crop__zoom' },
+                h('span', null, '缩放'),
+                h('input', {
+                  type: 'range',
+                  min: String(AVATAR_CROP_ZOOM_MIN * 100),
+                  max: String(AVATAR_CROP_ZOOM_MAX * 100),
+                  step: '5',
+                  value: String(Math.round(cropZoom * 100)),
+                  onChange: onCropZoomInput,
+                  onInput: onCropZoomInput,
+                  'aria-label': '缩放',
+                }),
+                h('output', null, Math.round(cropZoom * 100) + '%')),
+              h('div', { className: 'holo-crop__actions' },
+                h('button', {
+                  key: 'cancel',
+                  type: 'button',
+                  onClick: closeCrop,
+                  style: ghostButtonStyle,
+                }, '取消'),
+                h('button', {
+                  key: 'confirm',
+                  type: 'button',
+                  disabled: croBusy,
+                  onClick: confirmCrop,
+                  style: buttonStyle(!croBusy),
+                }, croBusy ? '导入中…' : '确认并导入')))))
+        }
+
         return h('div', { style: { padding: '4px 0 2px' } }, children)
       }
     }
@@ -6424,6 +7731,30 @@ function render(t) {
             pad.dispose()
           }
         }, 'theme-holo: parchment note pad')
+
+        // 会话头像：DOM 装饰层。它不属于任何 React 树 —— 会话界面上的消息行归
+        // 宿主渲染，这一层只在旁边补一张脸（见 createAvatarLayer 的注释）。
+        // 挂载时按当前设置同步一次；面板改设置会 dispatch 事件把它叫醒。
+        // 卸载 / HMR 重挂走同一条 stop 路径 ⇒ 节点、行标记、html 属性一起收掉。
+        ctx.effect(() => {
+          if (typeof document === 'undefined') return () => {}
+          let layer = null
+          try {
+            layer = createAvatarLayer()
+          } catch (error) {
+            layer = null
+          }
+          if (layer === null) return () => {}
+          const onChange = () => {
+            try { layer.sync() } catch (error) { /* ignore */ }
+          }
+          try { window.addEventListener(AVATAR_CHANGE_EVENT, onChange) } catch (error) { /* ignore */ }
+          try { layer.sync() } catch (error) { /* ignore */ }
+          return () => {
+            try { window.removeEventListener(AVATAR_CHANGE_EVENT, onChange) } catch (error) { /* ignore */ }
+            try { layer.dispose() } catch (error) { /* ignore */ }
+          }
+        }, 'theme-holo: chat avatars')
 
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
