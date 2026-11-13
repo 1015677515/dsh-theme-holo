@@ -1022,18 +1022,16 @@ html[data-holo-peek="off"] #holo-peek-fx { display: none !important; }
    ever shows outside the column -- where the conversation's own opaque root
    covers it anyway. */
 
-/* Click band over the standby plate.
-   It is its OWN layer on <body>, not a child of #holo-scene: that plate is
-   z-index:-1, and a negative-z layer sits below its container's background, so
-   a child with pointer-events:auto in it never receives clicks. This band sits
-   above ordinary content but below every other piece of plugin chrome
-   (peeker 2147482997, planner 2147482998, bubble 2147482999). */
-#holo-scene-hit {
-  position: fixed;
-  z-index: 2147482995;
-  pointer-events: auto;
-  cursor: pointer;
-  background: transparent;
+/* Clicking her on the standby plate -- 没有遮罩层了。
+   原先这里是一个 fixed + pointer-events:auto 的透明块，铺在内容之上：矩形
+   内的每一次点击都被它吃掉，右栏自己的标签栏与分屏 / 全屏 / 关闭按钮都在
+   它下面，按不动。当时靠「顶部内缩 70px」避开顶栏 —— 那是回避症状，右栏
+   出现任何新控件照样会被吃。
+   现在改由 createScene 的 document 点击监听做坐标判定，并且忽略任何交互元素
+   （见那里的 plainTarget），宿主的控件永远赢。下面这条只负责换光标。 */
+html[data-holo-scene-hover="on"] [data-sidebar-right-panel],
+html[data-holo-scene-hover="on"] [data-sidebar-right-panel] * {
+  cursor: pointer !important;
 }
 
 #holo-scene {
@@ -1876,17 +1874,6 @@ html body .holo-crop__actions {
        the empty margin beside it, which is what made the edge read as a hard
        step instead of a fade. */
     const SCENE_PLATE_WIDTH = 608
-    /* How far below the top of the window the click band starts.
-       The band is a fixed, pointer-events:auto layer at z-index 2147482995, so
-       wherever it reaches it eats the click. Its top used to equal the column's
-       own top, which is the window's top -- that put it straight over the start
-       page's header row and made those three utility buttons unclickable.
-       70px clears that row with a little air under its icons. It is a constant
-       rather than a measurement on purpose: the shell exposes no stable selector
-       for the header (searched: the plugin only ever probes [class*="sidebarCol"],
-       [class*="_title_"] and aria-label="账号菜单"), and guessing one would break
-       silently the day the shell renames it. A constant fails visibly instead. */
-    const SCENE_HIT_TOP_INSET = 70
     const sceneSrcFor = (name) => ANIME_BASE + encodeURIComponent(name) + '.webm'
     /* Hover preview: one still per clip, taken from the middle of the clip and
        downscaled to 304x540 so the browser holds it in memory cheaply. They live
@@ -3063,6 +3050,12 @@ function render(t) {
         appleDone = false
       }
       const onClick = () => {
+        // 拖动侧栏 / 输入框时，指针抬起的地方可能正好落在她身上，浏览器接着
+        // 派发一次 click —— 那一下并不是「在按她」。pressedHere 由她自己的
+        // pointerdown 置位，被任何别处的 pointerdown 清零（document 捕获阶段
+        // 先于她的监听跑），所以只有真正按在她身上开始的点击才会走到下面。
+        if (!pressedHere) return
+        pressedHere = false
         // A drag that ends on her must not also fire the voice: the pointerup
         // that finishes a drag is followed by a click event.
         if (suppressClick) {
@@ -3089,6 +3082,9 @@ function render(t) {
         lastMove = clock()
       }
 
+      /** 任何一处按下都先取消「按在她身上」的记录；她自己的 onDown 会重新置位。 */
+      const onAnyDown = () => { pressedHere = false }
+
       /* ---- dragging her along the composer --------------------------- */
 
       // She can be slid left and right; the fraction is clamped to the span of
@@ -3097,9 +3093,15 @@ function render(t) {
       const DRAG_SLOP = 4
       let drag = null
       let suppressClick = false
+      /** 这一下点击是不是「按在她身上」开始的（见 onClick 的注释）。 */
+      let pressedHere = false
+      /** 换页后等她归位的那次 rAF（0 = 没有挂起的一次）。 */
+      let seekRaf = 0
 
       const onDown = (event) => {
         if (event.button !== undefined && event.button !== 0) return
+        // document 捕获阶段的 onAnyDown 已经先一步把它清零了，这里再置位。
+        pressedHere = true
         drag = {
           pointerId: event.pointerId,
           startX: event.clientX,
@@ -3155,12 +3157,31 @@ function render(t) {
       }
 
       place()
-      const timer = window.setInterval(place, 900)
+      // 换页后她留在旧位置：以前靠 0.9 秒的 setInterval 慢慢纠正，短会话里
+      // 肉眼就是一整秒的错位。改成「找不到输入框时盯住 DOM」，输入框一出现
+      // 就在下一帧归位。
+      // ⚠ 回调第一句就早退（card !== null）：有输入框时它什么都不做，所以流式
+      // 输出期间每帧的 mutation 只是一次布尔判断，不会退化成每帧扫描。
+      let seek = typeof MutationObserver === 'function'
+        ? new MutationObserver(() => {
+          if (card !== null || seekRaf !== 0 || disposed) return
+          seekRaf = requestAnimationFrame(() => {
+            seekRaf = 0
+            if (card === null && !disposed) place()
+          })
+        })
+        : null
+      if (seek !== null) {
+        try { seek.observe(document.body, { childList: true, subtree: true }) } catch (error) { seek = null }
+      }
       window.addEventListener('resize', place)
       window.addEventListener('scroll', place, true)
       document.addEventListener('pointermove', onPointerMove, true)
       document.addEventListener('keydown', onKey, true)
       document.addEventListener('click', onClickDoc, true)
+      // 捕获阶段：这一条先于她自己的 pointerdown 跑，把「这一下不是按她」
+      // 记录下来；只有她自己的 onDown 会把它重新置位。
+      document.addEventListener('pointerdown', onAnyDown, true)
       root.addEventListener('pointerenter', onEnter)
       root.addEventListener('pointerleave', onLeave)
       root.addEventListener('click', onClick)
@@ -3177,12 +3198,14 @@ function render(t) {
           peekBox.visible = false
           disposed = true
           cancelAnimationFrame(raf)
-          window.clearInterval(timer)
+          if (seek !== null) { try { seek.disconnect() } catch (error) { /* ignore */ } }
+          if (seekRaf !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(seekRaf)
           window.removeEventListener('resize', place)
           window.removeEventListener('scroll', place, true)
           document.removeEventListener('pointermove', onPointerMove, true)
           document.removeEventListener('keydown', onKey, true)
           document.removeEventListener('click', onClickDoc, true)
+          document.removeEventListener('pointerdown', onAnyDown, true)
           root.removeEventListener('pointerenter', onEnter)
           root.removeEventListener('pointerleave', onLeave)
           root.removeEventListener('click', onClick)
@@ -3206,6 +3229,9 @@ function render(t) {
      * cannot steal focus or trap the pointer. The account menu it previews is
      * left completely untouched.
      */
+    /** 账号那一行。中英两套 aria-label 都认 —— 宿主切语言时这一行不会消失。 */
+    const ACCOUNT_ROW = '[aria-label="账号菜单"], [aria-label="Account menu"]'
+
     function createProfileCard() {
       const root = document.createElement('div')
       root.id = 'holo-profile-card'
@@ -3293,10 +3319,35 @@ function render(t) {
       root.appendChild(body)
       root.appendChild(avatar)
 
+      /**
+       * 卡片的尺寸与位置**量自账号那一行**，不是写死的常量。
+       *
+       * 写死 272x153 / left 10 / bottom 74 的时候，在宽一点的窗口或英文界面下，
+       * 卡片与账号按钮的左右缘、宽度、以及它与菜单之间的间距都对不上 —— 看起来
+       * 像两件不相干的东西叠在一起。这里每次显示时现量：
+       *   宽 = 行宽（不小于 208）／ 高 = 宽 * 9:16（封面比例）／ 底边 = 行顶 + gap。
+       * 头像压住封面下沿 38px，跟着高度一起走。
+       */
+      const layout = (row, gap) => {
+        if (row === null || row === undefined) return
+        let at = null
+        try { at = row.getBoundingClientRect() } catch (error) { return }
+        if (at === null || at.width <= 0 || at.height <= 0) return
+        const width = Math.max(208, Math.round(at.width))
+        const bannerH = Math.round(width * 0.5625)
+        const vh = window.innerHeight > 0 ? window.innerHeight : at.bottom
+        root.style.left = Math.round(at.left) + 'px'
+        root.style.width = width + 'px'
+        root.style.bottom = Math.max(4, Math.round(vh - at.top + gap)) + 'px'
+        banner.style.height = bannerH + 'px'
+        avatar.style.top = (bannerH - 38) + 'px'
+      }
+
       let visible = false
       return {
-        enter(label) {
+        enter(label, row, gap) {
           if (label) name.textContent = label
+          layout(row, gap)
           if (visible) return
           visible = true
           root.style.opacity = '1'
@@ -3972,8 +4023,10 @@ function render(t) {
        *  the composer itself can shift). A one-shot placement would leave the
        *  bubble behind her. */
       let followRaf = 0
-      let lastRight = null
-      let lastBottom = null
+      /** 上一次写进 style 的四个定位值（拼成 key，变了才写）。 */
+      let lastPos = ''
+      /** 这一次是哪个控件触发的（元素或 rect）。null = 没有，走兜底位置。 */
+      let anchor = null
 
       const clearTimers = () => {
         if (hideTimer !== 0) { clearTimeout(hideTimer); hideTimer = 0 }
@@ -4006,32 +4059,103 @@ function render(t) {
         followRaf = requestAnimationFrame(follow)
       }
 
+      /**
+       * 这一屏还该不该有字幕。
+       *
+       * 三种情况一律不出现：右栏全屏（它盖住了整个会话，输入框在后面）、
+       * 有可见的 dialog（设置页等，输入框和探头仍在后面排队，气泡会浮在它上面）、
+       * 以及她开着但当前不可见（她不在，就没有「她的台词」）。
+       */
+      const onChatPage = () => {
+        if (document.documentElement.getAttribute('data-holo-right-full') === 'on') return false
+        try {
+          const dialogs = document.querySelectorAll('[role="dialog"], [aria-modal="true"]')
+          for (const d of dialogs) {
+            if (d.offsetWidth > 0 && d.offsetHeight > 0) return false
+          }
+        } catch (error) { /* ignore */ }
+        const box = typeof getPeekBox === 'function' ? getPeekBox() : null
+        if (box !== null && box !== undefined) return box.visible === true
+        // 探头被她自己关掉了：只剩「这一页有没有输入框」这条。
+        let input = null
+        try {
+          input = document.querySelector('[data-composer-input]') || document.querySelector('[role="textbox"]')
+        } catch (error) { input = null }
+        if (input === null || !input.isConnected) return false
+        return input.offsetWidth > 0 && input.offsetHeight > 0
+      }
+
+      /** 把 anchor（元素或 rect）解析成一个 rect；不可用就返回 null。 */
+      const anchorRect = () => {
+        if (anchor === null || anchor === undefined) return null
+        if (typeof Element !== 'undefined' && anchor instanceof Element) {
+          if (!anchor.isConnected) return null
+          let r = null
+          try { r = anchor.getBoundingClientRect() } catch (error) { return null }
+          return r !== null && (r.width > 0 || r.height > 0) ? r : null
+        }
+        if (Number.isFinite(anchor.left) && Number.isFinite(anchor.top)) {
+          const w = anchor.width || 0
+          const h = anchor.height || 0
+          return { left: anchor.left, top: anchor.top, right: anchor.left + w, bottom: anchor.top + h, width: w, height: h }
+        }
+        return null
+      }
+
+      /** 四个定位值成对写：没用到的那一对必须显式清成 auto，否则会打架。 */
+      const put = (pos) => {
+        const key = pos.left + '|' + pos.right + '|' + pos.top + '|' + pos.bottom
+        if (key === lastPos) return
+        lastPos = key
+        root.style.left = pos.left
+        root.style.right = pos.right
+        root.style.top = pos.top
+        root.style.bottom = pos.bottom
+      }
+
+      /**
+       * 字幕放在哪儿，按优先级：
+       *  1. 她在屏幕上 ⇒ 她右肩上方（说话的是她）；
+       *  2. 她不在 / 被她关掉 ⇒ 贴着**触发这一句的那个控件**：控件在左半边就放右边，
+       *     否则放它下面（下面装不下就放上面）；
+       *  3. 两样都没有 ⇒ 窗口顶部中央的一条。
+       */
       const place = () => {
         const box = typeof getPeekBox === 'function' ? getPeekBox() : null
         const vw = window.innerWidth
         const vh = window.innerHeight
-        // Default: above the composer's right shoulder, used when she is not
-        // on screen (the peeker hides itself when there is no composer).
-        let anchorRight = vw - 40
-        let anchorBottom = 150
+        const maxW = Math.max(160, Math.min(320, vw - 80))
+        root.style.maxWidth = maxW + 'px'
+        const px = (n) => Math.round(n) + 'px'
         if (box !== null && box.visible) {
-          anchorRight = vw - (box.left + box.width)
-          anchorBottom = vh - box.top + 10
+          put({
+            left: 'auto',
+            right: px(Math.max(12, vw - (box.left + box.width))),
+            top: 'auto',
+            bottom: px(Math.max(12, vh - box.top + 10)),
+          })
+          return
         }
-        const right = Math.max(12, Math.round(anchorRight))
-        const bottom = Math.max(12, Math.round(anchorBottom))
-        // Write only on change: this now runs every frame while visible, and a
-        // redundant style write would keep invalidating layout for nothing.
-        if (right !== lastRight) {
-          root.style.right = right + 'px'
-          lastRight = right
+        const at = anchorRect()
+        if (at !== null) {
+          const h = root.offsetHeight || 48
+          const w = root.offsetWidth || maxW
+          // 控件在左半边、右边又装得下 ⇒ 放它右侧（侧栏项、便笺徽章都走这条）。
+          if (at.left < vw / 2 && at.right + 12 + w <= vw - 12) {
+            const top = Math.min(Math.max(16, at.top + at.height / 2 - h / 2), vh - h - 12)
+            put({ left: px(at.right + 12), right: 'auto', top: px(top), bottom: 'auto' })
+            return
+          }
+          const right = Math.max(12, vw - at.right)
+          if (at.bottom + 10 + h <= vh - 12) {
+            put({ left: 'auto', right: px(right), top: px(at.bottom + 10), bottom: 'auto' })
+          } else {
+            put({ left: 'auto', right: px(right), top: 'auto', bottom: px(Math.max(12, vh - at.top + 10)) })
+          }
+          return
         }
-        if (bottom !== lastBottom) {
-          root.style.bottom = bottom + 'px'
-          lastBottom = bottom
-        }
-        // Never let it run off the left edge on a narrow window.
-        root.style.maxWidth = Math.max(160, Math.min(320, vw - 80)) + 'px'
+        const w = root.offsetWidth || maxW
+        put({ left: px(Math.max(12, (vw - w) / 2)), right: 'auto', top: '64px', bottom: 'auto' })
       }
 
       const hideNow = () => {
@@ -4041,12 +4165,21 @@ function render(t) {
       }
 
       /** Show a line, then hold, then fade. Returns immediately. */
-      const show = (zh, holdMs) => {
+      const show = (zh, holdMs, from) => {
         if (disposed) return
+        // 不在「对话页」就整条不出：对话框 / 全屏右栏 / 她不可见三种情况。
+        // 已经有一条挂着的那就让它下去 —— 切页时字幕要跟着收，而不是留在屏上。
+        if (!onChatPage()) {
+          if (isUp()) hideNow()
+          return
+        }
         clearTimers()
         line.textContent = zh
-        lastRight = null
-        lastBottom = null
+        anchor = from === undefined ? null : from
+        lastPos = ''
+        // 先把文字放上去再量位置：贴着控件放需要气泡自己的尺寸，
+        // 而 display:none 的盒子量出来是 0（见 CSS 里 [data-holo-voice-state] 那段）。
+        root.setAttribute('data-holo-voice-state', 'shown')
         place()
         root.setAttribute('data-holo-voice-state', 'shown')
         startFollow()
@@ -4125,12 +4258,15 @@ function render(t) {
         return VOICE_BUBBLE_HOLD_MS
       }
 
-      /** Caption a line whose audio is played by someone else. */
-      const announce = (trigger) => {
+      /**
+       * Caption a line whose audio is played by someone else.
+       * `from` 是触发这一句的控件（元素或 rect）—— 她不在屏上时，气泡贴着它放。
+       */
+      const announce = (trigger, from) => {
         if (disposed) return
         const cue = byTrigger.get(trigger)
         if (cue === undefined) return
-        bubble.show(cue.zh, holdFor(cue, null))
+        bubble.show(cue.zh, holdFor(cue, null), from)
       }
 
       const playerFor = (cue) => {
@@ -4215,8 +4351,10 @@ function render(t) {
         const target = event.target
         if (!(target instanceof Element)) return
         if (typeof target.closest !== 'function') return
-        if (target.closest('.dshwv-body') === null) return
-        announce('whale')
+        const whale = target.closest('.dshwv-body')
+        if (whale === null) return
+        // 锚在她自己身上：探头关掉时气泡贴着这只鲸鱼，而不是飘到窗口中央。
+        announce('whale', whale)
       }
       document.addEventListener('pointerdown', onWhalePress, true)
 
@@ -4763,8 +4901,11 @@ function render(t) {
           const started = plannerVoice.play()
           if (started !== undefined && typeof started.catch === 'function') started.catch(() => {})
         } catch (error) { /* 音频不可用也不能影响打开面板 */ }
-        if (typeof announce === 'function') announce('planner')
+        // 先开面板、再报台词：徽章在面板打开时会隐藏，气泡要锚在接替它位置的
+        // 那个面板上 —— 锚一个正在隐藏的节点，下一帧就量不到尺寸、气泡会掉回
+        // 窗口中央。
         setPlannerOpen(true)
+        if (typeof announce === 'function') announce('planner', panel)
       }
 
       badge.addEventListener('pointerdown', onDown)
@@ -5101,10 +5242,10 @@ function render(t) {
       const accountRow = () => {
         const column = findColumn()
         if (column !== null) {
-          const inside = column.querySelector('[aria-label="账号菜单"]')
+          const inside = column.querySelector(ACCOUNT_ROW)
           if (inside !== null) return inside
         }
-        return document.querySelector('[aria-label="账号菜单"]')
+        return document.querySelector(ACCOUNT_ROW)
       }
 
       const place = () => {
@@ -5267,25 +5408,50 @@ function render(t) {
       document.body.appendChild(root)
 
       // ---- click target for her line -------------------------------------
-      // A SEPARATE layer, not a child of #holo-scene. #holo-scene is
-      // z-index:-1, and a negative-z layer sits below its container's
-      // background: a child with pointer-events:auto inside it still never
-      // receives a click. So the hit band lives on its own, above the content,
-      // and only where the plate's artwork is.
+      // **没有元素了。** 命中区现在只是一个矩形（band）+ 一次坐标比较。
+      // 为什么不再用透明层：那一层会连同宿主控件一起吃掉点击 —— 右栏的标签栏
+      // 与分屏 / 全屏 / 关闭按钮都在它下面。靠「内缩一点」只能躲开按下时知道的
+      // 那几颗按钮，右栏一换内容就复发。改成坐标判定后，命中的是自己的控件就
+      // 直接放行（INTERACTIVE），宿主的按钮永远不会输。
       //
       // Shape: a fixed proportion of the plate (top 62%), NOT traced around
       // her — the six standby clips are swappable and she stands differently in
       // each, so a silhouette would miss on most of them.
-      const hit = document.createElement('div')
-      hit.id = 'holo-scene-hit'
-      hit.setAttribute('aria-hidden', 'true')
-      hit.style.display = 'none'
-      document.body.appendChild(hit)
+      const band = { left: 0, top: 0, width: 0, height: 0, live: false }
+      /** 点在这些上一律不算「点她」：宿主的控件，以及本插件自己的浮层。 */
+      const INTERACTIVE = 'button, a[href], input, textarea, select, label, summary, '
+        + '[role="button"], [role="tab"], [role="menuitem"], [role="option"], [role="link"], '
+        + '[contenteditable=""], [contenteditable="true"], [data-sidebar-right-guide-entry], '
+        + '[data-holo-planner], [data-holo-voice-bubble], #holo-peek'
+      const inBand = (x, y) => band.live
+        && x >= band.left && x <= band.left + band.width
+        && y >= band.top && y <= band.top + band.height
+      const plainTarget = (target) => {
+        if (typeof Element === 'undefined' || !(target instanceof Element)) return true
+        try { return target.closest(INTERACTIVE) === null } catch (error) { return true }
+      }
+      let hovering = false
+      const setHover = (on) => {
+        if (on === hovering) return
+        hovering = on
+        const html = document.documentElement
+        try {
+          if (on) html.setAttribute('data-holo-scene-hover', 'on')
+          else html.removeAttribute('data-holo-scene-hover')
+        } catch (error) { /* ignore */ }
+      }
+      /** 旧调用点的兼容壳：place() 只往 band 里写数，sync / enter / leave 只翻 live。 */
+      const hit = {
+        show(on) {
+          band.live = Boolean(on) && band.width > 0 && band.height > 0
+          if (!band.live) setHover(false)
+        },
+      }
 
       /** Her line for this plate. One element, rewound per tap. */
       let sceneVoice = null
 
-      const speak = () => {
+      const speak = (at) => {
         try {
           if (sceneVoice === null) {
             sceneVoice = new Audio(SCENE_VOICE_SRC)
@@ -5296,7 +5462,9 @@ function render(t) {
           const started = sceneVoice.play()
           if (started !== undefined && started.catch === 'function') started.catch(() => {})
         } catch (error) { /* audio unavailable: the caption still shows */ }
-        if (typeof announce === 'function') announce('scene')
+        // 锚在点击位置（一个 2x2 的小方块）：她站在画面里时气泡仍在她肩上，
+        // 探头关掉时贴着点下去的那一处。
+        if (typeof announce === 'function') announce('scene', at)
       }
 
       /**
@@ -5321,8 +5489,17 @@ function render(t) {
         }
       }
 
-      const onHit = () => {
-        // Belt and braces: sync() already hides the band while a modal is up, but
+      const onHit = (event) => {
+        if (event.button !== undefined && event.button !== 0) return
+        if (!inBand(event.clientX, event.clientY)) return
+        // 命中的是控件 ⇒ 这一下不是点她（宿主的标签栏 / 分屏 / 全屏 / 关闭都在这里赢）。
+        if (!plainTarget(event.target)) return
+        // 拖选文字结束时也会派发 click，那一下同样不是点她。
+        try {
+          const sel = typeof window.getSelection === 'function' ? window.getSelection() : null
+          if (sel !== null && !sel.isCollapsed && String(sel).trim() !== '') return
+        } catch (error) { /* ignore */ }
+        // Belt and braces: sync() already drops the band while a modal is up, but
         // a click landing in the same frame would otherwise still get through.
         if (modalOpen()) return
         let stillOpen = false
@@ -5331,9 +5508,17 @@ function render(t) {
         } catch (error) {
           stillOpen = false
         }
-        if (stillOpen) speak()
+        if (stillOpen) speak({ left: event.clientX - 1, top: event.clientY - 1, width: 2, height: 2 })
       }
-      hit.addEventListener('click', onHit)
+      // Capture phase: the right column's own handlers may stop a click before it
+      // bubbles up to the document, and a bubbling listener would then never hear
+      // the tap. Nothing is stopped or prevented here, so the host still gets every
+      // click it was going to get.
+      document.addEventListener('click', onHit, true)
+      const onHover = (event) => {
+        setHover(inBand(event.clientX, event.clientY) && plainTarget(event.target))
+      }
+      document.addEventListener('pointermove', onHover, { passive: true })
 
       let video = null
       let on = false
@@ -5490,13 +5675,13 @@ function render(t) {
         const col = findColumn()
         if (col === null) {
           clip.style.width = '0px'
-          hit.style.display = 'none'
+          hit.show(false)
           return false
         }
         const box = col.getBoundingClientRect()
         if (box.width <= 0) {
           clip.style.width = '0px'
-          hit.style.display = 'none'
+          hit.show(false)
           return false
         }
         // Cap the slice at the plate's own width and re-centre it inside the
@@ -5511,16 +5696,15 @@ function render(t) {
         // Mirror the same rectangle onto the hit band. The band keeps the
         // plate's own 608x1080 proportion, so it covers the same part of the
         // artwork whatever the column width is.
-        hit.style.left = Math.round(box.left + (box.width - plate) / 2) + 'px'
-        hit.style.width = plate + 'px'
-        // The band starts SCENE_HIT_TOP_INSET below the column's top (see the
-        // constant for why), and its height is measured from there, so the two
-        // edges move together: the band keeps its bottom and only gives up the
-        // header row.
-        const columnTop = Math.round(box.top)
-        const top = columnTop + SCENE_HIT_TOP_INSET
-        hit.style.top = top + 'px'
-        let height = Math.round(plate * (1080 / 608) * 0.62) - SCENE_HIT_TOP_INSET
+        band.left = Math.round(box.left + (box.width - plate) / 2)
+        band.width = plate
+        // The band is the whole plate now. It used to start a constant distance
+        // below the column's top to keep off the header row; that is not needed
+        // any more, because a hit that lands on a control is ignored outright
+        // (see plainTarget) instead of being avoided by geometry.
+        const top = Math.round(box.top)
+        band.top = top
+        let height = Math.round(plate * (1080 / 608) * 0.62)
         // Never reach into the quick-action cards. Their top edge is measured
         // live (see guideEntryTop) because the shell centres them vertically and
         // they shuffle as the window resizes. A 6px gap keeps the band off the
@@ -5528,8 +5712,7 @@ function render(t) {
         // on whichever of the two sits on top.
         const entryTop = guideEntryTop()
         if (entryTop !== null) {
-          // Measured from the band's own top, not the column's: the band starts
-          // SCENE_HIT_TOP_INSET lower, so the room below it is that much shorter.
+          // Measured from the band's own top, which is the column's top now.
           const room = Math.round(entryTop - top) - 6
           if (room < height) height = room
         }
@@ -5538,7 +5721,7 @@ function render(t) {
         // is 0: place() must not leave a stale taller value behind, because the
         // caller (sync) is what decides whether the band is shown at all.
         if (height < 0) height = 0
-        hit.style.height = height + 'px'
+        band.height = height
         // Tell the caller whether there is any clickable band left, so sync can
         // keep it out of the tree entirely rather than displaying a 0-height
         // box. A zero-height element eats no clicks either way; hiding it just
@@ -5606,16 +5789,16 @@ function render(t) {
         // place() runs again once the band is displayable: the cards' own
         // positions are only final after the plate is in the tree, and the band
         // is measured against them (see guideEntryTop).
-        hit.style.display = 'block'
+        hit.show(true)
         const hasBand = place()
-        if (hasBand === false) hit.style.display = 'none'
+        if (hasBand === false) hit.show(false)
         play()
       }
 
       const leave = () => {
         if (!on) return
         on = false
-        hit.style.display = 'none'
+        hit.show(false)
         document.documentElement.removeAttribute('data-holo-scene')
         restoreFills()
         if (video !== null) {
@@ -5627,6 +5810,7 @@ function render(t) {
           video = null
         }
         clip.style.width = '0px'
+        hit.show(false)
       }
 
       // The on/off rule: the column is expanded and its own start page -- the
@@ -5641,6 +5825,11 @@ function render(t) {
         const panel = findColumn()
         if (panel === null) return false
         if (!panel.hasAttribute('data-sidebar-right-open')) return false
+        // Fullscreen: the panel is laid over the whole conversation instead of
+        // beside it. Clearing its fills there would let the conversation show
+        // through the start page, and the 608px plate sat as a cropped strip in
+        // the middle -- so the plate stays down while the column is fullscreen.
+        if (panel.getAttribute('data-sidebar-right-panel') === 'fullscreen') return false
         return findGate() !== null
       }
 
@@ -5658,13 +5847,10 @@ function render(t) {
         // right column's start page, so `show` stays true and the band kept
         // covering the lightbox -- its top-right ✕ swallowed the click and her
         // line played instead of closing the image.
-        if (hit !== null) {
-          if (show && !modalOpen()) {
-            const hasBand = place()
-            hit.style.display = hasBand === false ? 'none' : 'block'
-          } else {
-            hit.style.display = 'none'
-          }
+        if (show && !modalOpen()) {
+          hit.show(place() !== false)
+        } else {
+          hit.show(false)
         }
         if (show && !on) enter()
         else if (!show && on) leave()
@@ -5736,12 +5922,13 @@ function render(t) {
           if (raf !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf)
           if (observer !== null) observer.disconnect()
           leave()
-          hit.removeEventListener('click', onHit)
+          document.removeEventListener('click', onHit, true)
+          document.removeEventListener('pointermove', onHover)
+          setHover(false)
           if (sceneVoice !== null) {
             try { sceneVoice.pause() } catch (error) { /* ignore */ }
             sceneVoice = null
           }
-          if (hit.parentNode !== null) hit.parentNode.removeChild(hit)
           if (root.parentNode !== null) root.parentNode.removeChild(root)
         },
       }
@@ -7769,6 +7956,9 @@ function render(t) {
           if (typeof document === 'undefined') return () => {}
           const card = createProfileCard()
           document.body.appendChild(card.root)
+          // 卡片与账号那一行之间的间距。菜单那个原语自己也有一档偏移，
+          // 这里先取一个保守值，跟它保持同一档（改菜单间距时这里要跟着改）。
+          const gap = 6
           let hideTimer = 0
           const hideSoon = () => {
             clearTimeout(hideTimer)
@@ -7777,10 +7967,12 @@ function render(t) {
           const onOver = (event) => {
             const target = event.target
             if (!(target instanceof Element)) return
-            const account = target.closest('[aria-label="账号菜单"]')
+            const account = target.closest(ACCOUNT_ROW)
             if (account !== null) {
               clearTimeout(hideTimer)
-              card.enter((account.textContent || '').trim())
+              // 菜单已经展开时不要挡在它上面 —— 那会把菜单第一项盖住。
+              if (account.getAttribute('aria-expanded') === 'true') { card.leave(); return }
+              card.enter((account.textContent || '').trim(), account, gap)
               return
             }
             if (card.root.contains(target)) clearTimeout(hideTimer)
@@ -7788,7 +7980,7 @@ function render(t) {
           }
           const onDown = (event) => {
             const target = event.target
-            if (target instanceof Element && target.closest('[aria-label="账号菜单"]') !== null) {
+            if (target instanceof Element && target.closest(ACCOUNT_ROW) !== null) {
               clearTimeout(hideTimer)
               card.leave()
             }
@@ -7829,8 +8021,8 @@ function render(t) {
         ctx.effect(() => {
           if (typeof document === 'undefined') return () => {}
           let pad = null
-          const announce = (trigger) => {
-            if (typeof holoVoiceAnnounce === 'function') holoVoiceAnnounce(trigger)
+          const announce = (trigger, from) => {
+            if (typeof holoVoiceAnnounce === 'function') holoVoiceAnnounce(trigger, from)
           }
           try { pad = createPlanner(announce) } catch (error) { pad = null }
           if (pad === null) return () => {}
@@ -7929,8 +8121,8 @@ function render(t) {
           // registers BEFORE the voice-cue effect below, so at registration
           // time holoVoiceAnnounce is still null. The closure reads it at
           // click time, by which point it is wired.
-          const announce = (trigger) => {
-            if (typeof holoVoiceAnnounce === 'function') holoVoiceAnnounce(trigger)
+          const announce = (trigger, from) => {
+            if (typeof holoVoiceAnnounce === 'function') holoVoiceAnnounce(trigger, from)
           }
           try { scene = createScene(announce) } catch (error) { scene = null }
           if (scene === null) return () => {}
@@ -7974,7 +8166,7 @@ function render(t) {
           try { document.body.appendChild(bubble.root) } catch (error) { return () => {} }
           try { cues = createVoiceCues(bubble) } catch (error) { cues = null }
           holoVoiceAnnounce = (cues !== null && typeof cues.announce === 'function')
-            ? (trigger) => { try { cues.announce(trigger) } catch (error) { /* ignore */ } }
+            ? (trigger, from) => { try { cues.announce(trigger, from) } catch (error) { /* ignore */ } }
             : null
           return () => {
             holoVoiceAnnounce = null
