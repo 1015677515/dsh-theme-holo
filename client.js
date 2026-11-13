@@ -5809,6 +5809,10 @@ function render(t) {
     const AVATAR_VAR_ROUND = '--holo-avatar-round'
     /** 「这张图试过、加载失败」的记账属性（值 = 失败时那个 URL）：失败后按「没设置过」画内置头像。 */
     const AVATAR_IMG_FAILED = 'data-holo-avatar-imgfail'
+    /** 「这一行已经交给可见性观察器」的登记标记（避免重复 observe）。 */
+    const AVATAR_WATCHED_ATTR = 'data-holo-avatar-watched'
+    /** 未装饰的行上暂存的「该不该露脸」结论：装饰时照抄，免得等下一次分组重算。 */
+    const AVATAR_CONT_PENDING_ATTR = 'data-holo-avatar-cont-pending'
 
     /** 设置键（localStorage）。数据名与宿主路由的 side 名一致。 */
     const AVATAR_ON_KEY = 'dsh-theme-holo.avatar-on'
@@ -5999,8 +6003,12 @@ function render(t) {
      */
     function createAvatarLayer() {
       let observer = null
+      /** IntersectionObserver：只装饰进入视口的行（没有它时 sync 里退回全量装饰）。 */
+      let viewObserver = null
       let active = false
       let groupRaf = 0
+      /** 视口外提前多少像素开始装饰：滚到跟前时脸已经在那儿，不会看到「突然冒出来」。 */
+      const VIEW_MARGIN = '240px 0px'
 
       /** 开关与变量都挂在 <html> 上（与 data-holo-peek / data-holo-planner-off 同一个位置）。 */
       const htmlEl = () => (typeof document === 'undefined' ? null : document.documentElement)
@@ -6083,16 +6091,70 @@ function render(t) {
         // 用户第 2 列），插入位置不再承担左右语义。
         try { row.setAttribute(AVATAR_ROW_ATTR, side) } catch (error) { /* ignore */ }
         try { row.insertBefore(node, row.firstChild) } catch (error) { /* ignore */ }
+        // 这一行在装饰之前就可能已经被分好组了（没节点时结论存在 pending 属性里）：
+        // 直接照抄，省得等下一次 applyGrouping 再补一刀（那一下会闪）。
+        if (row.hasAttribute && row.hasAttribute(AVATAR_CONT_PENDING_ATTR)) {
+          try { node.classList.add(AVATAR_CONT_CLASS) } catch (error) { /* ignore */ }
+          if (side === 'ai') { try { row.setAttribute(AVATAR_CONT_ROW_ATTR, '') } catch (error) { /* ignore */ } }
+          // 用掉即抹：这一行的分组结论从此由 applyGrouping 直接写在节点上。
+          try { row.removeAttribute(AVATAR_CONT_PENDING_ATTR) } catch (error) { /* ignore */ }
+        }
         return true
       }
 
-      /** 扫一遍全文档，把还没补过的消息行补上（观察者只管新插入的，这一条管「已经在了的」）。 */
-      function sweep() {
+      /**
+       * 把一行交给可见性观察器（**只登记，不装饰**）。
+       *
+       * 这一步是「只处理可见行」的全部秘密：整份会话一次性装饰时，打开一个
+       * 几百条消息的会话就是几百次「建节点 + 插入 + 行改两列 grid」，全部落在
+       * 同一个同步任务里 —— 那是秒级的主线程占用，表现就是整页点不动。
+       * 改成登记之后，同一个任务里只有 N 次 observe()（不碰 DOM 结构），
+       * 真正建节点的只有当前屏上那几十行。
+       */
+      function watchRow(row) {
+        if (!viewObserver || !row) return
+        try {
+          if (row.getAttribute(AVATAR_WATCHED_ATTR) === '1') return
+          row.setAttribute(AVATAR_WATCHED_ATTR, '1')
+          viewObserver.observe(row)
+        } catch (error) { /* ignore */ }
+      }
+
+      /** 扫一遍文档，把所有消息行登记给观察器（不装饰）。 */
+      function watchAll() {
         if (typeof document.querySelectorAll !== 'function') return
         let rows
         try { rows = document.querySelectorAll(AVATAR_ROW_SELECTOR) } catch (error) { return }
-        for (const row of rows) decorateRow(row)
-        applyGrouping()
+        for (const row of rows) watchRow(row)
+      }
+
+      /**
+       * 观察器回调：只装饰**进入视口**（含 240px 提前量）的行。
+       *
+       * 装饰完立刻 unobserve：这一行之后不需要再被观察（节点已经在了）。
+       * 设置变化走 refreshDecorated() 就地更新，不依赖观察器。
+       */
+      function onIntersect(entries) {
+        if (!active) return
+        let decorated = false
+        for (const entry of entries) {
+          if (!entry || !entry.isIntersecting) continue
+          const row = entry.target
+          if (decorateRow(row)) decorated = true
+          try { viewObserver.unobserve(row) } catch (error) { /* ignore */ }
+        }
+        if (decorated) scheduleGrouping()
+      }
+
+      /** 设置变了：把**已经装饰过**的节点就地更新（换图 / 换尺寸都走这条）。 */
+      function refreshDecorated() {
+        if (typeof document.querySelectorAll !== 'function') return
+        let nodes
+        try { nodes = document.querySelectorAll('[' + AVATAR_NODE_ATTR + ']') } catch (error) { return }
+        for (const node of nodes) {
+          const side = node.getAttribute(AVATAR_NODE_ATTR)
+          if (side) fillNode(node, side)
+        }
       }
 
       /**
@@ -6155,11 +6217,10 @@ function render(t) {
           }
           const side = AVATAR_FLOW_SIDES[row.getAttribute('data-chat-flow-kind')]
           const hidden = rowHidden(row)
-          const node = nodeOf(row)
-          // 没头像节点的行（工具调用、回合头等不属于 AVATAR_FLOW_SIDES 的条目）：
-          // 看得见就计一条可见流内容，但不消耗 aiFacePending —— 否则额度会被
-          // 不是「好友消息」的行花掉。
-          if (!side || !node) {
+          // ⚠ 分组**按行算，不按节点算**。视口外那些还没装饰的行同样是「好友发的
+          // 消息」：跳过它们会让「连续同侧」断在错误的位置 —— 用户侧第二条已经
+          // 装饰、第一条还没装饰时，那条就会被误判成段首而多贴一张脸。
+          if (!side) {
             prevSide = ''
             if (!hidden) aiSince += 1
             continue
@@ -6178,9 +6239,26 @@ function render(t) {
             aiFacePending = true
             aiSince = 0
           }
+          const node = nodeOf(row)
+          if (!node) {
+            // 还没装饰：把结论存在行上，decorateRow 建节点时直接照抄 ——
+            // 否则这一行的「该不该露脸」要等下一次分组重算才补上（中间会闪一下）。
+            try {
+              if (cont) row.setAttribute(AVATAR_CONT_PENDING_ATTR, '')
+              else if (row.hasAttribute(AVATAR_CONT_PENDING_ATTR)) row.removeAttribute(AVATAR_CONT_PENDING_ATTR)
+            } catch (error) { /* ignore */ }
+            continue
+          }
           if (typeof node.classList.toggle === 'function') {
             try { node.classList.toggle(AVATAR_CONT_CLASS, cont) } catch (error) { /* ignore */ }
           }
+          // 这一行已经有节点 ⇒ 行上那个 pending 结论已经用掉了，抹掉它。
+          // 不抹的话，将来这一行重建节点（kind 变了 / 被别处摘掉）会读到上一轮的旧值。
+          try {
+            if (row.hasAttribute && row.hasAttribute(AVATAR_CONT_PENDING_ATTR)) {
+              row.removeAttribute(AVATAR_CONT_PENDING_ATTR)
+            }
+          } catch (error) { /* ignore */ }
           // 助手续行：把行退化成单列（头像仍留在 DOM 里、只是不可见），正文不再被空列顶到右边。
           try {
             if (cont && side === 'ai') row.setAttribute(AVATAR_CONT_ROW_ATTR, '')
@@ -6206,17 +6284,17 @@ function render(t) {
        * 观察者的回调。两类：
        *   ① **属性变化**（只订 hidden / 折叠标记 / 行种类 / 回合号）：宿主展开或
        *      收起过程窗口时「哪条助手行可见」会变 ⇒ 只需要重算分组（不重建节点）；
-       *   ② 新增元素：新增的**消息行** ⇒ 补头像；其余新增元素如果已经在装饰过的
-       *      行里就直接放行 —— 流式输出期间消息内部每帧都在插节点，这一级早退把
-       *      开销钉在「每个新增元素一次 closest」上。
+       *   ② 新增元素：新增的**消息行** ⇒ 交给可见性观察器，**不在这里建节点**。
+       *      新行若已在视口内，观察器下一帧就会回调它 —— 延迟一帧，换来的是
+       *      流式输出期间「每插一行就建一次节点」彻底消失。
+       *      其余新增元素如果已经在登记过的行里就直接放行。
        */
       function onMutations(records) {
         if (!active) return
-        let decorated = false
-        let regroup = false
+        let touched = false
         for (const r of records) {
           if (r.type === 'attributes') {
-            regroup = true
+            touched = true
             continue
           }
           const added = r.addedNodes
@@ -6225,26 +6303,32 @@ function render(t) {
             if (!n || n.nodeType !== 1) continue
             try {
               if (n.matches && n.matches(AVATAR_ROW_SELECTOR)) {
-                if (decorateRow(n)) decorated = true
+                watchRow(n)
+                touched = true
                 continue
               }
-              if (n.closest && n.closest('[' + AVATAR_ROW_ATTR + ']')) continue
+              // 已经在登记过（或装饰过）的行里 ⇒ 不用管。
+              if (n.closest && n.closest('[' + AVATAR_WATCHED_ATTR + ']')) continue
               const inner = n.querySelectorAll ? n.querySelectorAll(AVATAR_ROW_SELECTOR) : []
-              for (const row of inner) { if (decorateRow(row)) decorated = true }
+              for (const row of inner) { watchRow(row); touched = true }
             } catch (error) { /* ignore */ }
           }
         }
-        // 补了新行 ⇒ 分组可能变了（新行算不算「续行」取决于它前面那条）；
+        // 新行可能属于某个已装饰行的连续段 ⇒ 分组要重算；
         // 属性变化（折叠 / 展开）会让「当前可见的第一条助手行」换人 ⇒ 同样重算。
-        if (decorated || regroup) scheduleGrouping()
+        if (touched) scheduleGrouping()
       }
 
-      /** 全部收掉：摘节点、抹行标记、撤 html 属性与两个变量、断观察者。 */
+      /** 全部收掉：摘节点、抹行标记与登记标记、撤 html 属性与两个变量、断两个观察者。 */
       function stop() {
         active = false
         if (observer) {
           try { observer.disconnect() } catch (error) { /* ignore */ }
           observer = null
+        }
+        if (viewObserver) {
+          try { viewObserver.disconnect() } catch (error) { /* ignore */ }
+          viewObserver = null
         }
         // 挂起的分组重算要取消：它不属于 fiber，留着会在卸载后再扫一次 DOM。
         if (groupRaf) {
@@ -6261,11 +6345,21 @@ function render(t) {
         let nodes = []
         try { nodes = document.querySelectorAll('[' + AVATAR_NODE_ATTR + ']') } catch (error) { /* ignore */ }
         for (const n of nodes) { try { n.remove() } catch (error) { /* ignore */ } }
+        // 已装饰的行：抹行标记与续行标记。
         let rows = []
         try { rows = document.querySelectorAll('[' + AVATAR_ROW_ATTR + ']') } catch (error) { /* ignore */ }
         for (const row of rows) {
           try { row.removeAttribute(AVATAR_ROW_ATTR) } catch (error) { /* ignore */ }
           try { row.removeAttribute(AVATAR_CONT_ROW_ATTR) } catch (error) { /* ignore */ }
+        }
+        // ⚠ 还要抹**所有登记过**的行：视口外那些只被 observe、没被装饰，
+        // 它们身上只有 watched / pending 两个标记。漏掉这一轮，下次开开关时
+        // 「已经登记过」的判定会把它们全部跳过 ⇒ 永远不装饰。
+        let watched = []
+        try { watched = document.querySelectorAll('[' + AVATAR_WATCHED_ATTR + ']') } catch (error) { /* ignore */ }
+        for (const row of watched) {
+          try { row.removeAttribute(AVATAR_WATCHED_ATTR) } catch (error) { /* ignore */ }
+          try { row.removeAttribute(AVATAR_CONT_PENDING_ATTR) } catch (error) { /* ignore */ }
         }
       }
 
@@ -6304,8 +6398,28 @@ function render(t) {
             })
           } catch (error) { observer = null }
         }
+        if (!viewObserver && typeof IntersectionObserver === 'function') {
+          try {
+            // rootMargin 给 240px：滚到跟前时脸已经在那儿，不会看到「突然冒出来」。
+            // threshold 0 = 露出一个像素就算进场；用 240px 的提前量弥补它。
+            viewObserver = new IntersectionObserver(onIntersect, { rootMargin: VIEW_MARGIN, threshold: 0 })
+          } catch (error) { viewObserver = null }
+        }
         active = true
-        sweep()
+        if (!viewObserver) {
+          // 没有 IntersectionObserver 的环境（老浏览器 / 无头沙箱）退回旧的
+          // 全量装饰：慢，但功能不缺 —— 宁可这样，也不要「什么都不显示」。
+          let rows
+          try { rows = document.querySelectorAll(AVATAR_ROW_SELECTOR) } catch (error) { rows = [] }
+          for (const row of rows) decorateRow(row)
+          applyGrouping()
+          return
+        }
+        // 只登记，不装饰。真正的 DOM 工作留给观察器在「这一行进视口」时做。
+        watchAll()
+        // 已经装饰过的节点还要就地更新（换图 / 改尺寸走这条）。
+        refreshDecorated()
+        applyGrouping()
       }
 
       return {
