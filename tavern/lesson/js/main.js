@@ -10,7 +10,7 @@ import { preloadItemImages } from './icons.js';
 import { loadHolo, animateHolo, bend, setExpr } from './holo.js';
 import { HAPPY_PRESETS } from './face.js';
 import { INTRO, SHELF_HINT, AFTER_EACH, FINALE, ITEMS,
-         MEMORY_OFFER, MEMORY_CH1, MEMORY_AFTER, TABLE_OFFER } from './story.js';
+         MEMORY_OFFER, MEMORY_CH1, MEMORY_AFTER, MEMORY_CHAPTERS, TABLE_OFFER } from './story.js';
 import { createVoice } from './voice.js';
 import { createHolo2D } from './holo2d.js';
 import { mountHolo2DTuner } from './holo2d_tune.js';
@@ -248,7 +248,7 @@ const memPlaceholder = document.getElementById('memPlaceholder');
    main.js 里 import('./stage_v2.js') 是动态 import，两者都不带版本号。
    浏览器按 URL 缓存模块，URL 不变就一直用旧的。
    ─────────────────────────────────────────── */
-const BUILD = 11;
+const BUILD = 12;   // 12: 回忆模式改用完整舞台剧（stage_full.js）
 
 /** 给同目录的模块/样式拼上版本号（动态 import 和 <link> 都用它） */
 const ver = (path) => path + '?v=' + BUILD;
@@ -293,9 +293,9 @@ function ensureStage() {
     if (!memStage) return null;
     try {
       // 动态 import 也要带版本号，否则模块缓存会让改动完全不生效
-      const mod = await import(ver('./stage_v2.js'));
+      const mod = await import(ver('./stage_full.js'));
       if (typeof mod.createStage !== 'function') {
-        throw new Error('stage_v2.js 没有导出 createStage');
+        throw new Error('stage_full.js 没有导出 createStage');
       }
       stage = mod.createStage(memStage, {
         onError: (e) => {
@@ -332,6 +332,7 @@ function stageShot(i) {
 /** 停舞台（离开回忆模式时调用） */
 function stopStage() {
   if (!stage) return;
+  if (stage.stopPlayback) stage.stopPlayback();
   stage.hide();
 }
 
@@ -564,9 +565,36 @@ async function startMemory() {
   dlg.clear();
   resetExpr();
   setHud('');
-  setNav('');
-  dlg.show();
+  setNav('‹ 跳过');
+  dlg.hide();                 // 成片自带字幕，酒馆对话框先收起
+  /* ★ 必须自己点亮回忆层：原来这一步由剧本节点的 fx:'memOn' 做，
+     我们跳过整段剧本后如果不调 setMemory(true)，.memory 的 opacity 一直是 0，
+     表现就是「点了听故事什么都没有」（踩过）。 */
+  setMemory(true, (MEMORY_CHAPTERS[0] && MEMORY_CHAPTERS[0].name) || '第一章');
+  setView('memory');
 
+  /* ── 成片模式（2026-11-13 用户定）──────────────────────────────
+     回忆模式直接播完整舞台剧（96 拍 / 338 秒），
+     舞台自带字幕、配音、音效；酒馆这边不再逐句驱动。
+     若舞台初始化失败，退回原来的文字版（MEMORY_CH1），不至于卡死。 */
+  if (stage || await ensureStage()) {
+    try {
+      await stage.playAll();
+    } catch (e) {
+      console.warn('[memory] 成片播放异常:', e);
+    }
+    setNav('');
+    dlg.show();
+    const b = await runScene(MEMORY_AFTER, {});
+    if (b) { await goto(b); return; }
+    dlg.hide();
+    await enterShelf();
+    return;
+  }
+
+  /* 回退：老的文字版 */
+  dlg.show();
+  setNav('');
   const a = await runScene(MEMORY_CH1, {});
   if (a) { await goto(a); return; }
   // MEMORY_AFTER 只有收尾画面，没有选择支 ——
@@ -604,7 +632,8 @@ function setNav(label) {
 
 navBtn.addEventListener('click', (e) => {
   e.stopPropagation();
-  if (state === 'shelf') goTable();
+  if (state === 'memory') { if (stage && stage.stopPlayback) stage.stopPlayback(); }
+  else if (state === 'shelf') goTable();
   else if (state === 'table') goShelf();
 });
 
@@ -928,3 +957,12 @@ window.__dbg = {
     return true;
   },
 };
+/* 调试钩子：控制台可直接 __tav.startMemory() / __tav.stage，便于排查
+   （无头环境里开场打字机+配音会卡住，走这条路能直接验回忆模式） */
+window.__tav = {
+  startMemory,
+  get stage() { return stage; },
+  get state() { return state; },
+  get memoryOn() { return !!(memEl && memEl.classList.contains('on')); },
+};
+

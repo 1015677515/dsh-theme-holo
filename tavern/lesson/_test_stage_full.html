@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>stage_full 冒烟测试</title>
+<style>
+  body { margin:0; background:#0a0805; color:#ccc; font:13px/1.5 system-ui; }
+  #box { width: 52vw; aspect-ratio: 16/9; margin: 24px auto; position: relative;
+         border:1px solid rgba(207,168,99,.28); border-radius:10px; overflow:hidden;
+         background:#000; }
+  #log { position: fixed; left: 8px; top: 8px; white-space: pre; font-size: 11px;
+         color:#8fd18f; pointer-events:none; }
+</style>
+</head>
+<body>
+<div id="box"></div>
+<div id="log"></div>
+<script type="module">
+import { createStage, SHOT_BEATS } from './js/stage_full.js';
+
+const logEl = document.getElementById('log');
+const log = (s) => { logEl.textContent += s + '\n'; };
+window.__errors = [];
+window.addEventListener('error', (e) => window.__errors.push(String(e.message)));
+
+(async () => {
+  try {
+    const stage = createStage(document.getElementById('box'), {
+      onError: (e) => { window.__errors.push('stage onError: ' + (e && e.message)); },
+    });
+    window.__stage = stage;
+    await stage.ready;
+    log('ready  shotCount=' + stage.shotCount);
+    window.__ready = true;
+
+    for (let i = 0; i < stage.shotCount; i++) {
+      await stage.gotoShot(i, true);
+      log('shot ' + i + ' -> beat ' + SHOT_BEATS[i] + '  ok');
+    }
+    window.__done = true;
+    log('ALL OK');
+  } catch (e) {
+    window.__errors.push('boot: ' + (e && (e.stack || e.message)));
+    log('FAIL ' + (e && e.message));
+    window.__done = true;
+  }
+})();
+</script>
+</body>
+</html>
