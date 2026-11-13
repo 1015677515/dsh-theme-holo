@@ -16,7 +16,7 @@
  * ⚠ §4.3 的坑：动态 import 必须带版本号，见 BUILD。
  */
 
-const BUILD = 1;          // 改本文件 / 改引擎 / 改剧本都要 +1
+const BUILD = 2;          // 改本文件 / 改引擎 / 改剧本都要 +1
 const ASSET_VER = 1;      // 只换素材时改这个（scenes_tav.js 里读 window.__TAV_ASSET_VER）
 
 /* 12 个 shot → 完整舞台剧的拍索引（0..95）
@@ -73,6 +73,8 @@ export function createStage(rootEl, opts = {}) {
   let curBeat = -1;
   let disposed = false;
   let playing = false;
+  let playToken = 0;
+  let bar = null;   // 打断令牌：seek/stop 时 +1，正在跑的循环自行退出
 
   const api = {
     ready: null,
@@ -118,47 +120,160 @@ export function createStage(rootEl, opts = {}) {
       api.shot = idx;
     },
 
-    /** 整片顺序播放（成片模式）。返回 Promise，播完 resolve。 */
+    /** 整片顺序播放（成片模式）。返回 Promise，播完 resolve。
+     *  opts.resumeFrom：从第几拍开始（跳转后续播用）
+     *  opts.onBeat(k, total)、opts.onProgress(ratio) */
     async playAll(opts = {}) {
       if (!S || disposed) return;
-      const { onBeat } = opts;
+      const { onBeat, onProgress, resumeFrom = 0 } = opts;
+      const my = ++playToken;
       S.fast = false;
       S.muted = false;
-      S.clearAll();
-      S.resetCurtain();
-      curBeat = -1;
       playing = true;
       try {
-        for (let k = 0; k < beats.length && playing && !disposed; k++) {
+        for (let k = resumeFrom; k < beats.length; k++) {
+          if (my !== playToken || disposed) return;     // 被 seek / stop 打断
           const tok = S.bump();
           await beats[k].run(tok);
           curBeat = k;
           if (onBeat) onBeat(k, beats.length);
+          if (onProgress) onProgress((k + 1) / beats.length);
         }
       } catch (e) {
         if (String(e && e.message) !== 'stale') console.warn('[stage_full] 播放中断:', e);
       } finally {
-        playing = false;
+        if (my === playToken) playing = false;
       }
+    },
+
+    /** 跳到第 n 拍并继续播放（进度条拖动用） */
+    async seekBeat(n) {
+      if (!S || disposed) return;
+      const target = Math.max(0, Math.min(beats.length - 1, n | 0));
+      playToken++;                     // 打断正在跑的 playAll
+      try { S.bump(); } catch (e) { /* ignore */ }
+
+      /* fast 重建到 target 的结束状态 */
+      S.fast = true;
+      try {
+        S.clearAll();
+        S.resetCurtain();
+        for (let k = 0; k <= target; k++) {
+          const tok = S.bump();
+          try { await beats[k].run(tok); } catch (e) { /* 单拍失败不阻断 */ }
+        }
+      } finally {
+        S.fast = false;
+      }
+      curBeat = target;
+      if (api.onProgress) api.onProgress((target + 1) / beats.length);
+      /* 从下一拍继续 */
+      api.playAll({ resumeFrom: target + 1, onBeat: api.onBeat, onProgress: api.onProgress });
     },
 
     /** 中途停止（跳过用） */
     stopPlayback() {
+      playToken++;
       playing = false;
       try { if (S) S.bump(); } catch (e) { /* ignore */ }
     },
 
     get playing() { return playing; },
 
+
+    /* ---------------- 进度条（可选） ---------------- */
+    /** 建一条可拖动的进度条，挂在舞台容器底部 */
+    mountProgressBar(opts = {}) {
+      if (!S || !S.wrap || bar) return bar;
+      const wrap = S.wrap;
+      const host = document.createElement('div');
+      host.style.cssText = [
+        'position:absolute', 'left:0', 'right:0', 'bottom:0', 'height:22px',
+        'display:flex', 'align-items:center', 'gap:8px', 'padding:0 10px',
+        'background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0))',
+        'z-index:120', 'cursor:pointer', 'user-select:none',
+        'font:11px/1 ui-monospace,Consolas,monospace', 'color:rgba(255,255,255,.72)',
+      ].join(';');
+
+      const track = document.createElement('div');
+      track.style.cssText = [
+        'flex:1', 'height:4px', 'border-radius:2px',
+        'background:rgba(255,255,255,.22)', 'position:relative',
+      ].join(';');
+      const fill = document.createElement('div');
+      fill.style.cssText = 'position:absolute;left:0;top:0;bottom:0;width:0%;'
+        + 'background:rgba(201,164,92,.92);border-radius:2px;';
+      const knob = document.createElement('div');
+      knob.style.cssText = 'position:absolute;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;'
+        + 'border-radius:50%;background:#e8ddc8;box-shadow:0 0 6px rgba(0,0,0,.6);left:0%;';
+      track.appendChild(fill);
+      track.appendChild(knob);
+
+      const label = document.createElement('span');
+      label.textContent = '0 / ' + (beats ? beats.length : 0);
+
+      host.appendChild(track);
+      host.appendChild(label);
+      wrap.appendChild(host);
+
+      const setRatio = (r) => {
+        const p = Math.max(0, Math.min(1, r)) * 100;
+        fill.style.width = p + '%';
+        knob.style.left = p + '%';
+      };
+      api.onProgress = (r) => {
+        setRatio(r);
+        const n = Math.round(Math.min(1, r) * (beats.length - 1)) + 1;
+        label.textContent = n + ' / ' + beats.length;
+      };
+
+      let dragging = false;
+      const ratioAt = (ev) => {
+        const b = track.getBoundingClientRect();
+        return (ev.clientX - b.left) / Math.max(1, b.width);
+      };
+      const onMove = (ev) => {
+        if (!dragging) return;
+        ev.preventDefault();
+        setRatio(ratioAt(ev));                    // 拖动时只跟手，不真的跳
+      };
+      const onUp = (ev) => {
+        if (!dragging) return;
+        dragging = false;
+        const r = ratioAt(ev);
+        const target = Math.round(r * (beats.length - 1));
+        if (opts.onSeek) opts.onSeek(target);
+        else api.seekBeat(target);
+      };
+      host.addEventListener('pointerdown', (ev) => {
+        if (ev.button !== 0) return;
+        dragging = true;
+        host.setPointerCapture && host.setPointerCapture(ev.pointerId);
+        setRatio(ratioAt(ev));
+      });
+      host.addEventListener('pointermove', onMove);
+      host.addEventListener('pointerup', onUp);
+      host.addEventListener('pointercancel', () => { dragging = false; });
+
+      bar = { host, track, fill, knob, label, setRatio };
+      return bar;
+    },
+
+    /** 显示/隐藏进度条 */
+    showProgress(on = true) { if (bar) bar.host.style.display = on ? 'flex' : 'none'; },
+
     dispose() {
       disposed = true;
       try {
         if (S) { S.bump(); S.clearAll(); }
       } catch (e) { /* ignore */ }
+      if (bar) { try { bar.host.remove(); } catch (e) {} bar = null; }
       if (rootEl) rootEl.innerHTML = '';
     },
 
     dev: { state: { get curBeat() { return curBeat; } }, SHOT_BEATS },
+    onBeat: null,
+    onProgress: null,
   };
 
   api.ready = (async () => {

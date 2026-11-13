@@ -248,7 +248,7 @@ const memPlaceholder = document.getElementById('memPlaceholder');
    main.js 里 import('./stage_v2.js') 是动态 import，两者都不带版本号。
    浏览器按 URL 缓存模块，URL 不变就一直用旧的。
    ─────────────────────────────────────────── */
-const BUILD = 12;   // 12: 回忆模式改用完整舞台剧（stage_full.js）
+const BUILD = 13;   // 12: 回忆模式改用完整舞台剧  13: 加可拖动进度条
 
 /** 给同目录的模块/样式拼上版本号（动态 import 和 <link> 都用它） */
 const ver = (path) => path + '?v=' + BUILD;
@@ -579,6 +579,9 @@ async function startMemory() {
      若舞台初始化失败，退回原来的文字版（MEMORY_CH1），不至于卡死。 */
   if (stage || await ensureStage()) {
     try {
+      /* 进度条：挂在舞台底部，可拖动跳拍 */
+      if (stage.mountProgressBar) stage.mountProgressBar();
+      if (stage.showProgress) stage.showProgress(true);
       await stage.playAll();
     } catch (e) {
       console.warn('[memory] 成片播放异常:', e);

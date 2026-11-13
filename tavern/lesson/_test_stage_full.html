@@ -30,6 +30,8 @@ window.addEventListener('error', (e) => window.__errors.push(String(e.message)))
     });
     window.__stage = stage;
     await stage.ready;
+    stage.mountProgressBar();
+    stage.showProgress(true);
     log('ready  shotCount=' + stage.shotCount);
     window.__ready = true;
 
