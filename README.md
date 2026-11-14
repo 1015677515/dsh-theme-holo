@@ -9,7 +9,7 @@
 以及只在你开始页亮着的右栏待机画面。
 
 ![license](https://img.shields.io/badge/license-MIT-c8a04a)
-![version](https://img.shields.io/badge/version-1.0.6-c8a04a)
+![version](https://img.shields.io/badge/version-1.0.8-c8a04a)
 ![node](https://img.shields.io/badge/node-%3E%3D22-c8a04a)
 ![dsh](https://img.shields.io/badge/DSH-0.2.0--rc.1%20~%200.2.x-c8a04a)
 ![platform](https://img.shields.io/badge/DSH-Web%20GUI-c8a04a)
