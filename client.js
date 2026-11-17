@@ -3065,7 +3065,8 @@ function render(t) {
         flinchUntil = clock() + 150
         burst()
         try {
-          if (localStorage.getItem(PEEK_VOICE_OFF_KEY) !== '1') {
+          // 总开关优先：它关着时连单项开关都不看。
+          if (!readVoiceOff() && localStorage.getItem(PEEK_VOICE_OFF_KEY) !== '1') {
             voice.pause()
             voice.currentTime = 0
             const started = voice.play()
@@ -3639,6 +3640,27 @@ function render(t) {
     /** 读一次字幕开关（缺 / 坏一律当「开」，与默认值一致）。 */
     function readBubbleOff() {
       try { return localStorage.getItem(BUBBLE_OFF_KEY) === '1' } catch (error) { return false }
+    }
+
+    /**
+     * **全部语音**的总开关。`1` = 全静音。
+     *
+     * 插件自己会出声的地方有三处：点探头（peeker）、点便笺徽章（planner）、
+     * 点待机画面里的她（scene）。原先只有探头那一处有单项开关（PEEK_VOICE_OFF_KEY），
+     * 另外两处没有 —— 这个总开关在三个播放点前面统一挡一道。
+     *
+     * 层级：**总开关优先于单项开关**。总开关关着时，单项开关置不置位都不出声；
+     * 总开关开着时，各项仍按自己的开关走。
+     *
+     * 已知边界：只作用于**后续**播放。点下去之后 0.9~3.6 秒的那一声会播完 ——
+     * 三个播放器各自活在自己的闭包里，要「立刻掐断」得给它们各加一条事件监听，
+     * 这一版没做。
+     */
+    const VOICE_OFF_KEY = 'dsh-theme-holo.voice-off'
+
+    /** 读一次语音总开关（缺 / 坏一律当「开」）。 */
+    function readVoiceOff() {
+      try { return localStorage.getItem(VOICE_OFF_KEY) === '1' } catch (error) { return false }
     }
 
     /**
@@ -4920,15 +4942,18 @@ function render(t) {
           return
         }
         // 点一下徽章：播一句应答，并把译文显示在气泡里（与探头同一套机制）。
+        // 总开关关着就只开面板、不出声（音频对象也懒创建，省一个解码器）。
         try {
-          if (plannerVoice === null) {
-            plannerVoice = new Audio(PLANNER_VOICE_SRC)
-            plannerVoice.preload = 'auto'
+          if (!readVoiceOff()) {
+            if (plannerVoice === null) {
+              plannerVoice = new Audio(PLANNER_VOICE_SRC)
+              plannerVoice.preload = 'auto'
+            }
+            plannerVoice.pause()
+            plannerVoice.currentTime = 0
+            const started = plannerVoice.play()
+            if (started !== undefined && typeof started.catch === 'function') started.catch(() => {})
           }
-          plannerVoice.pause()
-          plannerVoice.currentTime = 0
-          const started = plannerVoice.play()
-          if (started !== undefined && typeof started.catch === 'function') started.catch(() => {})
         } catch (error) { /* 音频不可用也不能影响打开面板 */ }
         // 先开面板、再报台词：徽章在面板打开时会隐藏，气泡要锚在接替它位置的
         // 那个面板上 —— 锚一个正在隐藏的节点，下一帧就量不到尺寸、气泡会掉回
@@ -5481,15 +5506,18 @@ function render(t) {
       let sceneVoice = null
 
       const speak = (at) => {
+        // 总开关关着就只留字幕（字幕归「台词字幕」那个开关管，与这里无关）。
         try {
-          if (sceneVoice === null) {
-            sceneVoice = new Audio(SCENE_VOICE_SRC)
-            sceneVoice.preload = 'auto'
+          if (!readVoiceOff()) {
+            if (sceneVoice === null) {
+              sceneVoice = new Audio(SCENE_VOICE_SRC)
+              sceneVoice.preload = 'auto'
+            }
+            sceneVoice.pause()
+            sceneVoice.currentTime = 0
+            const started = sceneVoice.play()
+            if (started !== undefined && started.catch === 'function') started.catch(() => {})
           }
-          sceneVoice.pause()
-          sceneVoice.currentTime = 0
-          const started = sceneVoice.play()
-          if (started !== undefined && started.catch === 'function') started.catch(() => {})
         } catch (error) { /* audio unavailable: the caption still shows */ }
         // 锚在点击位置（一个 2x2 的小方块）：她站在画面里时气泡仍在她肩上，
         // 探头关掉时贴着点下去的那一处。
@@ -7067,8 +7095,15 @@ function render(t) {
           try { return localStorage.getItem(PEEK_VOICE_OFF_KEY) === '1' } catch (err) { return false }
         })
 
-        // 字幕气泡的总开关（视觉，不是声音 —— 声音由上面那个管）。
+        // 全部语音的总开关，以及字幕气泡的开关（后者是视觉，不是声音）。
+        const [allVoiceOff, setAllVoiceOff] = useState(() => readVoiceOff())
         const [bubbleOff, setBubbleOff] = useState(() => readBubbleOff())
+
+        const toggleAllVoice = useCallback(() => {
+          const next = !allVoiceOff
+          try { localStorage.setItem(VOICE_OFF_KEY, next ? '1' : '0') } catch (err) { /* ignore */ }
+          setAllVoiceOff(next)
+        }, [allVoiceOff])
 
         const toggleBubble = useCallback(() => {
           const next = !bubbleOff
@@ -7304,6 +7339,21 @@ function render(t) {
           onClick: togglePeek,
           style: buttonStyle(true),
         }, peekOff ? '启用探头的赫萝' : '不启用探头的赫萝')))
+
+        children.push(h('div', {
+          key: 'allVoiceTitle',
+          style: { ...strongStyle, marginTop: '14px', paddingTop: '12px', borderTop: '0.5px solid var(--dsw-alias-border-l3)' },
+        }, '语音'))
+        children.push(h('div', { key: 'allVoiceStatus', style: { ...dimStyle, marginTop: '6px' } },
+          allVoiceOff
+            ? '已关闭：点探头、点便笺、点待机画面都不会出声（字幕另有开关；点下去时正在播的那一声会播完）。'
+            : '已开启：三个会出声的地方都出声。下面的单项开关只管各自那一处。'))
+        children.push(h('div', { key: 'allVoiceRow', style: rowStyle }, h('button', {
+          key: 'allVoiceToggle',
+          type: 'button',
+          onClick: toggleAllVoice,
+          style: buttonStyle(true),
+        }, allVoiceOff ? '开启全部语音' : '关闭全部语音')))
 
         children.push(h('div', {
           key: 'voiceTitle',
