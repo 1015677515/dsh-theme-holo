@@ -4363,6 +4363,12 @@ function render(t) {
 
       const play = (cue) => {
         if (disposed) return
+        // 语音总开关关着：**字幕照旧**（它由「台词字幕」那个开关单独管），
+        // 但不建播放器、不出声 —— 连音频解码器都不实例化。
+        if (readVoiceOff()) {
+          bubble.show(cue.zh, holdFor(cue, null))
+          return
+        }
         const audio = playerFor(cue)
         if (audio === null) return
 
@@ -7346,8 +7352,8 @@ function render(t) {
         }, '语音'))
         children.push(h('div', { key: 'allVoiceStatus', style: { ...dimStyle, marginTop: '6px' } },
           allVoiceOff
-            ? '已关闭：点探头、点便笺、点待机画面都不会出声（字幕另有开关；点下去时正在播的那一声会播完）。'
-            : '已开启：三个会出声的地方都出声。下面的单项开关只管各自那一处。'))
+            ? '已关闭：所有语音静音 —— 探头、便笺、待机画面，以及各按钮自己的提示音（字幕另有开关；点下去时正在播的那一声会播完）。'
+            : '已开启：插件会出声的地方都出声。下面的单项开关只管各自那一处（按钮提示音由这里统一管）。'))
         children.push(h('div', { key: 'allVoiceRow', style: rowStyle }, h('button', {
           key: 'allVoiceToggle',
           type: 'button',
