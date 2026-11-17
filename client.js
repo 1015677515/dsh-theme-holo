@@ -3626,6 +3626,22 @@ function render(t) {
     const PEEK_VOICE_OFF_KEY = 'dsh-theme-holo.peek-voice-off'
 
     /**
+     * 字幕气泡的总开关。`1` = 关闭。
+     *
+     * 与 PEEK_VOICE_OFF_KEY 是两件事：那一个管**声音**（点她不出声），
+     * 这一个管**视觉**（AV 场景里的台词、点她时的应答、点便笺/鲸鱼时的字幕）——
+     * 声音照旧，只是屏幕上不再浮那一行。
+     */
+    const BUBBLE_OFF_KEY = 'dsh-theme-holo.bubble-off'
+    /** 面板改了开关就喊一声；气泡自己听着，正在显示的那条立刻收。 */
+    const BUBBLE_CHANGE_EVENT = 'dsh-theme-holo:bubble-change'
+
+    /** 读一次字幕开关（缺 / 坏一律当「开」，与默认值一致）。 */
+    function readBubbleOff() {
+      try { return localStorage.getItem(BUBBLE_OFF_KEY) === '1' } catch (error) { return false }
+    }
+
+    /**
      * localStorage latch: `1` once the first-run light default has run.
      *
      * The host's appearance preference ships as "system", so a machine whose OS
@@ -4167,6 +4183,12 @@ function render(t) {
       /** Show a line, then hold, then fade. Returns immediately. */
       const show = (zh, holdMs, from) => {
         if (disposed) return
+        // 总开关关着就整条不出。已经挂着的那条也要收掉 —— 切换开关的那一刻
+        // 屏幕上不该还留着上一句（见 onSettingChange）。
+        if (readBubbleOff()) {
+          if (isUp()) hideNow()
+          return
+        }
         // 不在「对话页」就整条不出：对话框 / 全屏右栏 / 她不可见三种情况。
         // 已经有一条挂着的那就让它下去 —— 切页时字幕要跟着收，而不是留在屏上。
         if (!onChatPage()) {
@@ -4204,6 +4226,12 @@ function render(t) {
       }
       root.addEventListener('click', onClick)
 
+      /** 面板把开关关上时，正在显示的那一条立刻收 —— 不等它自然淡出。 */
+      const onSettingChange = () => {
+        if (readBubbleOff() && isUp()) hideNow()
+      }
+      try { window.addEventListener(BUBBLE_CHANGE_EVENT, onSettingChange) } catch (error) { /* ignore */ }
+
       const onResize = () => {
         if (root.getAttribute('data-holo-voice-state') !== 'hidden') place()
       }
@@ -4218,6 +4246,7 @@ function render(t) {
           clearTimers()
           stopFollow()
           root.removeEventListener('click', onClick)
+          try { window.removeEventListener(BUBBLE_CHANGE_EVENT, onSettingChange) } catch (error) { /* ignore */ }
           window.removeEventListener('resize', onResize)
           try { root.remove() } catch (error) { /* already gone */ }
         },
@@ -7038,6 +7067,17 @@ function render(t) {
           try { return localStorage.getItem(PEEK_VOICE_OFF_KEY) === '1' } catch (err) { return false }
         })
 
+        // 字幕气泡的总开关（视觉，不是声音 —— 声音由上面那个管）。
+        const [bubbleOff, setBubbleOff] = useState(() => readBubbleOff())
+
+        const toggleBubble = useCallback(() => {
+          const next = !bubbleOff
+          try { localStorage.setItem(BUBBLE_OFF_KEY, next ? '1' : '0') } catch (err) { /* ignore */ }
+          setBubbleOff(next)
+          // 气泡不在 React 树里，只能靠事件叫它把当前那条收掉。
+          try { window.dispatchEvent(new CustomEvent(BUBBLE_CHANGE_EVENT)) } catch (err) { /* ignore */ }
+        }, [bubbleOff])
+
         const toggleVoice = useCallback(() => {
           setVoiceOff((previous) => {
             const next = !previous
@@ -7277,6 +7317,21 @@ function render(t) {
           onClick: toggleVoice,
           style: buttonStyle(true),
         }, voiceOff ? '开启探头语音' : '关闭探头语音')))
+
+        children.push(h('div', {
+          key: 'bubbleTitle',
+          style: { ...strongStyle, marginTop: '14px', paddingTop: '12px', borderTop: '0.5px solid var(--dsw-alias-border-l3)' },
+        }, '台词字幕'))
+        children.push(h('div', { key: 'bubbleStatus', style: { ...dimStyle, marginTop: '6px' } },
+          bubbleOff
+            ? '已关闭：她说台词时不再显示字幕气泡（声音不受影响）。'
+            : '已开启：她说台词时会浮出一行字幕，点它可以提前收起。'))
+        children.push(h('div', { key: 'bubbleRow', style: rowStyle }, h('button', {
+          key: 'bubbleToggle',
+          type: 'button',
+          onClick: toggleBubble,
+          style: buttonStyle(true),
+        }, bubbleOff ? '开启字幕气泡' : '关闭字幕气泡')))
 
         children.push(h('div', {
           key: 'darkTitle',
